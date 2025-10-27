@@ -34,6 +34,9 @@ public class Student {
     @Column(nullable = false, unique = true)
     private String email;
 
+    @Column(nullable = false)
+    private String password;
+
     @Column(name = "leetcode_username", nullable = false, unique = true)
     private String leetcodeUsername;
 
