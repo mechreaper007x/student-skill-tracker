@@ -11,6 +11,7 @@
 	<groupId>com.skilltracker</groupId>
 	<artifactId>student-skill-tracker</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
+	<!-- Trivial change to trigger dependency refresh -->
 	<name>student-skill-tracker</name>
 	<description>Spring Boot web app for tracking coding skills via LeetCode</description>
 	<url/>

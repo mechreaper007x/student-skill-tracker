@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -142,17 +142,17 @@
                 <span style="font-size: 1.5rem;">🧱</span> Student Skill Tracker
             </span>
             <div>
-                <a th:href="@{'/refresh/' + ${student.id}}" class="btn btn-refresh">
+                <button id="refresh-btn" class="btn btn-refresh">
                     🔄 Refresh Stats
-                </a>
+                </button>
             </div>
         </div>
     </nav>
 
     <div class="container">
         <!-- Success Message -->
-        <div th:if="${message}" class="alert alert-success alert-dismissible fade show" role="alert">
-            <strong>✅</strong> <span th:text="${message}"></span>
+        <div id="message" class="alert alert-success alert-dismissible fade show d-none" role="alert">
+            <strong>✅</strong> <span id="message-text"></span>
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
 
@@ -162,13 +162,13 @@
                 <div class="profile-card">
                     <div class="row align-items-center">
                         <div class="col-md-8">
-                            <h2 class="mb-2" th:text="${student.name}">Student Name</h2>
+                            <h2 class="mb-2" id="student-name">Student Name</h2>
                             <p class="mb-2">
-                                <strong>📧 Email:</strong> <span th:text="${student.email}"></span>
+                                <strong>📧 Email:</strong> <span id="student-email"></span>
                             </p>
                             <p class="mb-0">
                                 <strong>💻 LeetCode:</strong> 
-                                <span class="badge-custom bg-light text-dark" th:text="${student.leetcodeUsername}"></span>
+                                <span class="badge-custom bg-light text-dark" id="student-leetcode"></span>
                             </p>
                         </div>
                         <div class="col-md-4 text-end">
@@ -184,28 +184,28 @@
             <div class="col-md-3 mb-3">
                 <div class="stat-card text-center p-4">
                     <div class="stat-label">Total Solved</div>
-                    <div class="stat-number text-primary" th:text="${skillData.totalProblemsSolved}">0</div>
+                    <div class="stat-number text-primary" id="total-solved">0</div>
                     <div class="mt-2">🎯</div>
                 </div>
             </div>
             <div class="col-md-3 mb-3">
                 <div class="stat-card text-center p-4">
                     <div class="stat-label">Easy</div>
-                    <div class="stat-number text-success" th:text="${skillData.easyProblems}">0</div>
+                    <div class="stat-number text-success" id="easy-solved">0</div>
                     <div class="mt-2">✅</div>
                 </div>
             </div>
             <div class="col-md-3 mb-3">
                 <div class="stat-card text-center p-4">
                     <div class="stat-label">Medium</div>
-                    <div class="stat-number text-warning" th:text="${skillData.mediumProblems}">0</div>
+                    <div class="stat-number text-warning" id="medium-solved">0</div>
                     <div class="mt-2">⚡</div>
                 </div>
             </div>
             <div class="col-md-3 mb-3">
                 <div class="stat-card text-center p-4">
                     <div class="stat-label">Hard</div>
-                    <div class="stat-number text-danger" th:text="${skillData.hardProblems}">0</div>
+                    <div class="stat-number text-danger" id="hard-solved">0</div>
                     <div class="mt-2">🔥</div>
                 </div>
             </div>
@@ -223,12 +223,11 @@
                     <div class="skill-bar-container">
                         <div class="skill-label">
                             <span>Problem Solving</span>
-                            <span th:text="${#numbers.formatDecimal(skillData.problemSolvingScore, 1, 1)} + '%'">0%</span>
+                            <span id="problem-solving-score">0%</span>
                         </div>
                         <div class="skill-bar">
-                            <div class="skill-bar-fill" 
-                                 style="background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);"
-                                 th:style="'width: ' + ${skillData.problemSolvingScore} + '%; background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);'">
+                            <div id="problem-solving-bar" class="skill-bar-fill" 
+                                 style="width: 0%; background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);">
                             </div>
                         </div>
                     </div>
@@ -236,12 +235,11 @@
                     <div class="skill-bar-container">
                         <div class="skill-label">
                             <span>Algorithms</span>
-                            <span th:text="${#numbers.formatDecimal(skillData.algorithmsScore, 1, 1)} + '%'">0%</span>
+                            <span id="algorithms-score">0%</span>
                         </div>
                         <div class="skill-bar">
-                            <div class="skill-bar-fill" 
-                                 style="background: linear-gradient(90deg, #11998e 0%, #38ef7d 100%);"
-                                 th:style="'width: ' + ${skillData.algorithmsScore} + '%; background: linear-gradient(90deg, #11998e 0%, #38ef7d 100%);'">
+                            <div id="algorithms-bar" class="skill-bar-fill" 
+                                 style="width: 0%; background: linear-gradient(90deg, #11998e 0%, #38ef7d 100%);">
                             </div>
                         </div>
                     </div>
@@ -249,12 +247,11 @@
                     <div class="skill-bar-container">
                         <div class="skill-label">
                             <span>Data Structures</span>
-                            <span th:text="${#numbers.formatDecimal(skillData.dataStructuresScore, 1, 1)} + '%'">0%</span>
+                            <span id="data-structures-score">0%</span>
                         </div>
                         <div class="skill-bar">
-                            <div class="skill-bar-fill" 
-                                 style="background: linear-gradient(90deg, #f2994a 0%, #f2c94c 100%);"
-                                 th:style="'width: ' + ${skillData.dataStructuresScore} + '%; background: linear-gradient(90deg, #f2994a 0%, #f2c94c 100%);'">
+                            <div id="data-structures-bar" class="skill-bar-fill" 
+                                 style="width: 0%; background: linear-gradient(90deg, #f2994a 0%, #f2c94c 100%);">
                             </div>
                         </div>
                     </div>
@@ -272,6 +269,22 @@
             </div>
         </div>
 
+        <!-- Student Search -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="skill-section">
+                    <h4 class="section-title">
+                        <span>🔍</span> Find Other Students
+                    </h4>
+                    <div class="input-group mb-3">
+                        <input type="text" id="studentSearchInput" class="form-control form-control-lg" placeholder="Search by name...">
+                        <button class="btn btn-primary" type="button" id="studentSearchBtn">Search</button>
+                    </div>
+                    <div id="studentSearchResults"></div>
+                </div>
+            </div>
+        </div>
+
         <!-- AI Advice -->
         <div class="row mb-4">
             <div class="col-12">
@@ -279,7 +292,7 @@
                     <h4 class="mb-3">
                         <span style="font-size: 1.5rem;">🧠</span> AI Mentor Advice
                     </h4>
-                    <p class="mb-0 lead" th:text="${skillData.aiAdvice}">
+                    <p class="mb-0 lead" id="ai-advice">
                         AI-generated personalized advice will appear here
                     </p>
                 </div>
@@ -299,107 +312,233 @@
         </div>
     </div>
 
-    <script th:inline="javascript">
-        // Skill Distribution Bar Chart
-        const ctx = document.getElementById('skillChart').getContext('2d');
-        const psScore = /*[[${skillData.problemSolvingScore}]]*/ 0;
-        const algoScore = /*[[${skillData.algorithmsScore}]]*/ 0;
-        const dsScore = /*[[${skillData.dataStructuresScore}]]*/ 0;
+    <script>
+        let skillChart, problemChart;
 
-        new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: ['Problem Solving', 'Algorithms', 'Data Structures'],
-                datasets: [{
-                    label: 'Skill Score (%)',
-                    data: [psScore, algoScore, dsScore],
-                    backgroundColor: [
-                        'rgba(102, 126, 234, 0.8)',
-                        'rgba(17, 153, 142, 0.8)',
-                        'rgba(242, 153, 74, 0.8)'
-                    ],
-                    borderColor: [
-                        'rgba(102, 126, 234, 1)',
-                        'rgba(17, 153, 142, 1)',
-                        'rgba(242, 153, 74, 1)'
-                    ],
-                    borderWidth: 2,
-                    borderRadius: 10
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: true,
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        max: 100,
-                        ticks: {
-                            callback: function(value) {
-                                return value + '%';
-                            }
-                        }
-                    }
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const studentId = urlParams.get('id');
+
+            if (studentId) {
+                fetchDashboardData(studentId);
+            } else {
+                // Handle case where ID is missing
+                console.error('Student ID is missing from the URL');
+                // maybe redirect to login
+            }
+
+            document.getElementById('refresh-btn').addEventListener('click', () => {
+                if(studentId) {
+                    refreshSkillData(studentId);
+                }
+            });
+        });
+
+        async function fetchDashboardData(studentId) {
+            try {
+                const response = await fetch(`/api/students/dashboard/${studentId}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    updateDashboardUI(data.student, data.skillData);
+                } else {
+                    console.error('Failed to fetch dashboard data');
+                }
+            } catch (error) {
+                console.error('Error fetching dashboard data:', error);
+            }
+        }
+
+        async function refreshSkillData(studentId) {
+            const messageDiv = document.getElementById('message');
+            const messageText = document.getElementById('message-text');
+            try {
+                const response = await fetch(`/api/students/refresh/${studentId}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    // Re-fetch dashboard data to get the student object as well
+                    fetchDashboardData(studentId);
+                    messageText.textContent = data.message;
+                    messageDiv.classList.remove('d-none');
+                } else {
+                    console.error('Failed to refresh skill data');
+                }
+            } catch (error) {
+                console.error('Error refreshing skill data:', error);
+            }
+        }
+
+        function updateDashboardUI(student, skillData) {
+            // Profile
+            document.getElementById('student-name').textContent = student.name;
+            document.getElementById('student-email').textContent = student.email;
+            document.getElementById('student-leetcode').textContent = student.leetcodeUsername;
+
+            // Stats
+            document.getElementById('total-solved').textContent = skillData.totalProblemsSolved;
+            document.getElementById('easy-solved').textContent = skillData.easyProblems;
+            document.getElementById('medium-solved').textContent = skillData.mediumProblems;
+            document.getElementById('hard-solved').textContent = skillData.hardProblems;
+
+            // Skill Bars
+            document.getElementById('problem-solving-score').textContent = `${skillData.problemSolvingScore.toFixed(1)}%`;
+            document.getElementById('problem-solving-bar').style.width = `${skillData.problemSolvingScore}%`;
+            document.getElementById('algorithms-score').textContent = `${skillData.algorithmsScore.toFixed(1)}%`;
+            document.getElementById('algorithms-bar').style.width = `${skillData.algorithmsScore}%`;
+            document.getElementById('data-structures-score').textContent = `${skillData.dataStructuresScore.toFixed(1)}%`;
+            document.getElementById('data-structures-bar').style.width = `${skillData.dataStructuresScore}%`;
+
+            // AI Advice
+            document.getElementById('ai-advice').textContent = skillData.aiAdvice;
+
+            // Charts
+            updateCharts(skillData);
+        }
+
+        function updateCharts(skillData) {
+            // Skill Distribution Bar Chart
+            const skillCtx = document.getElementById('skillChart').getContext('2d');
+            if (skillChart) {
+                skillChart.destroy();
+            }
+            skillChart = new Chart(skillCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Problem Solving', 'Algorithms', 'Data Structures'],
+                    datasets: [{
+                        label: 'Skill Score (%)',
+                        data: [skillData.problemSolvingScore, skillData.algorithmsScore, skillData.dataStructuresScore],
+                        backgroundColor: [
+                            'rgba(102, 126, 234, 0.8)',
+                            'rgba(17, 153, 142, 0.8)',
+                            'rgba(242, 153, 74, 0.8)'
+                        ],
+                        borderColor: [
+                            'rgba(102, 126, 234, 1)',
+                            'rgba(17, 153, 142, 1)',
+                            'rgba(242, 153, 74, 1)'
+                        ],
+                        borderWidth: 2,
+                        borderRadius: 10
+                    }]
                 },
-                plugins: {
-                    legend: {
-                        display: false
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: {
+                                callback: function(value) {
+                                    return value + '%';
+                                }
+                            }
+                        }
                     },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                return context.parsed.y.toFixed(1) + '%';
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.parsed.y.toFixed(1) + '%';
+                                }
                             }
                         }
                     }
                 }
+            });
+
+            // Problem Distribution Doughnut Chart
+            const problemCtx = document.getElementById('problemChart').getContext('2d');
+            if(problemChart) {
+                problemChart.destroy();
             }
-        });
-
-        // Problem Distribution Doughnut Chart
-        const ctx2 = document.getElementById('problemChart').getContext('2d');
-        const easyProbs = /*[[${skillData.easyProblems}]]*/ 0;
-        const mediumProbs = /*[[${skillData.mediumProblems}]]*/ 0;
-        const hardProbs = /*[[${skillData.hardProblems}]]*/ 0;
-
-        new Chart(ctx2, {
-            type: 'doughnut',
-            data: {
-                labels: ['Easy', 'Medium', 'Hard'],
-                datasets: [{
-                    data: [easyProbs, mediumProbs, hardProbs],
-                    backgroundColor: [
-                        'rgba(75, 192, 192, 0.8)',
-                        'rgba(255, 206, 86, 0.8)',
-                        'rgba(255, 99, 132, 0.8)'
-                    ],
-                    borderColor: [
-                        'rgba(75, 192, 192, 1)',
-                        'rgba(255, 206, 86, 1)',
-                        'rgba(255, 99, 132, 1)'
-                    ],
-                    borderWidth: 2
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: true,
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                const percentage = ((context.parsed / total) * 100).toFixed(1);
-                                return context.label + ': ' + context.parsed + ' (' + percentage + '%)';
+            problemChart = new Chart(problemCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Easy', 'Medium', 'Hard'],
+                    datasets: [{
+                        data: [skillData.easyProblems, skillData.mediumProblems, skillData.hardProblems],
+                        backgroundColor: [
+                            'rgba(75, 192, 192, 0.8)',
+                            'rgba(255, 206, 86, 0.8)',
+                            'rgba(255, 99, 132, 0.8)'
+                        ],
+                        borderColor: [
+                            'rgba(75, 192, 192, 1)',
+                            'rgba(255, 206, 86, 1)',
+                            'rgba(255, 99, 132, 1)'
+                        ],
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = total > 0 ? ((context.parsed / total) * 100).toFixed(1) : 0;
+                                    return context.label + ': ' + context.parsed + ' (' + percentage + '%)';
+                                }
                             }
                         }
                     }
                 }
+            });
+        }
+
+        // Student Search
+        const searchBtn = document.getElementById('studentSearchBtn');
+        const searchInput = document.getElementById('studentSearchInput');
+        const searchResults = document.getElementById('studentSearchResults');
+
+        searchBtn.addEventListener('click', async () => {
+            const query = searchInput.value.toLowerCase();
+            if (query) {
+                try {
+                    const response = await fetch(`/api/students/search?name=${query}`);
+                    if (response.ok) {
+                        const students = await response.json();
+                        displaySearchResults(students);
+                    } else {
+                        searchResults.innerHTML = '<div class="alert alert-warning">Could not fetch search results.</div>';
+                    }
+                } catch (error) {
+                    searchResults.innerHTML = '<div class="alert alert-danger">Error during search.</div>';
+                }
             }
         });
+
+        function displaySearchResults(students) {
+            searchResults.innerHTML = ''; // Clear previous results
+            if (students.length > 0) {
+                const list = document.createElement('ul');
+                list.className = 'list-group';
+                students.forEach(student => {
+                    const listItem = document.createElement('li');
+                    listItem.className = 'list-group-item d-flex justify-content-between align-items-center';
+                    listItem.innerHTML = `
+                        <div>
+                            <h6 class="mb-0">${student.name}</h6>
+                            <small class="text-muted">${student.email}</small>
+                        </div>
+                        <a href="/dashboard.html?id=${student.id}" class="btn btn-sm btn-outline-primary">View Dashboard</a>
+                    `;
+                    list.appendChild(listItem);
+                });
+                searchResults.appendChild(list);
+            } else {
+                searchResults.innerHTML = '<div class="alert alert-info">No students found.</div>';
+            }
+        }
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

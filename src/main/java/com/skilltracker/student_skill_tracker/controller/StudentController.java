@@ -1,15 +1,11 @@
 package com.skilltracker.student_skill_tracker.controller;
 
+import java.util.List;
 import java.util.Optional;
 
-import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.ModelAttribute;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
 import com.skilltracker.student_skill_tracker.model.SkillData;
 import com.skilltracker.student_skill_tracker.model.Student;
@@ -17,8 +13,11 @@ import com.skilltracker.student_skill_tracker.repository.SkillDataRepository;
 import com.skilltracker.student_skill_tracker.repository.StudentRepository;
 import com.skilltracker.student_skill_tracker.service.SkillService;
 
-@Controller
-@RequestMapping("/")
+import java.util.Map;
+import java.util.Optional;
+
+@RestController
+@RequestMapping("/api/students")
 public class StudentController {
 
     private final StudentRepository studentRepository;
@@ -31,103 +30,104 @@ public class StudentController {
         this.skillService = skillService;
     }
 
-    // Home route redirects to login
-    @GetMapping
-    public String home() {
-        return "redirect:/login";
-    }
-
-    // Login form
-    @GetMapping("/login")
-    public String showLoginForm(Model model) {
-        return "login";
-    }
-
-    // Handle login
     @PostMapping("/login")
-    public String login(@RequestParam String email, @RequestParam String password, Model model) {
+    public ResponseEntity<?> login(@RequestBody Map<String, String> credentials) {
+        String email = credentials.get("email");
+        String password = credentials.get("password");
+
         Optional<Student> studentOpt = studentRepository.findByEmail(email);
-        
+
         if (studentOpt.isEmpty()) {
-            model.addAttribute("error", "Email not found! Please register first.");
-            return "login";
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Email not found!"));
         }
 
         Student student = studentOpt.get();
         if (!student.getPassword().equals(password)) {
-            model.addAttribute("error", "Invalid credentials.");
-            return "login";
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Invalid credentials."));
         }
 
-        return "redirect:/dashboard/" + student.getId();
+        return ResponseEntity.ok(Map.of("id", student.getId(), "message", "Login successful"));
     }
 
-    // Registration form
-    @GetMapping("/register")
-    public String showRegisterForm(Model model) {
-        model.addAttribute("student", new Student());
-        return "register";
-    }
-
-    // Handle registration
     @PostMapping("/register")
-    public String register(@ModelAttribute Student student, Model model) {
-        Optional<Student> existingByEmail = studentRepository.findByEmail(student.getEmail());
-        if (existingByEmail.isPresent()) {
-            model.addAttribute("error", "Email already exists! Please use a different email or login.");
-            return "register";
+    public ResponseEntity<?> register(@RequestBody Student student) {
+        if (studentRepository.findByEmail(student.getEmail()).isPresent()) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", "Email already exists!"));
         }
 
-        Optional<Student> existingByUsername = studentRepository.findByLeetcodeUsername(student.getLeetcodeUsername());
-        if (existingByUsername.isPresent()) {
-            model.addAttribute("error", "LeetCode username already registered!");
-            return "register";
+        if (studentRepository.findByLeetcodeUsername(student.getLeetcodeUsername()).isPresent()) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", "LeetCode username already registered!"));
         }
 
-        Student saved = studentRepository.save(student);
-        SkillData skillData = skillService.updateSkillData(saved);
+        Student savedStudent = studentRepository.save(student);
+        skillService.updateSkillData(savedStudent); // This can run in the background
 
-        return "redirect:/dashboard/" + saved.getId();
+        return ResponseEntity.status(HttpStatus.CREATED).body(savedStudent);
     }
 
-    // Dashboard view
     @GetMapping("/dashboard/{id}")
-    public String showDashboard(@PathVariable Long id, Model model) {
+    public ResponseEntity<?> showDashboard(@PathVariable Long id) {
         Optional<Student> studentOpt = studentRepository.findById(id);
         if (studentOpt.isEmpty()) {
-            return "redirect:/login";
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Student not found"));
         }
 
         Student student = studentOpt.get();
         Optional<SkillData> skillDataOpt = skillDataRepository.findByStudent(student);
-        
-        SkillData skillData;
-        if (skillDataOpt.isEmpty()) {
-            // If no skill data exists, fetch it
-            skillData = skillService.updateSkillData(student);
-        } else {
-            skillData = skillDataOpt.get();
-        }
 
-        model.addAttribute("student", student);
-        model.addAttribute("skillData", skillData);
-        return "dashboard";
+        SkillData skillData = skillDataOpt.orElseGet(() -> skillService.updateSkillData(student));
+
+        return ResponseEntity.ok(Map.of("student", student, "skillData", skillData));
     }
 
-    // Refresh skill data manually
     @GetMapping("/refresh/{id}")
-    public String refreshSkills(@PathVariable Long id, Model model) {
+    public ResponseEntity<?> refreshSkills(@PathVariable Long id) {
         Optional<Student> studentOpt = studentRepository.findById(id);
         if (studentOpt.isEmpty()) {
-            return "redirect:/login";
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Student not found"));
         }
 
         Student student = studentOpt.get();
         SkillData updated = skillService.updateSkillData(student);
 
-        model.addAttribute("student", student);
-        model.addAttribute("skillData", updated);
-        model.addAttribute("message", "Skills refreshed successfully!");
-        return "redirect:/dashboard/" + id;
+        return ResponseEntity.ok(Map.of("message", "Skills refreshed successfully!", "skillData", updated));
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<List<Student>> searchStudents(@RequestParam String name) {
+        List<Student> students = studentRepository.findByNameContainingIgnoreCase(name);
+        return ResponseEntity.ok(students);
+    }
+
+    @GetMapping
+    public ResponseEntity<List<Student>> getAllStudents() {
+        List<Student> students = studentRepository.findAll();
+        return ResponseEntity.ok(students);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateStudent(@PathVariable Long id, @RequestBody Student studentDetails) {
+        Optional<Student> studentOpt = studentRepository.findById(id);
+        if (studentOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Student not found"));
+        }
+
+        Student student = studentOpt.get();
+        student.setName(studentDetails.getName());
+        student.setEmail(studentDetails.getEmail());
+        student.setLeetcodeUsername(studentDetails.getLeetcodeUsername());
+        Student updatedStudent = studentRepository.save(student);
+
+        return ResponseEntity.ok(updatedStudent);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteStudent(@PathVariable Long id) {
+        if (!studentRepository.existsById(id)) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Student not found"));
+        }
+
+        studentRepository.deleteById(id);
+        return ResponseEntity.ok(Map.of("message", "Student deleted successfully"));
     }
 }

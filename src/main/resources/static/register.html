@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -69,22 +69,22 @@
                     </div>
                     
                     <div class="register-body">
-                        <div th:if="${error}" class="alert alert-danger" role="alert">
-                            <strong>⚠️ Error:</strong> <span th:text="${error}"></span>
+                        <div id="error-message" class="alert alert-danger d-none" role="alert">
+                            <strong>⚠️ Error:</strong> <span id="error-text"></span>
                         </div>
                         
-                        <form th:action="@{/register}" th:object="${student}" method="post">
+                        <form id="register-form">
                             <div class="mb-3">
                                 <label for="name" class="form-label fw-bold">Full Name</label>
                                 <input type="text" class="form-control form-control-lg" 
-                                       id="name" th:field="*{name}" 
+                                       id="name" name="name" 
                                        placeholder="John Doe" required>
                             </div>
                             
                             <div class="mb-3">
                                 <label for="email" class="form-label fw-bold">Email Address</label>
                                 <input type="email" class="form-control form-control-lg" 
-                                       id="email" th:field="*{email}" 
+                                       id="email" name="email" 
                                        placeholder="john@example.com" required>
                                 <div class="form-text">We'll use this for login</div>
                             </div>
@@ -92,7 +92,7 @@
                             <div class="mb-3">
                                 <label for="password" class="form-label fw-bold">Password</label>
                                 <input type="password" class="form-control form-control-lg" 
-                                       id="password" th:field="*{password}" 
+                                       id="password" name="password" 
                                        placeholder="Create a strong password" required>
                             </div>
                             
@@ -101,7 +101,7 @@
                                     LeetCode Username
                                 </label>
                                 <input type="text" class="form-control form-control-lg" 
-                                       id="leetcodeUsername" th:field="*{leetcodeUsername}" 
+                                       id="leetcodeUsername" name="leetcodeUsername" 
                                        placeholder="your_leetcode_username" required>
                                 <div class="info-box mt-2">
                                     <strong>💡 Tip:</strong> Make sure your LeetCode profile is public. 
@@ -116,7 +116,7 @@
 
                         <div class="text-center mt-4">
                             <p class="text-muted">Already have an account?</p>
-                            <a th:href="@{/login}" class="btn btn-outline-primary">
+                            <a href="/login.html" class="btn btn-outline-primary">
                                 Sign In
                             </a>
                         </div>
@@ -127,5 +127,38 @@
     </div>
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.getElementById('register-form').addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+            const form = e.target;
+            const formData = new FormData(form);
+            const data = Object.fromEntries(formData.entries());
+
+            const errorMessageDiv = document.getElementById('error-message');
+            const errorText = document.getElementById('error-text');
+
+            try {
+                const response = await fetch('/api/students/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (response.ok) {
+                    window.location.href = '/login.html';
+                } else {
+                    const result = await response.json();
+                    errorText.textContent = result.error || 'An unknown error occurred.';
+                    errorMessageDiv.classList.remove('d-none');
+                }
+            } catch (error) {
+                errorText.textContent = 'Could not connect to the server.';
+                errorMessageDiv.classList.remove('d-none');
+            }
+        });
+    </script>
 </body>
 </html>
