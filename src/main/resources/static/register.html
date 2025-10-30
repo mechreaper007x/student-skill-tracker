@@ -148,7 +148,7 @@
                 });
 
                 if (response.ok) {
-                    window.location.href = '/login.html';
+                    window.location.href = '/login.html?success=true';
                 } else {
                     const result = await response.json();
                     errorText.textContent = result.error || 'An unknown error occurred.';
