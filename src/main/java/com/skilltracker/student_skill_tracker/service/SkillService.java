@@ -22,7 +22,10 @@ public class SkillService {
     }
 
     public SkillData updateSkillData(Student student) {
+        System.out.println("Fetching data for user: " + student.getLeetcodeUsername());
         Map<String, Object> data = leetCodeService.fetchStats(student.getLeetcodeUsername());
+        System.out.println("Stats data: " + data);
+    // language proficiency removed to simplify frontend integration
 
         if (data.isEmpty()) {
             SkillData emptySkillData = SkillData.builder()
@@ -52,11 +55,14 @@ public class SkillService {
 
         String advice = AIAdvisor.generateAdvice(ps, algo, ds);
 
+        // language proficiency computation removed
+
         SkillData skillData = SkillData.builder()
                 .student(student)
                 .problemSolvingScore(ps)
                 .algorithmsScore(algo)
                 .dataStructuresScore(ds)
+                
                 .totalProblemsSolved(total)
                 .easyProblems(easy)
                 .mediumProblems(medium)

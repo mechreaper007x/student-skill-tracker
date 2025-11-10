@@ -13,12 +13,16 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 
 @Entity
 @Table(name = "students")
-@Data
+@Getter
+@Setter
+@ToString
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -35,7 +39,12 @@ public class Student {
     private String email;
 
     @Column(nullable = false)
+    @ToString.Exclude
     private String password;
+
+    @jakarta.persistence.Transient
+    @ToString.Exclude
+    private String confirmPassword;
 
     @Column(name = "leetcode_username", nullable = false, unique = true)
     private String leetcodeUsername;
@@ -47,4 +56,7 @@ public class Student {
     @UpdateTimestamp
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    @Builder.Default
+    private String roles = "ROLE_USER";
 }

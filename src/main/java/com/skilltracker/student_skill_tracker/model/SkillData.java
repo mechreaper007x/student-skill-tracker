@@ -45,6 +45,8 @@ public class SkillData {
     @Column(name = "data_structures_score")
     private Double dataStructuresScore;
 
+    // languageProficiency removed due to frontend integration issues
+
     @Column(name = "total_problems_solved")
     private Integer totalProblemsSolved;
 

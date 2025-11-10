@@ -95,6 +95,13 @@
                                        id="password" name="password" 
                                        placeholder="Create a strong password" required>
                             </div>
+
+                            <div class="mb-3">
+                                <label for="confirmPassword" class="form-label fw-bold">Confirm Password</label>
+                                <input type="password" class="form-control form-control-lg" 
+                                       id="confirmPassword" name="confirmPassword" 
+                                       placeholder="Confirm your password" required>
+                            </div>
                             
                             <div class="mb-3">
                                 <label for="leetcodeUsername" class="form-label fw-bold">
@@ -138,8 +145,16 @@
             const errorMessageDiv = document.getElementById('error-message');
             const errorText = document.getElementById('error-text');
 
+            if (data.password !== data.confirmPassword) {
+                errorText.textContent = 'Passwords do not match.';
+                errorMessageDiv.classList.remove('d-none');
+                return;
+            }
+
             try {
-                const response = await fetch('/api/students/register', {
+                const apiUrl = '/api/students/register';
+
+                const response = await fetch(apiUrl, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -148,10 +163,23 @@
                 });
 
                 if (response.ok) {
-                    window.location.href = '/login.html?success=true';
+                    const loginUrl = '/login.html?success=true';
+                    window.location.href = loginUrl;
                 } else {
-                    const result = await response.json();
-                    errorText.textContent = result.error || 'An unknown error occurred.';
+                    // Try to parse JSON error body, but fall back to text if it's not JSON
+                    let resultText = 'An unknown error occurred.';
+                    try {
+                        const result = await response.json();
+                        resultText = result.error || JSON.stringify(result) || resultText;
+                    } catch (parseErr) {
+                        try {
+                            resultText = await response.text();
+                        } catch (t) {
+                            // leave default message
+                        }
+                    }
+
+                    errorText.textContent = resultText;
                     errorMessageDiv.classList.remove('d-none');
                 }
             } catch (error) {

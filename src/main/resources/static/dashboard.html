@@ -285,6 +285,8 @@
             </div>
         </div>
 
+        <!-- Language Proficiency Chart removed -->
+
         <!-- AI Advice -->
         <div class="row mb-4">
             <div class="col-12">
@@ -313,18 +315,34 @@
     </div>
 
     <script>
-        let skillChart, problemChart;
+    let skillChart, problemChart;
 
-        document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
             const urlParams = new URLSearchParams(window.location.search);
             const studentId = urlParams.get('id');
 
             if (studentId) {
+                // show debug id in page (hidden by default) to help trace issues
+                const debugEl = document.getElementById('debug-info');
+                if (debugEl) debugEl.textContent = 'Debug: studentId=' + studentId;
                 fetchDashboardData(studentId);
             } else {
-                // Handle case where ID is missing
-                console.error('Student ID is missing from the URL');
-                // maybe redirect to login
+                // If no id in URL, try fetching the currently authenticated user's dashboard
+                try {
+                    const resp = await fetch('/api/students/me/dashboard');
+                    if (resp.ok) {
+                        const data = await resp.json();
+                        updateDashboardUI(data.student, data.skillData);
+                        // update URL with id for bookmark/share convenience
+                        if (data.student && data.student.id) {
+                            history.replaceState(null, '', '/dashboard.html?id=' + data.student.id);
+                        }
+                    } else {
+                        console.error('No student id and /me/dashboard returned', resp.status);
+                    }
+                } catch (err) {
+                    console.error('Error fetching /me/dashboard', err);
+                }
             }
 
             document.getElementById('refresh-btn').addEventListener('click', () => {
@@ -336,14 +354,18 @@
 
         async function fetchDashboardData(studentId) {
             try {
+                // use relative URL to avoid origin mismatches during dev
                 const response = await fetch(`/api/students/dashboard/${studentId}`);
                 if (response.ok) {
                     const data = await response.json();
                     updateDashboardUI(data.student, data.skillData);
                 } else {
-                    console.error('Failed to fetch dashboard data');
+                    const text = await response.text().catch(() => '');
+                    showError('Failed to fetch dashboard data: ' + response.status + ' ' + text);
+                    console.error('Failed to fetch dashboard data', response.status, text);
                 }
             } catch (error) {
+                showError('Error fetching dashboard data: ' + (error && error.message ? error.message : error));
                 console.error('Error fetching dashboard data:', error);
             }
         }
@@ -368,30 +390,53 @@
         }
 
         function updateDashboardUI(student, skillData) {
+            if (!student || !skillData) {
+                showError('Received null data for student or skillData. Cannot update UI.');
+                console.error("Received null data for student or skillData. Cannot update UI.");
+                return;
+            }
+
             // Profile
-            document.getElementById('student-name').textContent = student.name;
-            document.getElementById('student-email').textContent = student.email;
-            document.getElementById('student-leetcode').textContent = student.leetcodeUsername;
+            document.getElementById('student-name').textContent = student.name || 'N/A';
+            document.getElementById('student-email').textContent = student.email || 'N/A';
+            document.getElementById('student-leetcode').textContent = student.leetcodeUsername || 'N/A';
 
             // Stats
-            document.getElementById('total-solved').textContent = skillData.totalProblemsSolved;
-            document.getElementById('easy-solved').textContent = skillData.easyProblems;
-            document.getElementById('medium-solved').textContent = skillData.mediumProblems;
-            document.getElementById('hard-solved').textContent = skillData.hardProblems;
+            document.getElementById('total-solved').textContent = skillData.totalProblemsSolved || 0;
+            document.getElementById('easy-solved').textContent = skillData.easyProblems || 0;
+            document.getElementById('medium-solved').textContent = skillData.mediumProblems || 0;
+            document.getElementById('hard-solved').textContent = skillData.hardProblems || 0;
 
             // Skill Bars
-            document.getElementById('problem-solving-score').textContent = `${skillData.problemSolvingScore.toFixed(1)}%`;
-            document.getElementById('problem-solving-bar').style.width = `${skillData.problemSolvingScore}%`;
-            document.getElementById('algorithms-score').textContent = `${skillData.algorithmsScore.toFixed(1)}%`;
-            document.getElementById('algorithms-bar').style.width = `${skillData.algorithmsScore}%`;
-            document.getElementById('data-structures-score').textContent = `${skillData.dataStructuresScore.toFixed(1)}%`;
-            document.getElementById('data-structures-bar').style.width = `${skillData.dataStructuresScore}%`;
+            const problemSolvingScore = skillData.problemSolvingScore || 0;
+            const algorithmsScore = skillData.algorithmsScore || 0;
+            const dataStructuresScore = skillData.dataStructuresScore || 0;
+
+            document.getElementById('problem-solving-score').textContent = `${problemSolvingScore.toFixed(1)}%`;
+            document.getElementById('problem-solving-bar').style.width = `${problemSolvingScore}%`;
+            document.getElementById('algorithms-score').textContent = `${algorithmsScore.toFixed(1)}%`;
+            document.getElementById('algorithms-bar').style.width = `${algorithmsScore}%`;
+            document.getElementById('data-structures-score').textContent = `${dataStructuresScore.toFixed(1)}%`;
+            document.getElementById('data-structures-bar').style.width = `${dataStructuresScore}%`;
 
             // AI Advice
-            document.getElementById('ai-advice').textContent = skillData.aiAdvice;
+            document.getElementById('ai-advice').textContent = skillData.aiAdvice || 'No advice available at the moment.';
 
             // Charts
             updateCharts(skillData);
+        }
+
+        function showError(message) {
+            const messageDiv = document.getElementById('message');
+            const messageText = document.getElementById('message-text');
+            if (messageDiv && messageText) {
+                messageText.textContent = message;
+                messageDiv.classList.remove('d-none');
+                messageDiv.classList.remove('alert-success');
+                messageDiv.classList.add('alert-danger');
+            } else {
+                alert(message);
+            }
         }
 
         function updateCharts(skillData) {
@@ -493,6 +538,8 @@
                     }
                 }
             });
+
+                // Language proficiency chart removed to avoid frontend issues
         }
 
         // Student Search

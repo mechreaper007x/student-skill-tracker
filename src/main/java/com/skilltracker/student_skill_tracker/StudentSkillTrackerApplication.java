@@ -5,6 +5,8 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 
+import org.springframework.web.client.RestTemplate;
+
 import com.skilltracker.student_skill_tracker.service.LeetCodeService;
 
 @SpringBootApplication
@@ -15,10 +17,7 @@ public class StudentSkillTrackerApplication {
     }
 
     @Bean
-    CommandLineRunner testApi(LeetCodeService leetCodeService) {
-        return args -> {
-            var data = leetCodeService.fetchStats("username");
-            System.out.println(data);
-        };
+    public RestTemplate restTemplate() {
+        return new RestTemplate();
     }
 }
