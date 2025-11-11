@@ -3,7 +3,9 @@ package com.skilltracker.student_skill_tracker.controller;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,6 +29,7 @@ import com.skilltracker.student_skill_tracker.repository.SkillDataRepository;
 import com.skilltracker.student_skill_tracker.repository.StudentRepository;
 import com.skilltracker.student_skill_tracker.service.CommonQuestionsService;
 import com.skilltracker.student_skill_tracker.service.SkillService;
+
 
 @RestController
 @RequestMapping("/api/students")
@@ -277,5 +280,34 @@ public class StudentController {
         Map<String, Object> resp = new HashMap<>();
         resp.put("message", "Student deleted successfully");
         return ResponseEntity.ok(resp);
+    }
+
+    @GetMapping("/leaderboard")
+    public ResponseEntity<List<Map<String, Object>>> getLeaderboard() {
+        List<Student> students = studentRepository.findAll();
+
+        List<Map<String, Object>> leaderboard = students.stream()
+            .map(student -> {
+                SkillData latest = skillDataRepository.findTopByStudentOrderByCreatedAtDesc(student)
+                        .orElse(null);
+                if (latest == null) return null;
+
+                double totalScore = latest.getProblemSolvingScore()
+                        + latest.getAlgorithmsScore()
+                        + latest.getDataStructuresScore();
+
+                Map<String, Object> entry = new HashMap<>();
+                entry.put("name", student.getName());
+                entry.put("leetcodeUsername", student.getLeetcodeUsername());
+                entry.put("totalScore", totalScore);
+                entry.put("ranking", latest.getRanking());
+                return entry;
+            })
+            .filter(Objects::nonNull)
+            .sorted((a, b) -> Double.compare((double) b.get("totalScore"), (double) a.get("totalScore")))
+            .limit(10)
+            .collect(Collectors.toList());
+
+        return ResponseEntity.ok(leaderboard);
     }
 }
