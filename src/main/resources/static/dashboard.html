@@ -285,24 +285,59 @@
                     </div>
                     <div id="studentSearchResults"></div>
                 </div>
+
+                <!-- 🧠 AI Advisor Section -->
+                <div class="card shadow-sm mt-4 p-3">
+                  <h5 class="fw-bold mb-2">
+                    <i class="bi bi-robot"></i> AI Study Advisor
+                  </h5>
+                  <p id="advisor-summary" class="text-muted">Fetching your personalized advice...</p>
+                  
+                  <div id="advisor-details" style="display:none;">
+                    <h6 class="fw-semibold text-primary" id="advisor-headline"></h6>
+                    <ul id="advisor-actions" class="mb-2"></ul>
+                    <button class="btn btn-outline-primary btn-sm" onclick="refreshAdvisor()">🔄 Refresh Advice</button>
+                  </div>
+                </div>
+
+                <script>
+                async function loadAdvisor() {
+                  try {
+                    const res = await fetch('/api/advice/me');
+                    if (!res.ok) throw new Error('Failed to load');
+                    const data = await res.json();
+
+                    document.getElementById('advisor-summary').textContent = data.summary;
+                    document.getElementById('advisor-headline').textContent = data.headline;
+
+                    const list = document.getElementById('advisor-actions');
+                    list.innerHTML = '';
+                    data.microActions?.forEach(a => {
+                      const li = document.createElement('li');
+                      li.textContent = a;
+                      list.appendChild(li);
+                    });
+
+                    document.getElementById('advisor-details').style.display = 'block';
+                  } catch (err) {
+                    document.getElementById('advisor-summary').textContent =
+                      'Unable to load AI advice. Please refresh your dashboard.';
+                  }
+                }
+
+                function refreshAdvisor() {
+                  document.getElementById('advisor-summary').textContent = 'Refreshing advice...';
+                  loadAdvisor();
+                }
+
+                loadAdvisor();
+                </script>
             </div>
         </div>
 
         <!-- Language Proficiency Chart removed -->
 
-        <!-- AI Advice -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="advice-card">
-                    <h4 class="mb-3">
-                        <span style="font-size: 1.5rem;">🧠</span> AI Mentor Advice
-                    </h4>
-                    <p class="mb-0 lead" id="ai-advice">
-                        AI-generated personalized advice will appear here
-                    </p>
-                </div>
-            </div>
-        </div>
+
 
         <!-- Problem Distribution Chart -->
         <div class="row mb-4">
@@ -464,8 +499,7 @@
             document.getElementById('data-structures-score').textContent = `${dataStructuresScore.toFixed(1)}%`;
             document.getElementById('data-structures-bar').style.width = `${dataStructuresScore}%`;
 
-            // AI Advice
-            document.getElementById('ai-advice').textContent = skillData.aiAdvice || 'No advice available at the moment.';
+
             // Charts
             updateCharts(skillData);
 
