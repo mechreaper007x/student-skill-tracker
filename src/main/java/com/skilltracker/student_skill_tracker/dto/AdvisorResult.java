@@ -23,6 +23,9 @@ public class AdvisorResult {
     // weekly milestones (larger)
     private List<String> weeklyGoals;
 
+    // 1-3 month growth trajectory
+    private List<String> longTermPlan;
+
     // prioritized topics to study (most important first)
     private List<String> priorities;
 
@@ -31,6 +34,9 @@ public class AdvisorResult {
 
     // numeric confidence 0..1
     private double confidence;
+
+    // explanation of the confidence score
+    private String confidenceRationale;
 
     // human-readable rationale or debug notes (optional, hidden in prod)
     private String rationale;

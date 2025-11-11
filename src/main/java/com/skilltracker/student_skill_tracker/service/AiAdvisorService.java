@@ -87,14 +87,14 @@ public class AiAdvisorService {
         weekly.add("Submit one solved problem with a clear explanation to your notes/GitHub.");
         weekly.add("Review mistakes and convert 2 wrong submissions into study flashcards.");
 
-        // Resources (local/quick)
-        List<String> resources = List.of(
-                "https://leetcode.com/problemset/all/",
-                "https://visualgo.net/en",
-                "https://cses.fi/book.html (for algorithm practice)"
-        );
+        // Long-term plan
+        List<String> longTerm = generateLongTermPlan(ps, alg, ds);
+
+        // Personalized resources
+        List<String> resources = getPersonalizedResources(priorities);
 
         double confidence = 0.4 + 0.6 * signal; // more score => higher confidence
+        String confidenceRationale = getConfidenceRationale(sd, confidence);
 
         String rationale = buildRationale(sd, ps, alg, ds, total);
 
@@ -104,9 +104,11 @@ public class AiAdvisorService {
                 .microActions(micro)
                 .dailyPlan(daily)
                 .weeklyGoals(weekly)
+                .longTermPlan(longTerm)
                 .priorities(priorities)
                 .resources(resources)
                 .confidence(round(confidence))
+                .confidenceRationale(confidenceRationale)
                 .rationale(rationale)
                 .build();
 
@@ -115,6 +117,70 @@ public class AiAdvisorService {
         // result.setSummary(aiText);
 
         return result;
+    }
+
+    private List<String> generateLongTermPlan(double ps, double alg, double ds) {
+        double total = ps + alg + ds;
+        List<String> plan = new ArrayList<>();
+
+        if (total < 100) {
+            plan.add("Month 1: Master fundamentals. Complete 50 easy problems. Implement core data structures (Arrays, Strings, Linked Lists, Stacks, Queues) from scratch.");
+            plan.add("Month 2: Begin pattern recognition. Focus on Two Pointers, Sliding Window, and basic recursion. Attempt 20 medium problems.");
+            plan.add("Month 3: Solidify core algorithms. Deep dive into Sorting (Merge Sort, Quick Sort), Searching (Binary Search), and basic Graph/Tree traversals (BFS, DFS).");
+        } else if (total < 200) {
+            plan.add("Month 1: Strengthen weak areas. Identify your lowest score and dedicate this month to it. Solve 30 medium problems in that category.");
+            plan.add("Month 2: Advanced topics. Introduce yourself to Dynamic Programming, Greedy algorithms, and advanced graph problems. Aim for 15 medium and 5 hard problems.");
+            plan.add("Month 3: Interview readiness. Participate in mock interviews and weekly contests. Focus on optimizing solutions and explaining your thought process.");
+        } else {
+            plan.add("Month 1: Master advanced topics. Deep dive into advanced DP, complex graph algorithms (Dijkstra's, A*), and segment trees.");
+            plan.add("Month 2: Competitive programming focus. Regularly participate in contests (LeetCode, Codeforces). Aim for a higher rating and solve hard problems under time constraints.");
+            plan.add("Month 3: Specialize and teach. Pick a niche area (e.g., computational geometry, advanced string algorithms) and go deep. Mentor another student or write articles to solidify your understanding.");
+        }
+        return plan;
+    }
+
+    private List<String> getPersonalizedResources(List<String> priorities) {
+        List<String> resources = new ArrayList<>();
+        if (priorities.isEmpty()) {
+            return resources;
+        }
+
+        String topPriority = priorities.get(0);
+
+        switch (topPriority) {
+            case "Algorithms":
+                resources.add("TopCoder Algorithm Tutorials: https://www.topcoder.com/community/data-science/data-science-tutorials/");
+                resources.add("Introduction to Algorithms (CLRS): A comprehensive, in-depth textbook.");
+                resources.add("CSES Problem Set: https://cses.fi/problemset/");
+                break;
+            case "Data Structures":
+                resources.add("GeeksforGeeks Data Structures: https://www.geeksforgeeks.org/data-structures/");
+                resources.add("VisuAlgo: https://visualgo.net/en - for visualizing data structures and algorithms.");
+                resources.add("LeetCode's Data Structure Study Plan: https://leetcode.com/study-plan/data-structure/");
+                break;
+            case "Problem Solving":
+                resources.add("HackerRank's Problem Solving Track: https://www.hackerrank.com/domains/algorithms");
+                resources.add("Book: Cracking the Coding Interview by Gayle Laakmann McDowell");
+                resources.add("Project Euler: https://projecteuler.net/ - for mathematical and computational problems.");
+                break;
+            default:
+                resources.add("LeetCode Problemset: https://leetcode.com/problemset/all/");
+                break;
+        }
+        return resources;
+    }
+
+    private String getConfidenceRationale(SkillData sd, double confidence) {
+        if (sd == null || sd.getTotalProblemsSolved() == null || sd.getTotalProblemsSolved() == 0) {
+            return "Confidence is zero because no data is available.";
+        }
+        if (sd.getTotalProblemsSolved() < 10) {
+            return "Confidence is low as the analysis is based on a very small number of solved problems. Solve more problems to get a more accurate assessment.";
+        }
+        if (confidence < 0.6) {
+            return "Confidence is moderate. While you have a good number of solved problems, your skills may be unbalanced. A more accurate assessment will be possible with more consistent scores.";
+        }
+        return "Confidence is high. The assessment is based on a solid foundation of solved problems and balanced skills.";
     }
 
     private double safe(Double v) {
