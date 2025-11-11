@@ -145,6 +145,8 @@
                 <button id="refresh-btn" class="btn btn-refresh">
                     🔄 Refresh Stats
                 </button>
+                <button id="logoutBtn" class="btn btn-outline-danger btn-sm">Logout</button>
+
             </div>
         </div>
     </nav>
@@ -312,10 +314,52 @@
                 </div>
             </div>
         </div>
+
+        <!-- Common Questions -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="skill-section">
+                    <h4 class="section-title">
+                        <span>📚</span> Commonly Solved Questions
+                    </h4>
+                    <ul class="nav nav-tabs" id="questionsTab" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="common-tab" data-bs-toggle="tab" data-bs-target="#common-tab-pane" type="button" role="tab" aria-controls="common-tab-pane" aria-selected="true">Common</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="recommended-tab" data-bs-toggle="tab" data-bs-target="#recommended-tab-pane" type="button" role="tab" aria-controls="recommended-tab-pane" aria-selected="false">Recommended</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="trending-tab" data-bs-toggle="tab" data-bs-target="#trending-tab-pane" type="button" role="tab" aria-controls="trending-tab-pane" aria-selected="false">Trending</button>
+                        </li>
+                    </ul>
+                    <div class="tab-content mt-3">
+                        <div class="tab-pane fade show active" id="common-tab-pane" role="tabpanel" aria-labelledby="common-tab">
+                            <div id="common-questions-container">
+                                <div class="text-muted">Loading common questions…</div>
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="recommended-tab-pane" role="tabpanel" aria-labelledby="recommended-tab">
+                            <div id="recommended-questions-container">
+                                <div class="text-muted">Loading recommended questions…</div>
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="trending-tab-pane" role="tabpanel" aria-labelledby="trending-tab">
+                            <div id="trending-questions-container">
+                                <div class="text-muted">Loading trending questions…</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
     let skillChart, problemChart;
+    // caches for question lists so we can compute recommended items across sources
+    let commonQuestionsCache = null;
+    let trendingQuestionsCache = null;
 
     document.addEventListener('DOMContentLoaded', async () => {
             const urlParams = new URLSearchParams(window.location.search);
@@ -421,9 +465,134 @@
 
             // AI Advice
             document.getElementById('ai-advice').textContent = skillData.aiAdvice || 'No advice available at the moment.';
-
             // Charts
             updateCharts(skillData);
+
+            // Load common questions for this student (if backend provides)
+            try {
+                if (student && student.id) {
+                    loadCommonQuestions(student.id);
+                    // also prepare trending content; it will load when the tab is shown
+                    // preload so switching to tab is instant
+                    loadTrendingQuestions(student.id);
+                }
+            } catch (e) {
+                console.warn('Could not load common questions', e);
+            }
+        }
+
+        async function loadCommonQuestions(studentId) {
+            const container = document.getElementById('common-questions-container');
+            if (!container) return;
+            container.innerHTML = '<div class="text-muted">Loading common questions…</div>';
+            try {
+                const resp = await fetch(`/api/students/${studentId}/common-questions`);
+                if (!resp.ok) {
+                    container.innerHTML = `<div class="alert alert-warning">Could not load questions (${resp.status})</div>`;
+                    return;
+                }
+                const questions = await resp.json();
+                commonQuestionsCache = questions;
+                renderCommonQuestions(questions, container);
+                updateRecommendedIfReady();
+            } catch (err) {
+                console.error('Error loading common questions', err);
+                container.innerHTML = '<div class="alert alert-danger">Error loading common questions.</div>';
+            }
+        }
+
+        async function loadTrendingQuestions(studentId) {
+            const container = document.getElementById('trending-questions-container');
+            if (!container) return;
+            container.innerHTML = '<div class="text-muted">Loading trending questions…</div>';
+            try {
+                const resp = await fetch(`/api/students/${studentId}/trending-questions`);
+                if (!resp.ok) {
+                    container.innerHTML = `<div class="alert alert-warning">Could not load trending questions (${resp.status})</div>`;
+                    return;
+                }
+                const questions = await resp.json();
+                trendingQuestionsCache = questions;
+                renderCommonQuestions(questions, container);
+                updateRecommendedIfReady();
+            } catch (err) {
+                console.error('Error loading trending questions', err);
+                container.innerHTML = '<div class="alert alert-danger">Error loading trending questions.</div>';
+            }
+        }
+
+        function updateRecommendedIfReady() {
+            // compute recommended union from available caches
+            const recContainer = document.getElementById('recommended-questions-container');
+            if (!recContainer) return;
+            const all = [];
+            if (Array.isArray(commonQuestionsCache)) all.push(...commonQuestionsCache);
+            if (Array.isArray(trendingQuestionsCache)) all.push(...trendingQuestionsCache);
+            if (all.length === 0) {
+                recContainer.innerHTML = '<div class="text-muted">No recommended questions available yet.</div>';
+                return;
+            }
+
+            // deduplicate by id (id might be number or string)
+            const map = new Map();
+            all.forEach(q => {
+                const id = q && q.id != null ? String(q.id) : JSON.stringify(q);
+                if (!map.has(id)) map.set(id, q);
+            });
+            const merged = Array.from(map.values());
+
+            // filter recommended (flag set by backend personalization)
+            const recommended = merged.filter(q => q && q.recommended);
+
+            if (recommended.length === 0) {
+                recContainer.innerHTML = '<div class="text-muted">No recommended questions at this time.</div>';
+                return;
+            }
+
+            renderCommonQuestions(recommended, recContainer);
+        }
+
+        function renderCommonQuestions(questions, container) {
+            if (!questions || questions.length === 0) {
+                container.innerHTML = '<div class="text-muted">No common questions available.</div>';
+                return;
+            }
+            const list = document.createElement('div');
+            list.className = 'list-group';
+            questions.forEach(q => {
+                const item = document.createElement('a');
+                item.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-start';
+                item.href = q.url || '#';
+                item.target = '_blank';
+
+                const left = document.createElement('div');
+                // Title + recommended badge
+                const recommendedBadge = q.recommended ? '<span class="badge bg-success ms-2">Recommended</span>' : '';
+                const titleHtml = `<div class="fw-bold">${q.title} ${recommendedBadge}</div>`;
+                const metaHtml = `<small class="text-muted">${q.platform} · ${q.difficulty}</small>`;
+                left.innerHTML = titleHtml + metaHtml;
+
+                // matched weak areas (if any)
+                if (q.matchedTags && Array.isArray(q.matchedTags) && q.matchedTags.length > 0) {
+                    const matchedDiv = document.createElement('div');
+                    matchedDiv.className = 'mt-2';
+                    q.matchedTags.forEach(tag => {
+                        const b = document.createElement('span');
+                        b.className = 'badge bg-warning text-dark me-1';
+                        b.textContent = tag;
+                        matchedDiv.appendChild(b);
+                    });
+                    left.appendChild(matchedDiv);
+                }
+
+                const right = document.createElement('div');
+                right.innerHTML = `<span class="badge bg-primary">${(q.tags || []).slice(0,3).join(', ')}</span>`;
+                item.appendChild(left);
+                item.appendChild(right);
+                list.appendChild(item);
+            });
+            container.innerHTML = '';
+            container.appendChild(list);
         }
 
         function showError(message) {
@@ -589,5 +758,29 @@
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// read CSRF cookie set by CookieCsrfTokenRepository
+function getCookie(name) {
+  return document.cookie
+    .split('; ')
+    .find(row => row.startsWith(name + '='))
+    ?.split('=')[1];
+}
+
+document.getElementById('logoutBtn')?.addEventListener('click', async () => {
+  const token = getCookie('XSRF-TOKEN'); // cookie name is XSRF-TOKEN
+  try {
+    await fetch('/logout', {
+      method: 'POST',
+      headers: { 'X-XSRF-TOKEN': token }
+    });
+  } catch (e) {
+    // ignore network blips; server still might have processed it
+  } finally {
+    // hard redirect to login either way
+    window.location.href = '/login.html?logout';
+  }
+});
+</script>
 </body>
 </html>

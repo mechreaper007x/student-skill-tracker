@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -23,21 +25,26 @@ import com.skilltracker.student_skill_tracker.model.SkillData;
 import com.skilltracker.student_skill_tracker.model.Student;
 import com.skilltracker.student_skill_tracker.repository.SkillDataRepository;
 import com.skilltracker.student_skill_tracker.repository.StudentRepository;
+import com.skilltracker.student_skill_tracker.service.CommonQuestionsService;
 import com.skilltracker.student_skill_tracker.service.SkillService;
 
 @RestController
 @RequestMapping("/api/students")
 public class StudentController {
 
+    private static final Logger logger = LoggerFactory.getLogger(StudentController.class);
+
     private final StudentRepository studentRepository;
     private final SkillDataRepository skillDataRepository;
     private final SkillService skillService;
+    private final CommonQuestionsService commonQuestionsService;
     private final PasswordEncoder passwordEncoder;
 
-    public StudentController(StudentRepository studentRepository, SkillDataRepository skillDataRepository, SkillService skillService, PasswordEncoder passwordEncoder) {
+    public StudentController(StudentRepository studentRepository, SkillDataRepository skillDataRepository, SkillService skillService, CommonQuestionsService commonQuestionsService, PasswordEncoder passwordEncoder) {
         this.studentRepository = studentRepository;
         this.skillDataRepository = skillDataRepository;
         this.skillService = skillService;
+        this.commonQuestionsService = commonQuestionsService;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -63,6 +70,7 @@ public class StudentController {
         }
 
         student.setPassword(passwordEncoder.encode(student.getPassword()));
+        student.setRoles("ROLE_USER"); // default role so AuthorityUtils won’t choke on null
         Student savedStudent = studentRepository.save(student);
         skillService.updateSkillData(savedStudent); // This can run in the background
 
@@ -82,8 +90,8 @@ public class StudentController {
             SkillData skillData = skillDataOpt.orElseGet(() -> skillService.updateSkillData(student));
 
             // Debug logs to help trace why frontend may receive empty data
-            System.out.println("DEBUG: student=" + student);
-            System.out.println("DEBUG: skillData=" + skillData);
+            logger.debug("student={}", student);
+            logger.debug("skillData={}", skillData);
 
             // Build simple DTO maps to avoid Jackson/Hibernate lazy-loading or proxy
             // Use mutable HashMap to allow null values (Map.of throws NPE on nulls)
@@ -110,11 +118,10 @@ public class StudentController {
             resp.put("skillData", skillMap);
             return ResponseEntity.ok(resp);
         } catch (Exception e) {
-            e.printStackTrace();
-            // Return a structured error so frontend can display details instead of a generic 500
+            logger.error("Failed to build dashboard data for student id={}", student.getId(), e);
             Map<String, Object> err = new HashMap<>();
             err.put("error", "Failed to build dashboard data");
-            err.put("details", e.getMessage());
+            err.put("details", e.getMessage() == null ? "" : e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(err);
         }
     }
@@ -153,6 +160,54 @@ public class StudentController {
         }
 
         return buildDashboardResponse(studentOpt.get());
+    }
+
+    @GetMapping("/{id}/common-questions")
+    public ResponseEntity<?> getCommonQuestions(@PathVariable Long id) {
+        if (!isOwner(id)) {
+            Map<String, Object> resp = new HashMap<>();
+            resp.put("error", "You are not authorized to view these questions.");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(resp);
+        }
+
+        Optional<Student> studentOpt = studentRepository.findById(id);
+        if (studentOpt.isEmpty()) {
+            Map<String, Object> resp = new HashMap<>();
+            resp.put("error", "Student not found");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(resp);
+        }
+
+        List<Map<String, Object>> questions = commonQuestionsService.getCommonQuestionsForStudent(id);
+
+        Optional<SkillData> skillDataOpt = skillDataRepository.findByStudent(studentOpt.get());
+        SkillData skillData = skillDataOpt.orElseGet(() -> skillService.updateSkillData(studentOpt.get()));
+
+        List<Map<String, Object>> personalized = commonQuestionsService.personalizeQuestions(questions, skillData);
+        return ResponseEntity.ok(personalized);
+    }
+
+    @GetMapping("/{id}/trending-questions")
+    public ResponseEntity<?> getTrendingQuestions(@PathVariable Long id) {
+        if (!isOwner(id)) {
+            Map<String, Object> resp = new HashMap<>();
+            resp.put("error", "You are not authorized to view these questions.");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(resp);
+        }
+
+        Optional<Student> studentOpt = studentRepository.findById(id);
+        if (studentOpt.isEmpty()) {
+            Map<String, Object> resp = new HashMap<>();
+            resp.put("error", "Student not found");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(resp);
+        }
+
+        List<Map<String, Object>> tquestions = commonQuestionsService.getTrendingQuestionsForStudent(id);
+
+        Optional<SkillData> skillDataOpt2 = skillDataRepository.findByStudent(studentOpt.get());
+        SkillData skillData2 = skillDataOpt2.orElseGet(() -> skillService.updateSkillData(studentOpt.get()));
+
+        List<Map<String, Object>> personalizedTrending = commonQuestionsService.personalizeQuestions(tquestions, skillData2);
+        return ResponseEntity.ok(personalizedTrending);
     }
 
     @GetMapping("/refresh/{id}")

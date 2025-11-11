@@ -17,15 +17,16 @@ public class SecurityConfig {
     public static PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
-    
+
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, CustomAuthenticationFailureHandler failureHandler) throws Exception {
 
         http
             // Enable CSRF and store token in cookie (readable by JS)
             .csrf(csrf -> csrf
             .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
-            .ignoringRequestMatchers("/login") // ✅ temporarily disable CSRF for login POST
+            // Allow unauthenticated POSTs for login and API registration (frontend posts without CSRF token)
+            .ignoringRequestMatchers("/login", "/api/students/register", "/api/debug/**")
 )
 
 
@@ -35,6 +36,8 @@ public class SecurityConfig {
             .loginProcessingUrl("/login")
             .usernameParameter("email")  // your login.html uses name="username"
             .passwordParameter("password")
+            // wire failure handler to log failed attempts
+            .failureHandler(failureHandler)
             .defaultSuccessUrl("/dashboard.html", true) // or use your success handler
             .permitAll()
 )
@@ -56,7 +59,7 @@ public class SecurityConfig {
                     "/register.html", "/api/students/register",
                     "/forgot-password.html", "/reset-password.html",
                     "/api/auth/forgot-password", "/api/auth/reset-password",
-                    "/css/**", "/js/**", "/images/**"
+                    "/css/**", "/js/**", "/images/**", "/api/debug/**"
                 ).permitAll()
                 .anyRequest().authenticated()
             );

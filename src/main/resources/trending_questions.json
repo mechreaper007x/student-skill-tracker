@@ -1,0 +1,42 @@
+[
+  {
+    "id": 101,
+    "title": "Longest Substring Without Repeating Characters",
+    "platform": "LeetCode",
+    "difficulty": "Medium",
+    "url": "https://leetcode.com/problems/longest-substring-without-repeating-characters/",
+    "tags": ["string", "sliding-window"]
+  },
+  {
+    "id": 102,
+    "title": "Longest Palindromic Substring",
+    "platform": "LeetCode",
+    "difficulty": "Medium",
+    "url": "https://leetcode.com/problems/longest-palindromic-substring/",
+    "tags": ["string", "dynamic-programming"]
+  },
+  {
+    "id": 103,
+    "title": "Word Break",
+    "platform": "LeetCode",
+    "difficulty": "Medium",
+    "url": "https://leetcode.com/problems/word-break/",
+    "tags": ["dynamic-programming", "dfs"]
+  },
+  {
+    "id": 104,
+    "title": "Merge k Sorted Lists",
+    "platform": "LeetCode",
+    "difficulty": "Hard",
+    "url": "https://leetcode.com/problems/merge-k-sorted-lists/",
+    "tags": ["heap", "linked-list", "divide-and-conquer"]
+  },
+  {
+    "id": 105,
+    "title": "Course Schedule",
+    "platform": "LeetCode",
+    "difficulty": "Medium",
+    "url": "https://leetcode.com/problems/course-schedule/",
+    "tags": ["graph", "topological-sort"]
+  }
+]

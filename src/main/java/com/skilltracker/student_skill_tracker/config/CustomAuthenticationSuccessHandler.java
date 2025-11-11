@@ -2,6 +2,8 @@ package com.skilltracker.student_skill_tracker.config;
 
 import java.io.IOException;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
@@ -17,6 +19,8 @@ import jakarta.servlet.http.HttpServletResponse;
 @Component
 public class CustomAuthenticationSuccessHandler implements AuthenticationSuccessHandler {
 
+    private static final Logger log = LoggerFactory.getLogger(CustomAuthenticationSuccessHandler.class);
+
     private final StudentRepository studentRepository;
 
     public CustomAuthenticationSuccessHandler(StudentRepository studentRepository) {
@@ -28,7 +32,7 @@ public class CustomAuthenticationSuccessHandler implements AuthenticationSuccess
                                         Authentication authentication) throws IOException, ServletException {
         User user = (User) authentication.getPrincipal();
         Student student = studentRepository.findByEmail(user.getUsername()).orElseThrow();
-        System.out.println("Login success for user email=" + user.getUsername() + ", id=" + student.getId());
+        log.info("Login success for user email={}, id={}", user.getUsername(), student.getId());
         response.sendRedirect("/dashboard.html?id=" + student.getId());
     }
 }

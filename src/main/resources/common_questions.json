@@ -1,0 +1,82 @@
+[
+  {
+    "id": 1,
+    "title": "Two Sum",
+    "platform": "LeetCode",
+    "difficulty": "Easy",
+    "url": "https://leetcode.com/problems/two-sum/",
+    "tags": ["array", "hash-table"]
+  },
+  {
+    "id": 2,
+    "title": "Reverse Linked List",
+    "platform": "LeetCode",
+    "difficulty": "Easy",
+    "url": "https://leetcode.com/problems/reverse-linked-list/",
+    "tags": ["linked-list"]
+  },
+  {
+    "id": 3,
+    "title": "Valid Parentheses",
+    "platform": "LeetCode",
+    "difficulty": "Easy",
+    "url": "https://leetcode.com/problems/valid-parentheses/",
+    "tags": ["stack", "string"]
+  },
+  {
+    "id": 4,
+    "title": "Merge Two Sorted Lists",
+    "platform": "LeetCode",
+    "difficulty": "Easy",
+    "url": "https://leetcode.com/problems/merge-two-sorted-lists/",
+    "tags": ["linked-list"]
+  },
+  {
+    "id": 5,
+    "title": "Best Time to Buy and Sell Stock",
+    "platform": "LeetCode",
+    "difficulty": "Easy",
+    "url": "https://leetcode.com/problems/best-time-to-buy-and-sell-stock/",
+    "tags": ["array", "dynamic-programming"]
+  },
+  {
+    "id": 6,
+    "title": "Maximum Subarray",
+    "platform": "LeetCode",
+    "difficulty": "Easy",
+    "url": "https://leetcode.com/problems/maximum-subarray/",
+    "tags": ["array", "dynamic-programming"]
+  },
+  {
+    "id": 7,
+    "title": "Climbing Stairs",
+    "platform": "LeetCode",
+    "difficulty": "Easy",
+    "url": "https://leetcode.com/problems/climbing-stairs/",
+    "tags": ["dynamic-programming"]
+  },
+  {
+    "id": 8,
+    "title": "Binary Tree Inorder Traversal",
+    "platform": "LeetCode",
+    "difficulty": "Medium",
+    "url": "https://leetcode.com/problems/binary-tree-inorder-traversal/",
+    "tags": ["tree", "stack"]
+  },
+  {
+    "id": 9,
+    "title": "Search in Rotated Sorted Array",
+    "platform": "LeetCode",
+    "difficulty": "Medium",
+    "url": "https://leetcode.com/problems/search-in-rotated-sorted-array/",
+    "tags": ["array", "binary-search"]
+  },
+  {
+    "id": 10,
+    "title": "Top K Frequent Elements",
+    "platform": "LeetCode",
+    "difficulty": "Medium",
+    "url": "https://leetcode.com/problems/top-k-frequent-elements/",
+    "tags": ["hash-table", "heap"]
+  }
+]
