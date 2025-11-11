@@ -18,8 +18,16 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        Student student = studentRepository.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
-        return new User(student.getEmail(), student.getPassword(), AuthorityUtils.commaSeparatedStringToAuthorityList(student.getRoles()));
+        System.out.println("Attempting to load user by email: " + email);
+        Student s = studentRepository.findByEmail(email)
+            .orElseThrow(() -> new UsernameNotFoundException("User not found: " + email));
+
+        String roles = (s.getRoles() == null || s.getRoles().isBlank()) ? "ROLE_USER" : s.getRoles();
+
+        return new org.springframework.security.core.userdetails.User(
+            s.getEmail(),
+            s.getPassword(), // <-- do NOT encode here
+            AuthorityUtils.commaSeparatedStringToAuthorityList(roles)
+        );
     }
 }
