@@ -1,0 +1,30 @@
+{
+    "name": "Spring Boot Java 21",
+    "image": "mcr.microsoft.com/devcontainers/java:21",
+    "features": {
+        "ghcr.io/devcontainers/features/java:1": {
+            "version": "21"
+        },
+        "ghcr.io/devcontainers/features/maven:1": {
+            "version": "latest"
+        }
+    },
+    "forwardPorts": [8080],
+    "portsAttributes": {
+        "8080": {
+            "label": "Application",
+            "onAutoForward": "notify"
+        }
+    },
+    "postCreateCommand": "mvn clean install -DskipTests",
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "vscjava.vscode-java-pack",
+                "Pivotal.vscode-boot-dev-pack",
+                "redhat.vscode-xml",
+                "vmware.vscode-spring-initializr"
+            ]
+        }
+    }
+}
