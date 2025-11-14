@@ -7,6 +7,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,6 +29,7 @@ public class CommonQuestionsService {
 
     private List<Map<String, Object>> questions = Collections.emptyList();
     private List<Map<String, Object>> trendingQuestions = Collections.emptyList();
+    private List<Map<String, Object>> topTierQuestions = Collections.emptyList();
 
     public CommonQuestionsService(ObjectMapper mapper) {
         this.mapper = mapper;
@@ -51,6 +53,14 @@ public class CommonQuestionsService {
             logger.warn("Failed to load trending questions resource, continuing with empty list", e);
             this.trendingQuestions = Collections.emptyList();
         }
+        try {
+            ClassPathResource r3 = new ClassPathResource("top_tier_questions.json");
+            this.topTierQuestions = mapper.readValue(r3.getInputStream(), new TypeReference<List<Map<String, Object>>>() {});
+            logger.info("Loaded {} top tier questions from resource", topTierQuestions.size());
+        } catch (IOException e) {
+            logger.warn("Failed to load top tier questions resource, continuing with empty list", e);
+            this.topTierQuestions = Collections.emptyList();
+        }
     }
 
     /**
@@ -69,11 +79,15 @@ public class CommonQuestionsService {
      * Current strategy:
      * - Determine weak skill areas by score thresholds
      * - Map skill areas to likely tags and boost questions that contain those tags
-     * - Sort by number of matched weak-tags (desc) then by difficulty (Easy &lt; Medium &lt; Hard)
+     * - Sort by number of matched weak-tags (desc) then by difficulty (Easy < Medium < Hard)
      */
     public List<Map<String, Object>> personalizeQuestions(List<Map<String, Object>> inputQuestions, SkillData skillData, String topPriority) {
         if (inputQuestions == null) return Collections.emptyList();
         if (skillData == null) return new ArrayList<>(inputQuestions);
+
+        Set<String> topTierTitles = topTierQuestions.stream()
+            .map(q -> (String) q.get("title"))
+            .collect(Collectors.toSet());
 
         // Determine weak areas
         Set<String> weakTags = new HashSet<>();
@@ -125,6 +139,11 @@ public class CommonQuestionsService {
                 }
             }
 
+            // Boost score for top-tier questions
+            if (topTierTitles.contains((String) q.get("title"))) {
+                sc += 5;
+            }
+
             entries.add(new Entry(q, sc, matched));
         }
 
@@ -137,7 +156,7 @@ public class CommonQuestionsService {
         });
 
         // Fallback logic: if no questions matched weak areas, recommend the 3 easiest
-        if (entries.isEmpty() || entries.get(0).score == 0) {
+        if (entries.isEmpty() || entries.get(0).score <= 0) { // Changed to <= 0 to handle penalized scores
             entries.sort((a,b) -> {
                 int da = difficultyRank((String) a.q.get("difficulty"));
                 int db = difficultyRank((String) b.q.get("difficulty"));
@@ -154,7 +173,9 @@ public class CommonQuestionsService {
             Map<String, Object> copy = new java.util.HashMap<>(e.q);
             copy.put("matchedTags", e.matchedTags);
             copy.put("recommendationScore", e.score);
-            if (i < topN && (e.score > 0 || entries.get(0).score == 0)) { // Recommend if score > 0 or if fallback is active
+            copy.put("isTopTier", topTierTitles.contains((String) e.q.get("title")));
+
+            if (i < topN && (e.score > 0 || (entries.get(0).score <= 0 && topN > 0))) { // Recommend if score > 0 or if fallback is active
                 copy.put("recommended", true);
             } else {
                 copy.put("recommended", false);
