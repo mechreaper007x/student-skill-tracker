@@ -112,6 +112,19 @@ public class CommonQuestionsService {
                     sc += 1;
                 }
             }
+
+            // Adaptive Difficulty: Penalize harder questions if scores are low
+            String difficulty = (String) q.get("difficulty");
+            if ("Medium".equalsIgnoreCase(difficulty)) {
+                if ((algo != null && algo < 40) || (ds != null && ds < 40) || (ps != null && ps < 40)) {
+                    sc -= 10; // Heavily penalize Medium questions if any score is very low
+                }
+            } else if ("Hard".equalsIgnoreCase(difficulty)) {
+                if ((algo != null && algo < 75) || (ds != null && ds < 75) || (ps != null && ps < 75)) {
+                    sc -= 20; // Heavily penalize Hard questions if scores are not high
+                }
+            }
+
             entries.add(new Entry(q, sc, matched));
         }
 

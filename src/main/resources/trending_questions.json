@@ -1,42 +1,182 @@
 [
   {
-    "id": 101,
+    "title": "Two Sum",
+    "url": "https://leetcode.com/problems/two-sum/",
+    "difficulty": "Easy",
+    "tags": ["array", "hash-table"]
+  },
+  {
+    "title": "Valid Parentheses",
+    "url": "https://leetcode.com/problems/valid-parentheses/",
+    "difficulty": "Easy",
+    "tags": ["stack", "string", "data-structures"]
+  },
+  {
+    "title": "Merge Two Sorted Lists",
+    "url": "https://leetcode.com/problems/merge-two-sorted-lists/",
+    "difficulty": "Easy",
+    "tags": ["linked-list", "recursion", "data-structures"]
+  },
+  {
+    "title": "Best Time to Buy and Sell Stock",
+    "url": "https://leetcode.com/problems/best-time-to-buy-and-sell-stock/",
+    "difficulty": "Easy",
+    "tags": ["array", "dynamic-programming"]
+  },
+  {
+    "title": "Reverse Linked List",
+    "url": "https://leetcode.com/problems/reverse-linked-list/",
+    "difficulty": "Easy",
+    "tags": ["linked-list", "recursion", "data-structures"]
+  },
+  {
+    "title": "Contains Duplicate",
+    "url": "https://leetcode.com/problems/contains-duplicate/",
+    "difficulty": "Easy",
+    "tags": ["array", "hash-table", "sorting"]
+  },
+  {
+    "title": "Invert Binary Tree",
+    "url": "https://leetcode.com/problems/invert-binary-tree/",
+    "difficulty": "Easy",
+    "tags": ["tree", "depth-first-search", "breadth-first-search", "recursion", "data-structures"]
+  },
+  {
+    "title": "Maximum Depth of Binary Tree",
+    "url": "https://leetcode.com/problems/maximum-depth-of-binary-tree/",
+    "difficulty": "Easy",
+    "tags": ["tree", "depth-first-search", "breadth-first-search", "recursion", "data-structures"]
+  },
+  {
+    "title": "Add Two Numbers",
+    "url": "https://leetcode.com/problems/add-two-numbers/",
+    "difficulty": "Medium",
+    "tags": ["linked-list", "math", "recursion", "data-structures"]
+  },
+  {
     "title": "Longest Substring Without Repeating Characters",
-    "platform": "LeetCode",
-    "difficulty": "Medium",
     "url": "https://leetcode.com/problems/longest-substring-without-repeating-characters/",
-    "tags": ["string", "sliding-window"]
-  },
-  {
-    "id": 102,
-    "title": "Longest Palindromic Substring",
-    "platform": "LeetCode",
     "difficulty": "Medium",
-    "url": "https://leetcode.com/problems/longest-palindromic-substring/",
-    "tags": ["string", "dynamic-programming"]
+    "tags": ["hash-table", "string", "sliding-window"]
   },
   {
-    "id": 103,
-    "title": "Word Break",
-    "platform": "LeetCode",
+    "title": "3Sum",
+    "url": "https://leetcode.com/problems/3sum/",
     "difficulty": "Medium",
-    "url": "https://leetcode.com/problems/word-break/",
-    "tags": ["dynamic-programming", "dfs"]
+    "tags": ["array", "two-pointers", "sorting"]
   },
   {
-    "id": 104,
-    "title": "Merge k Sorted Lists",
-    "platform": "LeetCode",
-    "difficulty": "Hard",
-    "url": "https://leetcode.com/problems/merge-k-sorted-lists/",
-    "tags": ["heap", "linked-list", "divide-and-conquer"]
+    "title": "Group Anagrams",
+    "url": "https://leetcode.com/problems/group-anagrams/",
+    "difficulty": "Medium",
+    "tags": ["array", "hash-table", "string", "sorting"]
   },
   {
-    "id": 105,
+    "title": "Jump Game",
+    "url": "https://leetcode.com/problems/jump-game/",
+    "difficulty": "Medium",
+    "tags": ["array", "dynamic-programming", "greedy", "algorithms"]
+  },
+  {
+    "title": "Subsets",
+    "url": "https://leetcode.com/problems/subsets/",
+    "difficulty": "Medium",
+    "tags": ["array", "backtracking", "bit-manipulation"]
+  },
+  {
+    "title": "Binary Tree Level Order Traversal",
+    "url": "https://leetcode.com/problems/binary-tree-level-order-traversal/",
+    "difficulty": "Medium",
+    "tags": ["tree", "breadth-first-search", "data-structures"]
+  },
+  {
+    "title": "Validate Binary Search Tree",
+    "url": "https://leetcode.com/problems/validate-binary-search-tree/",
+    "difficulty": "Medium",
+    "tags": ["tree", "depth-first-search", "binary-search-tree", "binary-tree", "data-structures"]
+  },
+  {
+    "title": "Product of Array Except Self",
+    "url": "https://leetcode.com/problems/product-of-array-except-self/",
+    "difficulty": "Medium",
+    "tags": ["array", "prefix-sum"]
+  },
+  {
+    "title": "Coin Change",
+    "url": "https://leetcode.com/problems/coin-change/",
+    "difficulty": "Medium",
+    "tags": ["array", "dynamic-programming", "breadth-first-search", "algorithms"]
+  },
+  {
+    "title": "Top K Frequent Elements",
+    "url": "https://leetcode.com/problems/top-k-frequent-elements/",
+    "difficulty": "Medium",
+    "tags": ["array", "hash-table", "divide-and-conquer", "sorting", "heap", "bucket-sort", "quickselect"]
+  },
+  {
+    "title": "Container With Most Water",
+    "url": "https://leetcode.com/problems/container-with-most-water/",
+    "difficulty": "Medium",
+    "tags": ["array", "two-pointers", "greedy"]
+  },
+  {
+    "title": "LRU Cache",
+    "url": "https://leetcode.com/problems/lru-cache/",
+    "difficulty": "Medium",
+    "tags": ["hash-table", "linked-list", "design", "doubly-linked-list", "data-structures"]
+  },
+  {
+    "title": "Number of Islands",
+    "url": "https://leetcode.com/problems/number-of-islands/",
+    "difficulty": "Medium",
+    "tags": ["array", "depth-first-search", "breadth-first-search", "union-find", "matrix"]
+  },
+  {
     "title": "Course Schedule",
-    "platform": "LeetCode",
-    "difficulty": "Medium",
     "url": "https://leetcode.com/problems/course-schedule/",
-    "tags": ["graph", "topological-sort"]
+    "difficulty": "Medium",
+    "tags": ["depth-first-search", "breadth-first-search", "graph", "topological-sort", "algorithms"]
+  },
+  {
+    "title": "Implement Trie (Prefix Tree)",
+    "url": "https://leetcode.com/problems/implement-trie-prefix-tree/",
+    "difficulty": "Medium",
+    "tags": ["hash-table", "string", "design", "trie", "data-structures"]
+  },
+  {
+    "title": "Word Break",
+    "url": "https://leetcode.com/problems/word-break/",
+    "difficulty": "Medium",
+    "tags": ["hash-table", "string", "dynamic-programming", "trie", "memoization", "algorithms"]
+  },
+  {
+    "title": "Median of Two Sorted Arrays",
+    "url": "https://leetcode.com/problems/median-of-two-sorted-arrays/",
+    "difficulty": "Hard",
+    "tags": ["array", "binary-search", "divide-and-conquer", "algorithms"]
+  },
+  {
+    "title": "Merge k Sorted Lists",
+    "url": "https://leetcode.com/problems/merge-k-sorted-lists/",
+    "difficulty": "Hard",
+    "tags": ["linked-list", "divide-and-conquer", "heap", "merge-sort", "data-structures"]
+  },
+  {
+    "title": "Trapping Rain Water",
+    "url": "https://leetcode.com/problems/trapping-rain-water/",
+    "difficulty": "Hard",
+    "tags": ["array", "two-pointers", "dynamic-programming", "stack", "monotonic-stack"]
+  },
+  {
+    "title": "Largest Rectangle in Histogram",
+    "url": "https://leetcode.com/problems/largest-rectangle-in-histogram/",
+    "difficulty": "Hard",
+    "tags": ["array", "stack", "monotonic-stack"]
+  },
+  {
+    "title": "Sliding Window Maximum",
+    "url": "https://leetcode.com/problems/sliding-window-maximum/",
+    "difficulty": "Hard",
+    "tags": ["array", "queue", "sliding-window", "heap", "monotonic-queue", "deque"]
   }
 ]
