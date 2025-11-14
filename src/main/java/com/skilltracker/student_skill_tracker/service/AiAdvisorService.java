@@ -1,16 +1,30 @@
 package com.skilltracker.student_skill_tracker.service;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 
 import com.skilltracker.student_skill_tracker.dto.AdvisorResult;
 import com.skilltracker.student_skill_tracker.model.SkillData;
+import com.skilltracker.student_skill_tracker.repository.SkillDataRepository;
 
 @Service
 public class AiAdvisorService {
+
+    private final CommonQuestionsService commonQuestionsService;
+    private final SkillDataRepository skillDataRepository;
+
+    public AiAdvisorService(CommonQuestionsService commonQuestionsService, SkillDataRepository skillDataRepository) {
+        this.commonQuestionsService = commonQuestionsService;
+        this.skillDataRepository = skillDataRepository;
+    }
 
     /**
      * Primary entry: build advice from the latest SkillData snapshot.
@@ -26,6 +40,7 @@ public class AiAdvisorService {
                     .priorities(List.of())
                     .resources(List.of())
                     .confidence(0.0)
+                    .motivationalQuote("Let's get started! Refresh your profile to get your first piece of advice.")
                     .rationale("no-skill-data")
                     .build();
         }
@@ -53,6 +68,18 @@ public class AiAdvisorService {
         if (!priorities.contains("Algorithms")) priorities.add("Algorithms");
         if (!priorities.contains("Data Structures")) priorities.add("Data Structures");
         if (!priorities.contains("Problem Solving")) priorities.add("Problem Solving");
+
+        // --- Question of the Day ---
+        String topPriority = priorities.get(0);
+        List<Map<String, Object>> commonQuestions = commonQuestionsService.getCommonQuestionsForStudent(sd.getStudent().getId());
+        List<Map<String, Object>> personalized = commonQuestionsService.personalizeQuestions(commonQuestions, sd, topPriority);
+        Map<String, Object> questionOfTheDay = personalized.isEmpty() ? Collections.emptyMap() : personalized.get(0);
+
+
+        // --- Motivational Quote ---
+        List<SkillData> history = skillDataRepository.findTop2ByStudentOrderByCreatedAtDesc(sd.getStudent());
+        String motivationalQuote = generateMotivationalQuote(history);
+
 
         // Micro actions — quick wins based on weak areas
         List<String> micro = new ArrayList<>();
@@ -107,6 +134,8 @@ public class AiAdvisorService {
                 .longTermPlan(longTerm)
                 .priorities(priorities)
                 .resources(resources)
+                .questionOfTheDay(questionOfTheDay)
+                .motivationalQuote(motivationalQuote)
                 .confidence(round(confidence))
                 .confidenceRationale(confidenceRationale)
                 .rationale(rationale)
@@ -117,6 +146,28 @@ public class AiAdvisorService {
         // result.setSummary(aiText);
 
         return result;
+    }
+
+    private String generateMotivationalQuote(List<SkillData> history) {
+        if (history.size() < 2) {
+            return "Every master was once a beginner. Your journey starts now!";
+        }
+        SkillData latest = history.get(0);
+        SkillData previous = history.get(1);
+
+        double latestTotal = safe(latest.getProblemSolvingScore()) + safe(latest.getAlgorithmsScore()) + safe(latest.getDataStructuresScore());
+        double previousTotal = safe(previous.getProblemSolvingScore()) + safe(previous.getAlgorithmsScore()) + safe(previous.getDataStructuresScore());
+
+        if (latestTotal > previousTotal) {
+            return String.format(Locale.ENGLISH, "Your total score improved by %.1f points! Keep up the great work.", latestTotal - previousTotal);
+        }
+
+        long daysBetween = Duration.between(previous.getCreatedAt(), latest.getCreatedAt()).toDays();
+        if (daysBetween > 7) {
+            return "It's been a little while. Consistency is key—let's solve a problem today!";
+        }
+
+        return "The secret to getting ahead is getting started. Let's do this!";
     }
 
     private List<String> generateLongTermPlan(double ps, double alg, double ds) {

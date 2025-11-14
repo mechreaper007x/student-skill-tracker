@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Register - Student Skill Tracker</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         body {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -55,6 +56,27 @@
             border-radius: 5px;
             margin-top: 10px;
         }
+        .password-toggle-icon {
+            cursor: pointer;
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 100;
+        }
+        .strength-meter {
+            height: 5px;
+            background: #e9ecef;
+            border-radius: 5px;
+            margin-top: 8px;
+        }
+        .strength-meter-fill {
+            height: 100%;
+            width: 0;
+            background: #dc3545;
+            border-radius: 5px;
+            transition: width 0.3s, background 0.3s;
+        }
     </style>
 </head>
 <body>
@@ -89,18 +111,24 @@
                                 <div class="form-text">We'll use this for login</div>
                             </div>
 
-                            <div class="mb-3">
+                            <div class="mb-3 position-relative">
                                 <label for="password" class="form-label fw-bold">Password</label>
                                 <input type="password" class="form-control form-control-lg" 
                                        id="password" name="password" 
                                        placeholder="Create a strong password" required>
+                                <i class="fas fa-eye password-toggle-icon" id="togglePassword"></i>
+                                <div class="strength-meter">
+                                    <div id="strength-bar" class="strength-meter-fill"></div>
+                                </div>
+                                <p id="strength-text" class="form-text mt-1"></p>
                             </div>
 
-                            <div class="mb-3">
+                            <div class="mb-3 position-relative">
                                 <label for="confirmPassword" class="form-label fw-bold">Confirm Password</label>
                                 <input type="password" class="form-control form-control-lg" 
                                        id="confirmPassword" name="confirmPassword" 
                                        placeholder="Confirm your password" required>
+                                <i class="fas fa-eye password-toggle-icon" id="toggleConfirmPassword"></i>
                             </div>
                             
                             <div class="mb-3">
@@ -135,6 +163,59 @@
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        // --- Password Visibility Toggle ---
+        function setupPasswordToggle(toggleId, passwordId) {
+            const toggle = document.getElementById(toggleId);
+            const password = document.getElementById(passwordId);
+            toggle.addEventListener('click', function () {
+                const type = password.getAttribute('type') === 'password' ? 'text' : 'password';
+                password.setAttribute('type', type);
+                this.classList.toggle('fa-eye');
+                this.classList.toggle('fa-eye-slash');
+            });
+        }
+        setupPasswordToggle('togglePassword', 'password');
+        setupPasswordToggle('toggleConfirmPassword', 'confirmPassword');
+
+        // --- Password Strength Checker ---
+        const passwordInput = document.getElementById('password');
+        const strengthBar = document.getElementById('strength-bar');
+        const strengthText = document.getElementById('strength-text');
+
+        passwordInput.addEventListener('keyup', function() {
+            const password = passwordInput.value;
+            checkPasswordStrength(password);
+        });
+
+        function checkPasswordStrength(password) {
+            let score = 0;
+            if (password.length >= 8) score++;
+            if (password.match(/[a-z]/)) score++;
+            if (password.match(/[A-Z]/)) score++;
+            if (password.match(/[0-9]/)) score++;
+            if (password.match(/[^a-zA-Z0-9]/)) score++;
+
+            let width = (score / 5) * 100;
+            let color = '#dc3545'; // Red (Weak)
+            let text = 'Weak';
+
+            if (score >= 5) {
+                color = '#198754'; // Green (Very Strong)
+                text = 'Very Strong';
+            } else if (score >= 4) {
+                color = '#20c997'; // Teal (Strong)
+                text = 'Strong';
+            } else if (score >= 3) {
+                color = '#ffc107'; // Yellow (Medium)
+                text = 'Medium';
+            }
+            
+            strengthBar.style.width = width + '%';
+            strengthBar.style.background = color;
+            strengthText.textContent = 'Strength: ' + text;
+        }
+
+        // --- Form Submission ---
         document.getElementById('register-form').addEventListener('submit', async function (e) {
             e.preventDefault();
 
@@ -166,7 +247,6 @@
                     const loginUrl = '/login.html?success=true';
                     window.location.href = loginUrl;
                 } else {
-                    // Try to parse JSON error body, but fall back to text if it's not JSON
                     let resultText = 'An unknown error occurred.';
                     try {
                         const result = await response.json();

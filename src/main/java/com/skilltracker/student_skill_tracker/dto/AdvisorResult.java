@@ -1,6 +1,7 @@
 package com.skilltracker.student_skill_tracker.dto;
 
 import java.util.List;
+import java.util.Map;
 
 import lombok.Builder;
 import lombok.Data;
@@ -31,6 +32,12 @@ public class AdvisorResult {
 
     // optional: links/resources (URL strings)
     private List<String> resources;
+
+    // A specific, targeted question to work on today
+    private Map<String, Object> questionOfTheDay;
+
+    // A dynamic quote or message based on recent activity
+    private String motivationalQuote;
 
     // numeric confidence 0..1
     private double confidence;
