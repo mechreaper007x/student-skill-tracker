@@ -8,18 +8,19 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
+            background: #f0f2f5;
             display: flex;
+            justify-content: center;
             align-items: center;
-            padding: 30px 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            padding: 2rem 0;
         }
         .register-card {
             background: white;
             border-radius: 20px;
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
             overflow: hidden;
+            width: 600px;
         }
         .register-header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -44,10 +45,6 @@
             background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-        }
-        .icon {
-            font-size: 3rem;
-            margin-bottom: 10px;
         }
         .info-box {
             background: #f8f9fa;
@@ -80,83 +77,76 @@
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-md-6">
-                <div class="register-card">
-                    <div class="register-header">
-                        <div class="icon">🎯</div>
-                        <h2 class="mb-0">Create Your Account</h2>
-                        <p class="mb-0 mt-2">Start tracking your coding journey</p>
+    <div class="register-card">
+        <div class="register-header">
+            <h2 class="mb-0">Create Your Account</h2>
+            <p class="mb-0 mt-2">Start tracking your coding journey</p>
+        </div>
+        
+        <div class="register-body">
+            <div id="error-message" class="alert alert-danger d-none" role="alert">
+                <strong>⚠️ Error:</strong> <span id="error-text"></span>
+            </div>
+            
+            <form id="register-form">
+                <div class="mb-3">
+                    <label for="name" class="form-label fw-bold">Full Name</label>
+                    <input type="text" class="form-control form-control-lg" 
+                           id="name" name="name" 
+                           placeholder="John Doe" required>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="email" class="form-label fw-bold">Email Address</label>
+                    <input type="email" class="form-control form-control-lg" 
+                           id="email" name="email" 
+                           placeholder="john@example.com" required>
+                    <div class="form-text">We'll use this for login</div>
+                </div>
+
+                <div class="mb-3 position-relative">
+                    <label for="password" class="form-label fw-bold">Password</label>
+                    <input type="password" class="form-control form-control-lg" 
+                           id="password" name="password" 
+                           placeholder="Create a strong password" required>
+                    <i class="fas fa-eye password-toggle-icon" id="togglePassword"></i>
+                    <div class="strength-meter">
+                        <div id="strength-bar" class="strength-meter-fill"></div>
                     </div>
-                    
-                    <div class="register-body">
-                        <div id="error-message" class="alert alert-danger d-none" role="alert">
-                            <strong>⚠️ Error:</strong> <span id="error-text"></span>
-                        </div>
-                        
-                        <form id="register-form">
-                            <div class="mb-3">
-                                <label for="name" class="form-label fw-bold">Full Name</label>
-                                <input type="text" class="form-control form-control-lg" 
-                                       id="name" name="name" 
-                                       placeholder="John Doe" required>
-                            </div>
-                            
-                            <div class="mb-3">
-                                <label for="email" class="form-label fw-bold">Email Address</label>
-                                <input type="email" class="form-control form-control-lg" 
-                                       id="email" name="email" 
-                                       placeholder="john@example.com" required>
-                                <div class="form-text">We'll use this for login</div>
-                            </div>
+                    <p id="strength-text" class="form-text mt-1"></p>
+                </div>
 
-                            <div class="mb-3 position-relative">
-                                <label for="password" class="form-label fw-bold">Password</label>
-                                <input type="password" class="form-control form-control-lg" 
-                                       id="password" name="password" 
-                                       placeholder="Create a strong password" required>
-                                <i class="fas fa-eye password-toggle-icon" id="togglePassword"></i>
-                                <div class="strength-meter">
-                                    <div id="strength-bar" class="strength-meter-fill"></div>
-                                </div>
-                                <p id="strength-text" class="form-text mt-1"></p>
-                            </div>
-
-                            <div class="mb-3 position-relative">
-                                <label for="confirmPassword" class="form-label fw-bold">Confirm Password</label>
-                                <input type="password" class="form-control form-control-lg" 
-                                       id="confirmPassword" name="confirmPassword" 
-                                       placeholder="Confirm your password" required>
-                                <i class="fas fa-eye password-toggle-icon" id="toggleConfirmPassword"></i>
-                            </div>
-                            
-                            <div class="mb-3">
-                                <label for="leetcodeUsername" class="form-label fw-bold">
-                                    LeetCode Username
-                                </label>
-                                <input type="text" class="form-control form-control-lg" 
-                                       id="leetcodeUsername" name="leetcodeUsername" 
-                                       placeholder="your_leetcode_username" required>
-                                <div class="info-box mt-2">
-                                    <strong>💡 Tip:</strong> Make sure your LeetCode profile is public. 
-                                    We'll fetch your coding stats automatically!
-                                </div>
-                            </div>
-                            
-                            <button type="submit" class="btn btn-primary w-100 mt-4">
-                                🚀 Create Account & View Dashboard
-                            </button>
-                        </form>
-
-                        <div class="text-center mt-4">
-                            <p class="text-muted">Already have an account?</p>
-                            <a href="/login.html" class="btn btn-outline-primary">
-                                Sign In
-                            </a>
-                        </div>
+                <div class="mb-3 position-relative">
+                    <label for="confirmPassword" class="form-label fw-bold">Confirm Password</label>
+                    <input type="password" class="form-control form-control-lg" 
+                           id="confirmPassword" name="confirmPassword" 
+                           placeholder="Confirm your password" required>
+                    <i class="fas fa-eye password-toggle-icon" id="toggleConfirmPassword"></i>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="leetcodeUsername" class="form-label fw-bold">
+                        LeetCode Username
+                    </label>
+                    <input type="text" class="form-control form-control-lg" 
+                           id="leetcodeUsername" name="leetcodeUsername" 
+                           placeholder="your_leetcode_username" required>
+                    <div class="info-box mt-2">
+                        <strong>💡 Tip:</strong> Make sure your LeetCode profile is public. 
+                        We'll fetch your coding stats automatically!
                     </div>
                 </div>
+                
+                <button type="submit" class="btn btn-primary w-100 mt-4">
+                    🚀 Create Account & View Dashboard
+                </button>
+            </form>
+
+            <div class="text-center mt-4">
+                <p class="text-muted">Already have an account?</p>
+                <a href="/login.html" class="btn btn-outline-primary">
+                    Sign In
+                </a>
             </div>
         </div>
     </div>

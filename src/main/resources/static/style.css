@@ -1,0 +1,383 @@
+body {
+    background: #f0f2f5;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+.navbar {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+.profile-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 15px;
+    padding: 30px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+.stat-card {
+    border-radius: 15px;
+    border: none;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+    background: white;
+}
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+.stat-number {
+    font-size: 2.5rem;
+    font-weight: 700;
+}
+.stat-label {
+    color: #6c757d;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+.skill-section {
+    background: white;
+    border-radius: 15px;
+    padding: 30px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+.skill-bar-container {
+    margin-bottom: 25px;
+}
+.skill-label {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    font-weight: 600;
+}
+.skill-bar {
+    height: 35px;
+    border-radius: 20px;
+    background: #e9ecef;
+    overflow: hidden;
+    position: relative;
+}
+.skill-bar-fill {
+    height: 100%;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    padding-left: 15px;
+    color: white;
+    font-weight: 700;
+    transition: width 1.5s ease-in-out;
+    position: relative;
+}
+.skill-bar-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    background: linear-gradient(90deg, 
+        rgba(255,255,255,0.1) 0%, 
+        rgba(255,255,255,0.2) 50%, 
+        rgba(255,255,255,0.1) 100%);
+    animation: shimmer 2s infinite;
+}
+@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+.advice-card {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    color: white;
+    border-radius: 15px;
+    padding: 30px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+.quote-card {
+    background: #ffffff;
+    border-left: 5px solid #667eea;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.07);
+    font-style: italic;
+    color: #555;
+}
+.chart-container {
+    background: white;
+    border-radius: 15px;
+    padding: 30px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+.badge-custom {
+    padding: 8px 15px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+.btn-refresh {
+    background: white;
+    color: #667eea;
+    border: 2px solid white;
+    font-weight: 600;
+    transition: all 0.3s;
+}
+.btn-refresh:hover {
+    background: transparent;
+    color: white;
+    border-color: white;
+}
+.section-title {
+    font-weight: 700;
+    color: #2d3748;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Dark Mode Styles */
+.dark-mode {
+    background-color: #1a1a1a;
+    color: #e0e0e0;
+}
+.dark-mode .navbar {
+    background: linear-gradient(135deg, #2c3e50 0%, #4ca1af 100%);
+}
+.dark-mode .profile-card {
+    background: linear-gradient(135deg, #2c3e50 0%, #4ca1af 100%);
+}
+.dark-mode .stat-card,
+.dark-mode .skill-section,
+.dark-mode .chart-container,
+.dark-mode .quote-card {
+    background: #2c2c2c;
+    color: #e0e0e0;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+}
+.dark-mode .section-title,
+.dark-mode .stat-label,
+.dark-mode .skill-label span,
+.dark-mode .quote-card {
+    color: #b0b0b0;
+}
+.dark-mode .stat-number {
+    color: #4ca1af;
+}
+.dark-mode .skill-bar {
+    background: #444;
+}
+.dark-mode .list-group-item {
+    background-color: #2c2c2c;
+    border-color: #444;
+    color: #e0e0e0;
+}
+.dark-mode .list-group-item:hover {
+    background-color: #383838;
+}
+.dark-mode .nav-link {
+    color: #b0b0b0;
+}
+.dark-mode .nav-link.active {
+    color: #e0e0e0;
+    background-color: #2c2c2c;
+    border-color: #444 #444 #2c2c2c;
+}
+.dark-mode .form-control {
+    background-color: #383838;
+    border-color: #444;
+    color: #e0e0e0;
+}
+.dark-mode .form-control::placeholder {
+    color: #888;
+}
+.dark-mode .card {
+    background-color: #2c2c2c;
+    border-color: #444;
+}
+.dark-mode .table {
+    background-color: #2c2c2c;
+    color: #e0e0e0;
+}
+.dark-mode .table-striped>tbody>tr:nth-of-type(odd) {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+.dark-mode .table-dark {
+    background-color: #383838;
+    border-color: #444;
+}
+.login-card {
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    overflow: hidden;
+}
+.login-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 30px;
+    text-align: center;
+}
+.login-body {
+    padding: 40px;
+}
+.form-control:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+}
+.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    padding: 12px;
+    font-weight: 600;
+}
+.btn-primary:hover {
+    background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+.icon {
+    font-size: 3rem;
+    margin-bottom: 10px;
+}
+.dark-mode .login-card {
+    background: #2c2c2c;
+    color: #e0e0e0;
+}
+.dark-mode .login-header {
+    background: linear-gradient(135deg, #2c3e50 0%, #4ca1af 100%);
+}
+.dark-mode .text-muted {
+    color: #b0b0b0 !important;
+}
+.dark-mode a {
+    color: #4ca1af;
+}
+.register-card {
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    overflow: hidden;
+}
+.register-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 30px;
+    text-align: center;
+}
+.register-body {
+    padding: 40px;
+}
+.info-box {
+    background: #f8f9fa;
+    border-left: 4px solid #667eea;
+    padding: 15px;
+    border-radius: 5px;
+    margin-top: 10px;
+}
+.password-toggle-icon {
+    cursor: pointer;
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 100;
+}
+.strength-meter {
+    height: 5px;
+    background: #e9ecef;
+    border-radius: 5px;
+    margin-top: 8px;
+}
+.strength-meter-fill {
+    height: 100%;
+    width: 0;
+    background: #dc3545;
+    border-radius: 5px;
+    transition: width 0.3s, background 0.3s;
+}
+.dark-mode .register-card {
+    background: #2c2c2c;
+    color: #e0e0e0;
+}
+.dark-mode .register-header {
+    background: linear-gradient(135deg, #2c3e50 0%, #4ca1af 100%);
+}
+.dark-mode .info-box {
+    background: #383838;
+    border-left-color: #4ca1af;
+}
+.dark-mode .strength-meter {
+    background: #444;
+}
+.password-toggle-icon {
+    cursor: pointer;
+    position: absolute;
+    right: 15px;
+    top: 42px; /* Adjust for Bootstrap 4 form-control padding */
+    z-index: 100;
+    color: #6c757d;
+}
+
+/* Level Up System Styles */
+.level-container {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+.level-display {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #667eea;
+}
+.xp-bar-container {
+    flex-grow: 1;
+    height: 20px;
+    background-color: #e9ecef;
+    border-radius: 10px;
+    overflow: hidden;
+}
+.xp-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #f2994a 0%, #f2c94c 100%);
+    border-radius: 10px;
+    transition: width 0.5s ease-in-out;
+}
+.xp-text {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #6c757d;
+}
+.dark-mode .level-display {
+    color: #4ca1af;
+}
+.dark-mode .xp-bar-container {
+    background-color: #444;
+}
+.dark-mode .xp-text {
+    color: #b0b0b0;
+}
+
+/* Slider Styles */
+.slider-container {
+    overflow: hidden;
+    position: relative;
+}
+.slider {
+    display: flex;
+    transition: transform 0.5s ease-in-out;
+}
+.slide {
+    flex: 0 0 100%;
+    width: 100%;
+    padding: 20px;
+    background-color: #f8f9fa;
+    border-radius: 10px;
+}
+.slide-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-bottom: 15px;
+}
+.dark-mode .slide {
+    background-color: #383838;
+}
+
+

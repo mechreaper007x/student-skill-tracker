@@ -26,7 +26,7 @@ public class SecurityConfig {
             .csrf(csrf -> csrf
             .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
             // Allow unauthenticated POSTs for login and API registration (frontend posts without CSRF token)
-            .ignoringRequestMatchers("/login", "/api/students/register", "/api/debug/**")
+            .ignoringRequestMatchers("/login", "/api/students/register", "/api/debug/**", "/api/students/me")
 )
 
 

@@ -13,6 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -25,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.skilltracker.student_skill_tracker.model.SkillData;
 import com.skilltracker.student_skill_tracker.model.Student;
+import com.skilltracker.student_skill_tracker.repository.PasswordResetTokenRepository;
 import com.skilltracker.student_skill_tracker.repository.SkillDataRepository;
 import com.skilltracker.student_skill_tracker.repository.StudentRepository;
 import com.skilltracker.student_skill_tracker.service.CommonQuestionsService;
@@ -42,13 +44,15 @@ public class StudentController {
     private final SkillService skillService;
     private final CommonQuestionsService commonQuestionsService;
     private final PasswordEncoder passwordEncoder;
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
 
-    public StudentController(StudentRepository studentRepository, SkillDataRepository skillDataRepository, SkillService skillService, CommonQuestionsService commonQuestionsService, PasswordEncoder passwordEncoder) {
+    public StudentController(StudentRepository studentRepository, SkillDataRepository skillDataRepository, SkillService skillService, CommonQuestionsService commonQuestionsService, PasswordEncoder passwordEncoder, PasswordResetTokenRepository passwordResetTokenRepository) {
         this.studentRepository = studentRepository;
         this.skillDataRepository = skillDataRepository;
         this.skillService = skillService;
         this.commonQuestionsService = commonQuestionsService;
         this.passwordEncoder = passwordEncoder;
+        this.passwordResetTokenRepository = passwordResetTokenRepository;
     }
 
 
@@ -103,6 +107,8 @@ public class StudentController {
             studentMap.put("name", student.getName());
             studentMap.put("email", student.getEmail());
             studentMap.put("leetcodeUsername", student.getLeetcodeUsername());
+            studentMap.put("level", student.getLevel());
+            studentMap.put("xp", student.getXp());
 
             Map<String, Object> skillMap = new HashMap<>();
             skillMap.put("id", skillData.getId());
@@ -292,6 +298,28 @@ public class StudentController {
         Map<String, Object> resp = new HashMap<>();
         resp.put("message", "Student deleted successfully");
         return ResponseEntity.ok(resp);
+    }
+
+    @Transactional
+    @DeleteMapping("/me")
+    public ResponseEntity<?> deleteStudent(org.springframework.security.core.Authentication authentication) {
+        String username = authentication.getName();
+        Student student = studentRepository.findByEmail(username)
+                .orElseThrow(() -> new RuntimeException("Student not found"));
+
+        // Delete associated skill data
+        skillDataRepository.findByStudent(student).ifPresent(skillDataRepository::delete);
+
+        // Delete associated password reset tokens
+        passwordResetTokenRepository.deleteByStudent(student);
+
+        // Delete the student
+        studentRepository.delete(student);
+
+        // Clear the security context
+        SecurityContextHolder.clearContext();
+
+        return ResponseEntity.ok().build();
     }
 
     @GetMapping("/leaderboard")

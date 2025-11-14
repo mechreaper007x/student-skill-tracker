@@ -59,4 +59,15 @@ public class Student {
 
     @Builder.Default
     private String roles = "ROLE_USER";
+
+    @Builder.Default
+    private Integer level = 1;
+
+    @Builder.Default
+    private Integer xp = 0;
+
+    public void levelUp() {
+        this.level++;
+        this.xp = 0;
+    }
 }

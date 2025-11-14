@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import com.skilltracker.student_skill_tracker.model.SkillData;
 import com.skilltracker.student_skill_tracker.model.Student;
 import com.skilltracker.student_skill_tracker.repository.SkillDataRepository;
+import com.skilltracker.student_skill_tracker.repository.StudentRepository;
 import com.skilltracker.student_skill_tracker.util.AIAdvisor;
 import com.skilltracker.student_skill_tracker.util.SkillCalculator;
 
@@ -15,10 +16,12 @@ public class SkillService {
 
     private final LeetCodeService leetCodeService;
     private final SkillDataRepository skillDataRepository;
+    private final StudentRepository studentRepository;
 
-    public SkillService(LeetCodeService leetCodeService, SkillDataRepository skillDataRepository) {
+    public SkillService(LeetCodeService leetCodeService, SkillDataRepository skillDataRepository, StudentRepository studentRepository) {
         this.leetCodeService = leetCodeService;
         this.skillDataRepository = skillDataRepository;
+        this.studentRepository = studentRepository;
     }
 
     public SkillData updateSkillData(Student student) {
@@ -27,20 +30,20 @@ public class SkillService {
         System.out.println("Stats data: " + data);
     // language proficiency removed to simplify frontend integration
 
+        SkillData skillData = skillDataRepository.findByStudent(student).orElse(new SkillData());
+        skillData.setStudent(student);
+
         if (data.isEmpty()) {
-            SkillData emptySkillData = SkillData.builder()
-                .student(student)
-                .problemSolvingScore(0.0)
-                .algorithmsScore(0.0)
-                .dataStructuresScore(0.0)
-                .totalProblemsSolved(0)
-                .easyProblems(0)
-                .mediumProblems(0)
-                .hardProblems(0)
-                .ranking(0)
-                .aiAdvice("LeetCode data not available. Please check the username and try again.")
-                .build();
-            return skillDataRepository.save(emptySkillData);
+            skillData.setProblemSolvingScore(0.0);
+            skillData.setAlgorithmsScore(0.0);
+            skillData.setDataStructuresScore(0.0);
+            skillData.setTotalProblemsSolved(0);
+            skillData.setEasyProblems(0);
+            skillData.setMediumProblems(0);
+            skillData.setHardProblems(0);
+            skillData.setRanking(0);
+            skillData.setAiAdvice("LeetCode data not available. Please check the username and try again.");
+            return skillDataRepository.save(skillData);
         }
 
         int total = (int) data.getOrDefault("totalSolved", 0);
@@ -57,20 +60,26 @@ public class SkillService {
 
         // language proficiency computation removed
 
-        SkillData skillData = SkillData.builder()
-                .student(student)
-                .problemSolvingScore(ps)
-                .algorithmsScore(algo)
-                .dataStructuresScore(ds)
-                
-                .totalProblemsSolved(total)
-                .easyProblems(easy)
-                .mediumProblems(medium)
-                .hardProblems(hard)
-                .ranking(rank)
-                .aiAdvice(advice)
-                .build();
+        skillData.setProblemSolvingScore(ps);
+        skillData.setAlgorithmsScore(algo);
+        skillData.setDataStructuresScore(ds);
+        skillData.setTotalProblemsSolved(total);
+        skillData.setEasyProblems(easy);
+        skillData.setMediumProblems(medium);
+        skillData.setHardProblems(hard);
+        skillData.setRanking(rank);
+        skillData.setAiAdvice(advice);
 
-        return skillDataRepository.save(skillData);
+        SkillData savedSkillData = skillDataRepository.save(skillData);
+
+        Student studentToUpdate = savedSkillData.getStudent();
+        int newXp = savedSkillData.calculateXp();
+        studentToUpdate.setXp(newXp);
+        if (studentToUpdate.getXp() >= 100) {
+            studentToUpdate.levelUp();
+        }
+        studentRepository.save(studentToUpdate);
+
+        return savedSkillData;
     }
 }

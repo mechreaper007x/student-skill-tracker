@@ -5,143 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - Student Skill Tracker</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <style>
-        body {
-            background: #f0f2f5;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        .navbar {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        .profile-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border-radius: 15px;
-            padding: 30px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-        }
-        .stat-card {
-            border-radius: 15px;
-            border: none;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            transition: all 0.3s ease;
-            background: white;
-        }
-        .stat-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
-        }
-        .stat-number {
-            font-size: 2.5rem;
-            font-weight: 700;
-        }
-        .stat-label {
-            color: #6c757d;
-            font-size: 0.9rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        .skill-section {
-            background: white;
-            border-radius: 15px;
-            padding: 30px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        }
-        .skill-bar-container {
-            margin-bottom: 25px;
-        }
-        .skill-label {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 10px;
-            font-weight: 600;
-        }
-        .skill-bar {
-            height: 35px;
-            border-radius: 20px;
-            background: #e9ecef;
-            overflow: hidden;
-            position: relative;
-        }
-        .skill-bar-fill {
-            height: 100%;
-            border-radius: 20px;
-            display: flex;
-            align-items: center;
-            padding-left: 15px;
-            color: white;
-            font-weight: 700;
-            transition: width 1.5s ease-in-out;
-            position: relative;
-        }
-        .skill-bar-fill::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            bottom: 0;
-            right: 0;
-            background: linear-gradient(90deg, 
-                rgba(255,255,255,0.1) 0%, 
-                rgba(255,255,255,0.2) 50%, 
-                rgba(255,255,255,0.1) 100%);
-            animation: shimmer 2s infinite;
-        }
-        @keyframes shimmer {
-            0% { transform: translateX(-100%); }
-            100% { transform: translateX(100%); }
-        }
-        .advice-card {
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-            color: white;
-            border-radius: 15px;
-            padding: 30px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-        }
-        .quote-card {
-            background: #ffffff;
-            border-left: 5px solid #667eea;
-            border-radius: 10px;
-            padding: 20px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.07);
-            font-style: italic;
-            color: #555;
-        }
-        .chart-container {
-            background: white;
-            border-radius: 15px;
-            padding: 30px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        }
-        .badge-custom {
-            padding: 8px 15px;
-            border-radius: 20px;
-            font-size: 0.9rem;
-            font-weight: 600;
-        }
-        .btn-refresh {
-            background: white;
-            color: #667eea;
-            border: 2px solid white;
-            font-weight: 600;
-            transition: all 0.3s;
-        }
-        .btn-refresh:hover {
-            background: transparent;
-            color: white;
-            border-color: white;
-        }
-        .section-title {
-            font-weight: 700;
-            color: #2d3748;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-    </style>
 </head>
 <body>
     <!-- Navbar -->
@@ -151,6 +16,7 @@
                 <span style="font-size: 1.5rem;">🧱</span> Student Skill Tracker
             </span>
             <div>
+                <button id="theme-switcher" class="btn btn-light btn-sm">🌓</button>
                 <button id="refresh-btn" class="btn btn-refresh">
                     🔄 Refresh Stats
                 </button>
@@ -182,6 +48,7 @@
                                 <strong>💻 LeetCode:</strong> 
                                 <span class="badge-custom bg-light text-dark" id="student-leetcode"></span>
                             </p>
+                            <button id="delete-account-btn" class="btn btn-danger btn-sm mt-3">Delete Account</button>
                         </div>
                         <div class="col-md-4 text-end">
                             <div class="display-6">🎯</div>
@@ -199,6 +66,28 @@
                         <span class="fw-bold">💡 Quote of the Day:</span>
                         <span id="quote-of-the-day-text">Loading...</span>
                     </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Level Up System -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="skill-section">
+                    <h4 class="section-title">
+                        <span>🏆</span> Level & Experience
+                    </h4>
+                    <div class="level-container">
+                        <div class="level-display">
+                            <span id="level-number">Level 1</span>
+                        </div>
+                        <div class="xp-bar-container">
+                            <div class="xp-bar-fill" id="xp-bar" style="width: 0%;"></div>
+                        </div>
+                        <div class="xp-text">
+                            <span id="xp-progress">0 / 100 XP</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -374,38 +263,38 @@
             </div>
         </div>
 
-        <!-- Common Questions -->
+        <!-- Question Slider -->
         <div class="row mb-4">
             <div class="col-12">
                 <div class="skill-section">
-                    <h4 class="section-title">
-                        <span>📚</span> Commonly Solved Questions
-                    </h4>
-                    <ul class="nav nav-tabs" id="questionsTab" role="tablist">
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link active" id="common-tab" data-bs-toggle="tab" data-bs-target="#common-tab-pane" type="button" role="tab" aria-controls="common-tab-pane" aria-selected="true">Common</button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="recommended-tab" data-bs-toggle="tab" data-bs-target="#recommended-tab-pane" type="button" role="tab" aria-controls="recommended-tab-pane" aria-selected="false">Recommended</button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="trending-tab" data-bs-toggle="tab" data-bs-target="#trending-tab-pane" type="button" role="tab" aria-controls="trending-tab-pane" aria-selected="false">Trending</button>
-                        </li>
-                    </ul>
-                    <div class="tab-content mt-3">
-                        <div class="tab-pane fade show active" id="common-tab-pane" role="tabpanel" aria-labelledby="common-tab">
-                            <div id="common-questions-container">
-                                <div class="text-muted">Loading common questions…</div>
-                            </div>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h4 class="section-title mb-0">
+                            <span>📚</span> Questions
+                        </h4>
+                        <div>
+                            <button class="btn btn-outline-primary btn-sm" id="prev-slide">‹ Prev</button>
+                            <button class="btn btn-outline-primary btn-sm" id="next-slide">Next ›</button>
                         </div>
-                        <div class="tab-pane fade" id="recommended-tab-pane" role="tabpanel" aria-labelledby="recommended-tab">
-                            <div id="recommended-questions-container">
-                                <div class="text-muted">Loading recommended questions…</div>
+                    </div>
+                    <div class="slider-container">
+                        <div class="slider">
+                            <div class="slide" id="common-slide">
+                                <h5 class="slide-title">Commonly Solved Questions</h5>
+                                <div id="common-questions-container">
+                                    <div class="text-muted">Loading common questions…</div>
+                                </div>
                             </div>
-                        </div>
-                        <div class="tab-pane fade" id="trending-tab-pane" role="tabpanel" aria-labelledby="trending-tab">
-                            <div id="trending-questions-container">
-                                <div class="text-muted">Loading trending questions…</div>
+                            <div class="slide" id="recommended-slide">
+                                <h5 class="slide-title">Recommended Questions</h5>
+                                <div id="recommended-questions-container">
+                                    <div class="text-muted">Loading recommended questions…</div>
+                                </div>
+                            </div>
+                            <div class="slide" id="trending-slide">
+                                <h5 class="slide-title">Trending Questions</h5>
+                                <div id="trending-questions-container">
+                                    <div class="text-muted">Loading trending questions…</div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -419,27 +308,28 @@
     // caches for question lists so we can compute recommended items across sources
     let commonQuestionsCache = null;
     let trendingQuestionsCache = null;
+    let currentStudentId = null;
 
     document.addEventListener('DOMContentLoaded', async () => {
             const urlParams = new URLSearchParams(window.location.search);
-            const studentId = urlParams.get('id');
+            currentStudentId = urlParams.get('id');
 
-            if (studentId) {
+            if (currentStudentId) {
                 // show debug id in page (hidden by default) to help trace issues
                 const debugEl = document.getElementById('debug-info');
-                if (debugEl) debugEl.textContent = 'Debug: studentId=' + studentId;
-                fetchDashboardData(studentId);
+                if (debugEl) debugEl.textContent = 'Debug: studentId=' + currentStudentId;
+                fetchDashboardData(currentStudentId);
             } else {
                 // If no id in URL, try fetching the currently authenticated user's dashboard
                 try {
                     const resp = await fetch('/api/students/me/dashboard');
                     if (resp.ok) {
                         const data = await resp.json();
-                        updateDashboardUI(data.student, data.skillData);
-                        // update URL with id for bookmark/share convenience
                         if (data.student && data.student.id) {
-                            history.replaceState(null, '', '/dashboard.html?id=' + data.student.id);
+                            currentStudentId = data.student.id;
+                            history.replaceState(null, '', '/dashboard.html?id=' + currentStudentId);
                         }
+                        updateDashboardUI(data.student, data.skillData);
                     } else {
                         console.error('No student id and /me/dashboard returned', resp.status);
                     }
@@ -449,8 +339,8 @@
             }
 
             document.getElementById('refresh-btn').addEventListener('click', () => {
-                if(studentId) {
-                    refreshSkillData(studentId);
+                if(currentStudentId) {
+                    refreshSkillData(currentStudentId);
                 }
             });
         });
@@ -504,6 +394,13 @@
             document.getElementById('student-email').textContent = student.email || 'N/A';
             document.getElementById('student-leetcode').textContent = student.leetcodeUsername || 'N/A';
 
+            // Level and XP
+            document.getElementById('level-number').textContent = `Level ${student.level || 1}`;
+            const xp = student.xp || 0;
+            const xpPercentage = (xp / 100) * 100;
+            document.getElementById('xp-bar').style.width = `${xpPercentage}%`;
+            document.getElementById('xp-progress').textContent = `${xp} / 100 XP`;
+
             // Stats
             document.getElementById('total-solved').textContent = skillData.totalProblemsSolved || 0;
             document.getElementById('easy-solved').textContent = skillData.easyProblems || 0;
@@ -526,20 +423,14 @@
             // Charts
             updateCharts(skillData);
 
-            // Load common questions for this student (if backend provides)
-            try {
-                if (student && student.id) {
-                    loadCommonQuestions(student.id);
-                    // also prepare trending content; it will load when the tab is shown
-                    // preload so switching to tab is instant
-                    loadTrendingQuestions(student.id);
-                }
-            } catch (e) {
-                console.warn('Could not load common questions', e);
-            }
+            // Show the first slide
+            const urlParams = new URLSearchParams(window.location.search);
+            const studentId = urlParams.get('id');
+            showSlide(currentSlide, studentId);
         }
 
         async function loadCommonQuestions(studentId) {
+            console.log('loadCommonQuestions called with studentId:', studentId);
             const container = document.getElementById('common-questions-container');
             if (!container) return;
             container.innerHTML = '<div class="text-muted">Loading common questions…</div>';
@@ -816,6 +707,24 @@
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Delete Account Modal -->
+    <div class="modal fade" id="deleteAccountModal" tabindex="-1" aria-labelledby="deleteAccountModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="deleteAccountModalLabel">Delete Account</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            Are you sure you want to delete your account? This action cannot be undone.
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-danger" id="confirm-delete-btn">Delete</button>
+          </div>
+        </div>
+      </div>
+    </div>
 <script>
 // read CSRF cookie set by CookieCsrfTokenRepository
 function getCookie(name) {
@@ -839,6 +748,69 @@ document.getElementById('logoutBtn')?.addEventListener('click', async () => {
     window.location.href = '/login.html?logout';
   }
 });
+
+// Delete Account
+const deleteAccountBtn = document.getElementById('delete-account-btn');
+const deleteAccountModal = new bootstrap.Modal(document.getElementById('deleteAccountModal'));
+const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
+
+deleteAccountBtn.addEventListener('click', () => {
+    deleteAccountModal.show();
+});
+
+confirmDeleteBtn.addEventListener('click', async () => {
+    const token = getCookie('XSRF-TOKEN');
+    try {
+        const response = await fetch('/api/students/me', {
+            method: 'DELETE',
+            headers: { 'X-XSRF-TOKEN': token }
+        });
+
+        if (response.ok) {
+            window.location.href = '/login.html?deleted=true';
+        } else {
+            showError('Failed to delete account.');
+        }
+    } catch (error) {
+        showError('Error deleting account.');
+    }
+});
+
+// Slider Logic
+const slider = document.querySelector('.slider');
+const slides = document.querySelectorAll('.slide');
+const prevBtn = document.getElementById('prev-slide');
+const nextBtn = document.getElementById('next-slide');
+
+let currentSlide = 0;
+
+function showSlide(n, studentId) {
+    console.log('showSlide called with n:', n, 'and studentId:', studentId);
+    if (n >= slides.length) {
+        currentSlide = 0;
+    }
+    if (n < 0) {
+        currentSlide = slides.length - 1;
+    }
+    slider.style.transform = `translateX(-${currentSlide * 100}%)`;
+
+    if (slides[currentSlide].id === 'common-slide') {
+        loadCommonQuestions(studentId);
+    } else if (slides[currentSlide].id === 'trending-slide') {
+        loadTrendingQuestions(studentId);
+    }
+}
+
+nextBtn.addEventListener('click', () => {
+    currentSlide++;
+    showSlide(currentSlide, currentStudentId);
+});
+
+prevBtn.addEventListener('click', () => {
+    currentSlide--;
+    showSlide(currentSlide, currentStudentId);
+});
+
 </script>
 </body>
 </html>

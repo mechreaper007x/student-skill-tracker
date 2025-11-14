@@ -69,4 +69,8 @@ public class SkillData {
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
+
+    public int calculateXp() {
+        return (this.easyProblems * 10) + (this.mediumProblems * 20) + (this.hardProblems * 30);
+    }
 }
