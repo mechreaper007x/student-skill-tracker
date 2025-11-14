@@ -100,6 +100,15 @@
             padding: 30px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.2);
         }
+        .quote-card {
+            background: #ffffff;
+            border-left: 5px solid #667eea;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.07);
+            font-style: italic;
+            color: #555;
+        }
         .chart-container {
             background: white;
             border-radius: 15px;
@@ -178,6 +187,18 @@
                             <div class="display-6">🎯</div>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quote of the Day -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="quote-card">
+                    <p class="mb-0">
+                        <span class="fw-bold">💡 Quote of the Day:</span>
+                        <span id="quote-of-the-day-text">Loading...</span>
+                    </p>
                 </div>
             </div>
         </div>
@@ -307,8 +328,10 @@
                     if (!res.ok) throw new Error('Failed to load');
                     const data = await res.json();
 
-                    document.getElementById('advisor-summary').textContent = data.summary;
+                    document.getElementById('advisor-summary').innerHTML = data.summary; // Use innerHTML for markdown
                     document.getElementById('advisor-headline').textContent = data.headline;
+                    document.getElementById('quote-of-the-day-text').textContent = data.motivationalQuote;
+
 
                     const list = document.getElementById('advisor-actions');
                     list.innerHTML = '';
