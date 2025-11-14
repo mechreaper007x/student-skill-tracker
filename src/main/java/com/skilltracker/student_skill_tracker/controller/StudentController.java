@@ -185,8 +185,20 @@ public class StudentController {
         Optional<SkillData> skillDataOpt = skillDataRepository.findByStudent(studentOpt.get());
         SkillData skillData = skillDataOpt.orElseGet(() -> skillService.updateSkillData(studentOpt.get()));
 
-        List<Map<String, Object>> personalized = commonQuestionsService.personalizeQuestions(questions, skillData);
+        List<Map<String, Object>> personalized = commonQuestionsService.personalizeQuestions(questions, skillData, getTopPriority(skillData));
         return ResponseEntity.ok(personalized);
+    }
+
+    private String getTopPriority(SkillData sd) {
+        if (sd == null) return "Problem Solving"; // Default if no skill data
+
+        double ps = sd.getProblemSolvingScore() != null ? sd.getProblemSolvingScore() : 0.0;
+        double alg = sd.getAlgorithmsScore() != null ? sd.getAlgorithmsScore() : 0.0;
+        double ds = sd.getDataStructuresScore() != null ? sd.getDataStructuresScore() : 0.0;
+
+        if (alg <= ds && alg <= ps) return "Algorithms";
+        if (ds <= alg && ds <= ps) return "Data Structures";
+        return "Problem Solving";
     }
 
     @GetMapping("/{id}/trending-questions")
@@ -209,7 +221,7 @@ public class StudentController {
         Optional<SkillData> skillDataOpt2 = skillDataRepository.findByStudent(studentOpt.get());
         SkillData skillData2 = skillDataOpt2.orElseGet(() -> skillService.updateSkillData(studentOpt.get()));
 
-        List<Map<String, Object>> personalizedTrending = commonQuestionsService.personalizeQuestions(tquestions, skillData2);
+        List<Map<String, Object>> personalizedTrending = commonQuestionsService.personalizeQuestions(tquestions, skillData2, getTopPriority(skillData2));
         return ResponseEntity.ok(personalizedTrending);
     }
 

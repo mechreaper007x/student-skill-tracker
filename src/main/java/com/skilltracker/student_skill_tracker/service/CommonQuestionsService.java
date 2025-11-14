@@ -71,7 +71,7 @@ public class CommonQuestionsService {
      * - Map skill areas to likely tags and boost questions that contain those tags
      * - Sort by number of matched weak-tags (desc) then by difficulty (Easy &lt; Medium &lt; Hard)
      */
-    public List<Map<String, Object>> personalizeQuestions(List<Map<String, Object>> inputQuestions, SkillData skillData) {
+    public List<Map<String, Object>> personalizeQuestions(List<Map<String, Object>> inputQuestions, SkillData skillData, String topPriority) {
         if (inputQuestions == null) return Collections.emptyList();
         if (skillData == null) return new ArrayList<>(inputQuestions);
 
@@ -104,7 +104,14 @@ public class CommonQuestionsService {
         List<Entry> entries = new ArrayList<>();
         for (Map<String, Object> q : inputQuestions) {
             List<String> matched = computeMatchedTags(q, weakTags);
-            int sc = matched.size();
+            int sc = 0;
+            for (String tag : matched) {
+                if (topPriority != null && topPriority.toLowerCase().contains(tag)) { // Simple check for priority match
+                    sc += 3; // Higher weight for top priority
+                } else {
+                    sc += 1;
+                }
+            }
             entries.add(new Entry(q, sc, matched));
         }
 
@@ -116,6 +123,15 @@ public class CommonQuestionsService {
             return Integer.compare(da, db);
         });
 
+        // Fallback logic: if no questions matched weak areas, recommend the 3 easiest
+        if (entries.isEmpty() || entries.get(0).score == 0) {
+            entries.sort((a,b) -> {
+                int da = difficultyRank((String) a.q.get("difficulty"));
+                int db = difficultyRank((String) b.q.get("difficulty"));
+                return Integer.compare(da, db);
+            });
+        }
+
         // Build return list, annotate each map copy with matchedTags and recommended flag for top N
         List<Map<String, Object>> out = new ArrayList<>();
         int topN = Math.min(3, entries.size());
@@ -125,7 +141,7 @@ public class CommonQuestionsService {
             Map<String, Object> copy = new java.util.HashMap<>(e.q);
             copy.put("matchedTags", e.matchedTags);
             copy.put("recommendationScore", e.score);
-            if (i < topN && e.score > 0) {
+            if (i < topN && (e.score > 0 || entries.get(0).score == 0)) { // Recommend if score > 0 or if fallback is active
                 copy.put("recommended", true);
             } else {
                 copy.put("recommended", false);
