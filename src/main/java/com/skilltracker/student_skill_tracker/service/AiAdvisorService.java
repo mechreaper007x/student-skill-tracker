@@ -53,12 +53,6 @@ public class AiAdvisorService {
         double maxTotal = 300.0; // if each is 100-scale, adjust if different
         double signal = Math.min(1.0, total / Math.max(1.0, maxTotal));
 
-        String headline = makeHeadline(ps, alg, ds);
-        String summary = String.format(Locale.ENGLISH,
-                "Your core scores — ProblemSolving: %.1f, Algorithms: %.1f, DataStructures: %.1f. Total: %.1f",
-                ps, alg, ds, total
-        );
-
         // Decide priorities: look for lowest area first, then problem composition
         List<String> priorities = new ArrayList<>();
         if (alg <= ds && alg <= ps) priorities.add("Algorithms");
@@ -75,6 +69,9 @@ public class AiAdvisorService {
         List<Map<String, Object>> personalized = commonQuestionsService.personalizeQuestions(commonQuestions, sd, topPriority);
         Map<String, Object> questionOfTheDay = personalized.isEmpty() ? Collections.emptyMap() : personalized.get(0);
 
+        // --- New Holistic Summary & Headline ---
+        String headline = generateDynamicHeadline(topPriority, ps, alg, ds);
+        String summary = generateHolisticSummary(sd, topPriority, priorities.get(1), questionOfTheDay);
 
         // --- Motivational Quote ---
         List<SkillData> history = skillDataRepository.findTop2ByStudentOrderByCreatedAtDesc(sd.getStudent());
@@ -146,6 +143,69 @@ public class AiAdvisorService {
         // result.setSummary(aiText);
 
         return result;
+    }
+
+    private String generateDynamicHeadline(String topPriority, double ps, double alg, double ds) {
+        if (ps + alg + ds < 10) {
+            return "Welcome! Let's Build Your Foundation.";
+        }
+        switch (topPriority) {
+            case "Algorithms":
+                return "Focus on Algorithms to Break Through";
+            case "Data Structures":
+                return "Master Data Structures for a Solid Core";
+            case "Problem Solving":
+                return "Sharpen Your Problem-Solving Patterns";
+            default:
+                return "Solid Progress! Time to Optimize.";
+        }
+    }
+
+    private String generateHolisticSummary(SkillData sd, String topPriority, String secondaryPriority, Map<String, Object> questionOfTheDay) {
+        StringBuilder summary = new StringBuilder();
+        double topScore = 0;
+        double secondaryScore = 0;
+
+        switch (topPriority) {
+            case "Algorithms": topScore = safe(sd.getAlgorithmsScore()); break;
+            case "Data Structures": topScore = safe(sd.getDataStructuresScore()); break;
+            case "Problem Solving": topScore = safe(sd.getProblemSolvingScore()); break;
+        }
+
+        switch (secondaryPriority) {
+            case "Algorithms": secondaryScore = safe(sd.getAlgorithmsScore()); break;
+            case "Data Structures": secondaryScore = safe(sd.getDataStructuresScore()); break;
+            case "Problem Solving": secondaryScore = safe(sd.getProblemSolvingScore()); break;
+        }
+
+        summary.append(String.format(
+            Locale.ENGLISH,
+            "Your main focus should be on **%s**, where your score is %.1f. ",
+            topPriority,
+            topScore
+        ));
+
+        summary.append(String.format(
+            Locale.ENGLISH,
+            "You're showing solid progress in **%s** (%.1f), so let's work on bringing that %s score up! ",
+            secondaryPriority,
+            secondaryScore,
+            topPriority
+        ));
+
+        if (questionOfTheDay != null && !questionOfTheDay.isEmpty()) {
+            summary.append(String.format(
+                "To get you started, I've selected **'%s'** as your Question of the Day. ",
+                questionOfTheDay.get("title")
+            ));
+            if ((Boolean) questionOfTheDay.getOrDefault("isTopTier", false)) {
+                summary.append("It's a top-tier problem that will be a great step forward. ");
+            }
+        }
+
+        summary.append("Let's keep the momentum going!");
+
+        return summary.toString();
     }
 
     private String generateMotivationalQuote(List<SkillData> history) {
