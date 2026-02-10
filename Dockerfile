@@ -1,16 +1,15 @@
-
-# Use a base image with Java 17, as Spring Boot 3.x typically requires Java 17 or higher.
-FROM openjdk:17-jdk-slim
+# Use a base image with Java 21
+FROM eclipse-temurin:21-jdk-jammy AS build
 
 # Set the working directory inside the container
 WORKDIR /app
 
-# Copy the Maven wrapper and pom.xml to leverage Docker cache
+# Copy the Maven wrapper and pom.xml
 COPY mvnw .
 COPY .mvn .mvn
 COPY pom.xml .
 
-# Download dependencies to leverage Docker cache
+# Download dependencies
 RUN ./mvnw dependency:go-offline
 
 # Copy the source code
@@ -19,16 +18,18 @@ COPY src ./src
 # Build the application
 RUN ./mvnw package -DskipTests
 
-# Use a smaller base image for the final stage
-FROM openjdk:17-jre-slim
+# Final stage
+FROM eclipse-temurin:21-jre-jammy
 
-# Set the working directory inside the container
 WORKDIR /app
 
 # Copy the JAR file from the build stage
-COPY --from=0 /app/target/*.jar app.jar
+COPY --from=build /app/target/*.jar app.jar
 
-# Expose the port the application runs on
+# Create a directory for persistent data (H2)
+RUN mkdir /app/data
+
+# Expose the port
 EXPOSE 8080
 
 # Run the application

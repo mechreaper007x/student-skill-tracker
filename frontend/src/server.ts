@@ -1,8 +1,8 @@
 import {
-  AngularNodeAppEngine,
-  createNodeRequestHandler,
-  isMainModule,
-  writeResponseToNodeResponse,
+    AngularNodeAppEngine,
+    createNodeRequestHandler,
+    isMainModule,
+    writeResponseToNodeResponse,
 } from '@angular/ssr/node';
 import express from 'express';
 import { join } from 'node:path';
@@ -11,6 +11,33 @@ const browserDistFolder = join(import.meta.dirname, '../browser');
 
 const app = express();
 const angularApp = new AngularNodeAppEngine();
+
+// Backend URL from environment or default to local for development
+const BACKEND_URL = process.env['BACKEND_URL'] || 'http://localhost:8082';
+
+/**
+ * Proxy /api requests to the Spring Boot backend
+ */
+app.use('/api', (req, res) => {
+  const targetUrl = `${BACKEND_URL}/api${req.url}`;
+  
+  // Basic manual proxy for Express
+  fetch(targetUrl, {
+    method: req.method,
+    headers: req.headers as any,
+    body: req.method !== 'GET' && req.method !== 'HEAD' ? (req as any).body : undefined,
+  })
+    .then(async (backendRes) => {
+      res.status(backendRes.status);
+      backendRes.headers.forEach((value, key) => res.header(key, value));
+      const data = await backendRes.arrayBuffer();
+      res.send(Buffer.from(data));
+    })
+    .catch((err) => {
+      console.error('Proxy error:', err);
+      res.status(502).send('Internal Backend Error');
+    });
+});
 
 /**
  * Example Express Rest API endpoints can be defined here.

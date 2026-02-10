@@ -1,0 +1,35 @@
+services:
+  # Backend Web Service
+  - type: web
+    name: student-skill-tracker-backend
+    runtime: docker
+    plan: free
+    region: ohio
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: DB_URL
+        value: jdbc:h2:file:./data/skilltrackerdb;AUTO_SERVER=TRUE
+      - key: JWT_SECRET
+        generateValue: true
+      - key: GITHUB_TOKEN
+        sync: false # Set in Render Dashboard
+    disk:
+      name: db-data
+      mountPath: /app/data
+      sizeGB: 1
+
+  # Frontend Web Service (Angular SSR)
+  - type: web
+    name: student-skill-tracker-frontend
+    runtime: node
+    plan: free
+    region: ohio
+    buildCommand: cd frontend && npm install && npm run build
+    startCommand: cd frontend && npm run serve:ssr:frontend
+    envVars:
+      - key: BACKEND_URL
+        fromService:
+          name: student-skill-tracker-backend
+          type: web
+          property: host
