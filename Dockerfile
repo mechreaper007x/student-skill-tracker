@@ -26,9 +26,6 @@ WORKDIR /app
 # Copy the JAR file from the build stage
 COPY --from=build /app/target/*.jar app.jar
 
-# Create a directory for persistent data (H2)
-RUN mkdir /app/data
-
 # Expose the port
 EXPOSE 8080
 

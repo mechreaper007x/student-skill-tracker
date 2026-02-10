@@ -9,15 +9,11 @@ services:
       - key: SPRING_PROFILES_ACTIVE
         value: prod
       - key: DB_URL
-        value: jdbc:h2:file:./data/skilltrackerdb;AUTO_SERVER=TRUE
+        value: jdbc:h2:file:./skilltrackerdb;AUTO_SERVER=TRUE
       - key: JWT_SECRET
         generateValue: true
       - key: GITHUB_TOKEN
         sync: false # Set in Render Dashboard
-    disk:
-      name: db-data
-      mountPath: /app/data
-      sizeGB: 1
 
   # Frontend Web Service (Angular SSR)
   - type: web
