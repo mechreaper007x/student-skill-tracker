@@ -34,3 +34,19 @@ build/
 
 .gemini/
 gha-creds-*.json
+
+# H2 Database files
+*.mv.db
+*.trace.db
+skilltrackerdb.mv.db
+
+# Secrets and sensitive configs
+src/main/resources/application.properties
+
+# AI Agent directory
+.agent/
+
+# Temporary logs
+tmp_backend_*.log
+*.err.log
+*.out.log

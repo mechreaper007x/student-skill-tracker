@@ -1,0 +1,96 @@
+@import "tailwindcss";
+@source "../src";
+
+/* The Übermensch Protocol - Brutalist Noir System */
+
+@theme {
+  /* Noir Palette: Zinc & Crimson (Industrial/Aggressive) */
+  --color-noir-950: #050505; /* Pitch Black */
+  --color-noir-900: #0d0d0d; /* Deep Onyx */
+  --color-noir-800: #1a1a1a; /* Steel Border */
+  --color-noir-100: #ffffff; /* Stark White */
+  --color-noir-200: #e4e4e7; /* Very Light Zinc */
+  --color-noir-300: #d4d4d8; /* Light Zinc */
+  --color-noir-400: #a1a1aa; /* Muted Zinc */
+  --color-noir-500: #71717a; /* Medium Zinc */
+  --color-noir-600: #52525b; /* Dark Zinc */
+  --color-noir-700: #3f3f46; /* Darker Zinc */
+  
+  --color-crimson-500: #ef4444; /* High-Intensity Red */
+  --color-crimson-600: #b91c1c; /* Blood Red */
+
+  --font-display: 'Inter', system-ui, sans-serif; /* Aggressive Weight */
+  --font-mono: 'JetBrains Mono', monospace;
+
+  --animate-reveal: reveal 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  --animate-scan: scan 4s linear infinite;
+  --animate-glitch: glitch 0.3s cubic-bezier(.25,.46,.45,.94) both infinite;
+}
+
+@layer utilities {
+  /* Brutalist Card - Sharp, 1px borders, industrial weight */
+  .noir-card {
+    @apply border border-noir-800 bg-black relative overflow-hidden transition-all duration-500;
+  }
+  
+  .noir-card:hover {
+    @apply border-crimson-500 shadow-[0_0_40px_-5px_rgba(239,68,68,0.2)];
+  }
+
+  /* Sharp Geometry Enforcement - Mandatory */
+  .rounded-none { border-radius: 0px !important; }
+  .rounded-sm { border-radius: 1px !important; }
+  .rounded-md { border-radius: 2px !important; }
+  
+  /* Atomic Typography */
+  .text-display {
+    @apply font-black tracking-tighter text-noir-100 italic uppercase leading-[0.85];
+  }
+  
+  .text-mono-technical {
+    @apply font-mono text-[10px] uppercase tracking-[0.2em] text-noir-400;
+  }
+
+  /* Scanning Effect Overlay */
+  .scanline {
+    @apply absolute inset-0 pointer-events-none opacity-5;
+    background: linear-gradient(to bottom, transparent 50%, #ef4444 50%);
+    background-size: 100% 4px;
+    animation: scan 10s linear infinite;
+  }
+}
+
+/* Global Reset */
+html, body {
+  @apply h-full bg-black text-noir-100 font-sans antialiased overflow-x-hidden;
+}
+
+/* Custom Scrollbar - Minimal & Sharp */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  @apply bg-black;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-noir-800 hover:bg-crimson-500 transition-colors;
+}
+
+@keyframes reveal {
+  from { opacity: 0; transform: translateY(40px); clip-path: inset(100% 0 0 0); }
+  to { opacity: 1; transform: translateY(0); clip-path: inset(0 0 0 0); }
+}
+
+@keyframes scan {
+  from { background-position: 0 0; }
+  to { background-position: 0 100%; }
+}
+
+@keyframes glitch {
+  0% { transform: translate(0); }
+  20% { transform: translate(-2px, 2px); }
+  40% { transform: translate(-2px, -2px); }
+  60% { transform: translate(2px, 2px); }
+  80% { transform: translate(2px, -2px); }
+  100% { transform: translate(0); }
+}

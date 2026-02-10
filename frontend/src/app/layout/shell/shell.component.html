@@ -1,0 +1,89 @@
+<div class="flex h-screen w-full bg-noir-950 text-noir-100 overflow-hidden relative font-sans">
+  
+  <!-- Mobile Overlay -->
+  <div 
+    *ngIf="isSidebarOpen()"
+    class="fixed inset-0 bg-black/80 backdrop-blur-sm z-40 md:hidden"
+    (click)="toggleSidebar()"
+  ></div>
+
+  <!-- Sidebar -->
+  <aside 
+    class="fixed inset-y-0 left-0 z-50 w-64 bg-noir-950 border-r border-noir-800 transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0"
+    [class.translate-x-0]="isSidebarOpen()"
+    [class.-translate-x-full]="!isSidebarOpen()"
+  >
+    <div class="h-20 flex items-center px-6 border-b border-noir-800 gap-4">
+      <div class="w-10 h-10 flex items-center justify-center bg-crimson-600 text-white font-black italic rounded-none shadow-[0_0_20px_rgba(239,68,68,0.4)] text-xl border-t border-l border-white/20">
+        S
+      </div>
+      <div class="flex flex-col">
+        <span class="text-lg font-black tracking-tighter text-white uppercase leading-none">
+          Skill<span class="text-crimson-500">Tracker</span>
+        </span>
+        <span class="text-[8px] font-mono text-noir-400 tracking-[0.3em] uppercase">v4.0_CORE</span>
+      </div>
+      <button class="ml-auto md:hidden text-noir-400" (click)="toggleSidebar()">
+        <lucide-icon name="X" class="w-6 h-6"></lucide-icon>
+      </button>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="p-4 space-y-1">
+      <a 
+        *ngFor="let item of navItems" 
+        [routerLink]="item.route" 
+        routerLinkActive="bg-noir-900 border-l-4 border-l-crimson-500 text-white !opacity-100"
+        [routerLinkActiveOptions]="{exact: false}"
+        (click)="isSidebarOpen.set(false)"
+        class="flex items-center gap-4 px-6 py-4 text-xs font-black uppercase tracking-widest text-noir-400 border-l-4 border-transparent hover:bg-noir-900/50 hover:text-white transition-all group opacity-60"
+      >
+        <lucide-icon [name]="item.icon" class="w-5 h-5 group-router-link-active:text-crimson-500 transition-colors"></lucide-icon>
+        {{ item.label }}
+      </a>
+    </nav>
+
+    <div class="absolute bottom-0 w-full p-6 border-t border-noir-800 bg-noir-950">
+       <div *ngIf="user()" class="bg-noir-900 border border-noir-800 p-6 mb-6 rounded-none relative group overflow-hidden">
+          <div class="scanline opacity-0 group-hover:opacity-5"></div>
+          <div class="flex items-center gap-4 mb-4">
+             <div class="w-10 h-10 bg-crimson-600 border border-white/20 flex items-center justify-center text-sm font-black text-white rounded-none">
+                {{ user()?.name?.charAt(0) || 'U' }}
+             </div>
+             <div class="overflow-hidden">
+                <p class="text-[9px] font-mono font-black text-crimson-500 uppercase tracking-widest leading-none mb-2">LVL.{{ user()?.level || 1 }} SECTOR_AUTH</p>
+                <p class="text-base font-black text-white truncate leading-none uppercase italic">{{ user()?.leetcodeUsername || user()?.name || 'Seeker' }}</p>
+             </div>
+          </div>
+          <!-- XP Bar - Industrial -->
+          <div class="w-full h-1 bg-noir-800 rounded-none relative overflow-hidden">
+             <div class="h-full bg-crimson-600 shadow-[0_0_15px_#ef4444] transition-all duration-1000" [style.width.%]="(user()?.xp || 0) % 100"></div>
+          </div>
+       </div>
+
+      <button 
+        (click)="logout()"
+        class="w-full flex items-center justify-center gap-3 px-4 py-4 text-[10px] font-black uppercase tracking-[0.3em] text-noir-400 hover:text-white hover:bg-crimson-600 border border-noir-800 hover:border-crimson-600 transition-all rounded-none"
+      >
+        <lucide-icon name="LogOut" class="w-4 h-4"></lucide-icon>
+        Terminate_Session
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main Content Area -->
+  <div class="flex-1 flex flex-col min-w-0 overflow-hidden bg-noir-950 relative">
+    <!-- Mobile Header -->
+    <header class="md:hidden h-16 flex items-center px-4 border-b border-noir-800 bg-black/50 backdrop-blur-md">
+      <button (click)="toggleSidebar()" class="text-noir-400 hover:text-white">
+        <lucide-icon name="Menu" class="w-6 h-6"></lucide-icon>
+      </button>
+      <span class="ml-4 text-lg font-bold text-white uppercase tracking-tighter">Skill<span class="text-crimson-500">Tracker</span></span>
+    </header>
+
+    <!-- Scrollable Router Outlet -->
+    <main class="flex-1 overflow-y-auto scroll-smooth">
+      <router-outlet></router-outlet>
+    </main>
+  </div>
+</div>

@@ -1,0 +1,202 @@
+<div class="min-h-screen bg-black text-noir-100 selection:bg-crimson-500 selection:text-white relative overflow-hidden">
+  
+  <!-- Atmospheric Scanline -->
+  <div class="scanline"></div>
+
+  <!-- MAIN CONTAINER: ASYMMETRIC TENSION (80/20) -->
+  <div class="relative z-10 p-6 md:p-16 lg:p-24 space-y-32">
+    
+    <!-- PHASE 1: TYPOGRAPHIC DOMINANCE -->
+    <header class="relative">
+      <div class="absolute -top-12 -left-8 md:-top-20 md:-left-12 text-[12vw] font-black text-noir-800/10 select-none pointer-events-none uppercase italic leading-none">
+        Evolution
+      </div>
+      <div class="max-w-4xl space-y-6">
+        <h1 class="text-7xl md:text-9xl lg:text-[12rem] text-display transition-all duration-700 hover:tracking-[-0.05em] group">
+          {{ greeting() }},<br/>
+          <span class="text-crimson-500 group-hover:animate-glitch inline-block">{{ student().username }}</span>
+        </h1>
+        <div class="flex items-center gap-4 text-mono-technical animate-reveal">
+          <span class="w-12 h-[1px] bg-crimson-500"></span>
+          <span>System Protocol v4.0.2</span>
+          <span class="text-noir-100 font-bold">// UBERMENSCH MODE ACTIVE</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- PHASE 2: TOPOLOGICAL BETRAYAL (FRAGMENTED GRID) -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-24 items-start">
+      
+      <!-- LEFT: DATA FRAGMENTS (COMPRESSED) -->
+      <div class="lg:col-span-4 space-y-12 order-2 lg:order-1">
+        
+        <!-- STATUS READOUT -->
+        <div class="noir-card p-8 border-l-2 border-l-crimson-500 animate-reveal" style="animation-delay: 0.2s">
+          <div class="text-mono-technical mb-4 opacity-50">Core Metrics</div>
+          <div class="space-y-8">
+            <div>
+              <div class="flex justify-between text-xs font-bold uppercase mb-2">
+                <span>LVL.{{ student().level }}</span>
+                <span class="text-crimson-500">{{ student().xp }} XP</span>
+              </div>
+              <div class="h-[2px] bg-noir-800 relative overflow-hidden">
+                <div class="absolute h-full bg-crimson-500 transition-all duration-1000 shadow-[0_0_15px_#ef4444]" [style.width.%]="xpPercentage()"></div>
+              </div>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-4">
+              <div class="noir-card p-4 hover:bg-noir-900 border-none transition-colors">
+                <div class="text-[10px] uppercase text-noir-400 mb-1">Streak</div>
+                <div class="text-2xl font-black">14D</div>
+              </div>
+              <div class="noir-card p-4 hover:bg-noir-900 border-none transition-colors">
+                <div class="text-[10px] uppercase text-noir-400 mb-1">Solved</div>
+                <div class="text-2xl font-black">42P</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PROBLEM STATS (LEETCODE STYLE) -->
+        <div class="noir-card p-6 border-l-2 border-l-emerald-500 animate-reveal" style="animation-delay: 0.3s">
+          <div class="flex items-center justify-between mb-6">
+            <div class="text-mono-technical opacity-50">Combat Record</div>
+            <div class="text-xs font-bold font-mono text-noir-400">{{ problemStats().total }} SOLVED</div>
+          </div>
+          
+          <div class="space-y-5">
+            <!-- Easy -->
+            <div>
+              <div class="flex justify-between text-[10px] uppercase font-bold text-emerald-500 mb-1">
+                <span>Easy</span>
+                <span>{{ problemStats().easy }}</span>
+              </div>
+              <div class="h-1.5 bg-noir-800 rounded-full overflow-hidden">
+                <div class="h-full bg-emerald-500 transition-all duration-1000" [style.width.%]="problemStats().easyPct"></div>
+              </div>
+            </div>
+
+            <!-- Medium -->
+            <div>
+              <div class="flex justify-between text-[10px] uppercase font-bold text-yellow-500 mb-1">
+                <span>Medium</span>
+                <span>{{ problemStats().medium }}</span>
+              </div>
+              <div class="h-1.5 bg-noir-800 rounded-full overflow-hidden">
+                <div class="h-full bg-yellow-500 transition-all duration-1000" [style.width.%]="problemStats().mediumPct"></div>
+              </div>
+            </div>
+
+            <!-- Hard -->
+            <div>
+              <div class="flex justify-between text-[10px] uppercase font-bold text-crimson-500 mb-1">
+                <span>Hard</span>
+                <span>{{ problemStats().hard }}</span>
+              </div>
+              <div class="h-1.5 bg-noir-800 rounded-full overflow-hidden">
+                <div class="h-full bg-crimson-500 transition-all duration-1000 shadow-[0_0_10px_rgba(239,68,68,0.4)]" [style.width.%]="problemStats().hardPct"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SYSTEM ADVISOR (TERMINAL STYLE) -->
+        <div class="noir-card bg-noir-900/50 p-0 border-t border-noir-800 animate-reveal" style="animation-delay: 0.4s">
+          <div class="h-8 bg-noir-800 flex items-center px-4 gap-2">
+            <div class="w-2 h-2 rounded-full bg-crimson-500"></div>
+            <span class="text-[9px] font-mono text-noir-400 uppercase tracking-widest">Advisor.Terminal</span>
+          </div>
+          <div class="p-6 space-y-6">
+            <div class="font-mono text-xs leading-relaxed text-noir-200 min-h-[100px]">
+              @if (advisorLoading()) {
+                <div class="flex items-center gap-2 text-crimson-500">
+                  <span class="animate-pulse">_</span> FETCHING_NEURAL_DATA...
+                </div>
+              } @else {
+                <span class="text-crimson-500">>></span> {{ currentAdvice().advice }}
+              }
+            </div>
+            
+            <div class="flex flex-wrap gap-2">
+              @for (rec of currentAdvice().recommendedSkills; track rec) {
+                <span class="text-[9px] font-mono px-2 py-1 bg-noir-800 text-noir-100 border border-noir-700 hover:border-crimson-500 cursor-help transition-colors">
+                  {{ rec }}
+                </span>
+              }
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: SKILLS ARCHIVE (EXTREME ASYMMETRY) -->
+      <div class="lg:col-span-8 space-y-12 order-1 lg:order-2 lg:mt-[-10rem]">
+        <div class="flex items-baseline justify-between border-b border-noir-800 pb-4">
+          <h2 class="text-4xl md:text-6xl font-black uppercase tracking-tighter italic">Active_Sectors</h2>
+          <span class="text-mono-technical">Total: {{ skills().length }}</span>
+        </div>
+
+        @if (skills().length > 0) {
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-px bg-noir-800 border border-noir-800">
+            @for (skill of skills(); track skill.skillName; let i = $index) {
+              <div 
+                class="bg-black p-10 group hover:bg-noir-900 transition-colors relative overflow-hidden animate-reveal"
+                [style.animation-delay]="0.1 * i + 's'"
+              >
+                <!-- Index Counter -->
+                <span class="absolute top-4 right-4 text-[10px] font-mono text-noir-800 group-hover:text-crimson-900 transition-colors">0{{ i + 1 }}</span>
+                
+                <div class="space-y-6">
+                  <h3 class="text-2xl font-black uppercase text-noir-100 group-hover:text-crimson-500 transition-colors leading-none tracking-tighter">
+                    {{ skill.skillName }}
+                  </h3>
+                  
+                  <div class="flex items-center gap-2">
+                    <div class="flex-1 h-[1px] bg-noir-800 group-hover:bg-crimson-900 transition-colors"></div>
+                    <div class="text-mono-technical group-hover:scale-110 transition-transform origin-right">
+                      RATING: <span class="text-noir-100">{{ skill.rating }}</span>/05
+                    </div>
+                  </div>
+
+                  <!-- Industrial Rating pips -->
+                  <div class="flex gap-2">
+                    @for (star of [1,2,3,4,5]; track star) {
+                      <div 
+                        class="w-8 h-2 transition-all duration-500"
+                        [class.bg-crimson-600]="star <= skill.rating"
+                        [class.shadow-[0_0_10px_rgba(239,68,68,0.5)]]="star <= skill.rating"
+                        [class.bg-noir-800]="star > skill.rating"
+                      ></div>
+                    }
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
+        } @else {
+          <div class="noir-card p-12 text-center border-dashed">
+            <div class="text-6xl mb-6 opacity-20">⚡</div>
+            <h3 class="text-2xl font-black mb-4 text-noir-400">NO_DATA_DETECTED</h3>
+            <p class="text-mono-technical text-noir-500 mb-6">
+              LeetCode profile not synced yet. Skills will appear after data fetch.
+            </p>
+            <div class="text-xs text-noir-600 font-mono">
+              System will auto-refresh on next login // Check backend logs
+            </div>
+          </div>
+        }
+      </div>
+
+    </div>
+
+    <!-- PHASE 3: DEPTH LAYERS (OVERLAPPING ELEMENTS) -->
+    <footer class="border-t border-noir-800 pt-12 flex flex-col md:flex-row justify-between items-center gap-6 opacity-30 hover:opacity-100 transition-opacity">
+      <div class="text-mono-technical">© 2026 {{ student().username }}_PROTOCOLS</div>
+      <div class="flex gap-8 text-mono-technical">
+        <a href="#" class="hover:text-crimson-500">Security</a>
+        <a href="#" class="hover:text-crimson-500">Neural_Link</a>
+        <a href="#" class="hover:text-crimson-500">Archive</a>
+      </div>
+    </footer>
+
+  </div>
+</div>

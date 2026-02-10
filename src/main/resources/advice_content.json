@@ -1,0 +1,41 @@
+{
+  "headlines": {
+    "newbie": "Welcome! Let's Build Your Foundation.",
+    "algorithms": "Focus on Algorithms to Break Through",
+    "data_structures": "Master Data Structures for a Solid Core",
+    "problem_solving": "Sharpen Your Problem-Solving Patterns",
+    "default": "Solid Progress! Time to Optimize."
+  },
+  "microActions": {
+    "algorithms_low": [
+      "Solve 2 algorithm problems (easy) on LeetCode: focus on two-pointer and binary search.",
+      "Read a 10-min article on algorithm complexity (O-notation refresher)."
+    ],
+    "algorithms_high": [
+      "Solve 1 medium algorithm problem; try to optimize from O(n^2) to O(n log n)."
+    ],
+    "ds_low": [
+      "Implement a linked list and a stack from scratch in your preferred language (15–20 min)."
+    ],
+    "ds_high": [
+      "Revise tree traversals (inorder/preorder/postorder) and solve 1 related problem."
+    ]
+  },
+  "longTermPlans": {
+    "beginner": [
+      "Month 1: Master fundamentals. Complete 50 easy problems. Implement core data structures (Arrays, Strings, Linked Lists, Stacks, Queues) from scratch.",
+      "Month 2: Begin pattern recognition. Focus on Two Pointers, Sliding Window, and basic recursion. Attempt 20 medium problems.",
+      "Month 3: Solidify core algorithms. Deep dive into Sorting (Merge Sort, Quick Sort), Searching (Binary Search), and basic Graph/Tree traversals (BFS, DFS)."
+    ],
+    "intermediate": [
+      "Month 1: Strengthen weak areas. Identify your lowest score and dedicate this month to it. Solve 30 medium problems in that category.",
+      "Month 2: Advanced topics. Introduce yourself to Dynamic Programming, Greedy algorithms, and advanced graph problems. Aim for 15 medium and 5 hard problems.",
+      "Month 3: Interview readiness. Participate in mock interviews and weekly contests. Focus on optimizing solutions and explaining your thought process."
+    ],
+    "advanced": [
+      "Month 1: Master advanced topics. Deep dive into advanced DP, complex graph algorithms (Dijkstra's, A*), and segment trees.",
+      "Month 2: Competitive programming focus. Regularly participate in contests (LeetCode, Codeforces). Aim for a higher rating and solve hard problems under time constraints.",
+      "Month 3: Specialize and teach. Pick a niche area (e.g., computational geometry, advanced string algorithms) and go deep. Mentor another student or write articles to solidify your understanding."
+    ]
+  }
+}

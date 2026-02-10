@@ -10,6 +10,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -48,6 +49,41 @@ public class Student {
 
     @Column(name = "leetcode_username", nullable = false, unique = true)
     private String leetcodeUsername;
+
+    @Column(name = "github_username")
+    private String githubUsername;
+
+    @Column(name = "github_access_token")
+    private String githubAccessToken;
+
+    @Column(name = "ai_provider")
+    private String aiProvider;
+
+    @Column(name = "ai_model")
+    private String aiModel;
+
+    @Column(name = "ai_api_key", length = 2048)
+    @ToString.Exclude
+    private String aiApiKey;
+
+    @Lob
+    @Column(name = "rishi_memory_json")
+    @ToString.Exclude
+    private String rishiMemoryJson;
+
+    @Lob
+    @Column(name = "rishi_study_plan")
+    @ToString.Exclude
+    private String rishiStudyPlan;
+
+    @Column(name = "rishi_study_topic")
+    private String rishiStudyTopic;
+
+    @Column(name = "rishi_study_days")
+    private Integer rishiStudyDays;
+
+    @Column(name = "rishi_study_generated_at")
+    private LocalDateTime rishiStudyGeneratedAt;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
