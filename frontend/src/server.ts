@@ -40,6 +40,7 @@ app.use('/api', async (req, res) => {
   const targetUrl = `${BACKEND_URL}/api${req.url}`;
   const headers = { ...req.headers } as Record<string, string | string[] | undefined>;
   delete headers['host'];
+  headers['accept-encoding'] = 'identity';
 
   const requestInit: RequestInit & { duplex?: 'half' } = {
     method: req.method,
@@ -54,7 +55,18 @@ app.use('/api', async (req, res) => {
   try {
     const backendRes = await fetch(targetUrl, requestInit);
     res.status(backendRes.status);
-    backendRes.headers.forEach((value, key) => res.header(key, value));
+    backendRes.headers.forEach((value, key) => {
+      const lowerKey = key.toLowerCase();
+      if (
+        lowerKey === 'content-encoding' ||
+        lowerKey === 'content-length' ||
+        lowerKey === 'transfer-encoding' ||
+        lowerKey === 'connection'
+      ) {
+        return;
+      }
+      res.header(key, value);
+    });
     const data = await backendRes.arrayBuffer();
     res.send(Buffer.from(data));
   } catch (err) {
