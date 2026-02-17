@@ -12,13 +12,26 @@ const browserDistFolder = join(import.meta.dirname, '../browser');
 const app = express();
 const angularApp = new AngularNodeAppEngine();
 
-// Normalize host-only values (like Render fromService host) into absolute URLs.
-const rawBackendUrl = (process.env['BACKEND_URL'] || 'http://localhost:8082').trim();
-const BACKEND_URL = (
-  rawBackendUrl.startsWith('http://') || rawBackendUrl.startsWith('https://')
-    ? rawBackendUrl
-    : `http://${rawBackendUrl}`
-).replace(/\/+$/, '');
+function normalizeBackendUrl(rawValue: string): string {
+  const trimmed = rawValue.trim().replace(/\/+$/, '');
+  if (!trimmed) return 'http://localhost:8082';
+
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+
+  // Local development convenience.
+  if (/^localhost(:\d+)?$/i.test(trimmed) || /^\d{1,3}(\.\d{1,3}){3}(:\d+)?$/.test(trimmed)) {
+    return `http://${trimmed}`;
+  }
+
+  // Render "host" values can be service slugs like "student-skill-tracker-backend".
+  if (/^[a-z0-9-]+$/i.test(trimmed)) {
+    return `https://${trimmed}.onrender.com`;
+  }
+
+  return `https://${trimmed}`;
+}
+
+const BACKEND_URL = normalizeBackendUrl(process.env['BACKEND_URL'] || 'http://localhost:8082');
 
 /**
  * Proxy /api requests to the Spring Boot backend
