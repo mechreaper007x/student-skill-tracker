@@ -1,7 +1,8 @@
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { Component, inject, OnInit, PLATFORM_ID, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, PLATFORM_ID, signal } from '@angular/core';
 import { LucideAngularModule } from 'lucide-angular';
+import { catchError, forkJoin, of } from 'rxjs';
 
 // --- Interfaces ---
 interface Weapon {
@@ -26,13 +27,48 @@ interface Technique {
   name: string;
   pattern: string;
   difficulty: 'Initiate' | 'Adept' | 'Master';
-  snippet: string;
   description: string;
+  url: string;
+  tags: string[];
+  solvedRecently: boolean;
+  dominantLanguage: string;
+  dominantLanguageSharePercent: number;
+  recommendationScore: number;
 }
 
-interface RepoDetail {
-  languages: Record<string, number>;
-  skeleton: { path: string; type: string }[];
+interface LanguageSkill {
+  id: string;
+  name: string;
+  rating: number;
+  problemsSolved?: number;
+}
+
+interface CommonQuestion {
+  title?: string;
+  url?: string;
+  difficulty?: string;
+  tags?: string[];
+  matchedTags?: string[];
+  recommendationScore?: number;
+  recommended?: boolean;
+}
+
+interface RecentAcSubmission {
+  title?: string;
+  titleSlug?: string;
+  timestamp?: string;
+  lang?: string;
+  langName?: string;
+}
+
+interface AlgorithmMastery {
+  tagName: string;
+  tagSlug: string;
+  level: string;
+  problemsSolved: number;
+  totalQuestions: number;
+  masteryPercent: number;
+  masteryBand: string;
 }
 
 @Component({
@@ -375,33 +411,21 @@ interface RepoDetail {
                 
                 <!-- Progress Bar -->
                 <div class="flex h-2 w-full rounded-full overflow-hidden bg-noir-900 mb-4 opacity-80">
-                  @for (stat of languageStats(); track stat.name) {
+                  @for (stat of languageStats(); track stat.name; let i = $index) {
                     <div 
                       class="h-full transition-all duration-1000 ease-out"
                       [style.width.%]="stat.percentage"
-                      [class.bg-crimson-600]="stat.name === 'Java'"
-                      [class.bg-blue-500]="stat.name === 'TypeScript'"
-                      [class.bg-yellow-400]="stat.name === 'JavaScript'"
-                      [class.bg-orange-500]="stat.name === 'HTML' || stat.name === 'CSS'"
-                      [class.bg-purple-500]="stat.name === 'C#'"
-                      [class.bg-emerald-500]="stat.name === 'Python'"
-                      [class.bg-noir-600]="!['Java', 'TypeScript', 'JavaScript', 'HTML', 'CSS', 'C#', 'Python'].includes(stat.name)"
+                      [style.backgroundColor]="languageColor(stat.name, i)"
                     ></div>
                   }
                 </div>
 
                 <!-- Legend -->
                 <div class="flex flex-wrap gap-4">
-                  @for (stat of languageStats(); track stat.name) {
+                  @for (stat of languageStats(); track stat.name; let i = $index) {
                     <div class="flex items-center gap-2">
                        <span class="w-2 h-2 rounded-full"
-                          [class.bg-crimson-600]="stat.name === 'Java'"
-                          [class.bg-blue-500]="stat.name === 'TypeScript'"
-                          [class.bg-yellow-400]="stat.name === 'JavaScript'"
-                          [class.bg-orange-500]="stat.name === 'HTML' || stat.name === 'CSS'"
-                          [class.bg-purple-500]="stat.name === 'C#'"
-                          [class.bg-emerald-500]="stat.name === 'Python'"
-                          [class.bg-noir-600]="!['Java', 'TypeScript', 'JavaScript', 'HTML', 'CSS', 'C#', 'Python'].includes(stat.name)"
+                          [style.backgroundColor]="languageColor(stat.name, i)"
                        ></span>
                        <span class="text-xs font-bold text-noir-300 uppercase">{{ stat.name }}</span>
                        <span class="text-[10px] font-mono text-noir-500">{{ stat.percentage }}%</span>
@@ -452,59 +476,209 @@ interface RepoDetail {
             <div class="flex items-baseline justify-between mb-8">
                <div>
                   <h2 class="text-4xl font-black uppercase tracking-tighter italic text-white mb-2">The Codex</h2>
-                  <p class="text-noir-400 font-mono text-sm">Forbidden techniques and algorithmic patterns.</p>
+                  <p class="text-noir-400 font-mono text-sm">Live LeetCode profile data: tracked skills, recommendations, and recent solves.</p>
                </div>
             </div>
 
-            <div class="space-y-4 max-w-4xl">
-              @for (tech of techniques(); track tech.name; let i = $index) {
-                <div class="noir-card overflow-hidden group">
-                  <button
-                    class="w-full flex items-center justify-between p-6 text-left hover:bg-noir-900 transition-colors"
-                    (click)="toggleTechnique(i)"
-                  >
-                    <div class="flex items-center gap-6">
-                      <span class="text-xs font-mono text-noir-700 w-6">0{{ i + 1 }}</span>
-                      <div>
-                        <h3 class="text-xl font-black uppercase tracking-tighter text-noir-100 group-hover:text-crimson-500 transition-colors">
-                          {{ tech.name }}
-                        </h3>
-                        <span class="text-[10px] font-mono text-noir-500 uppercase tracking-widest mt-1 block">{{ tech.pattern }}</span>
-                      </div>
-                    </div>
-                    
-                    <div class="flex items-center gap-4">
-                      <span
-                        class="text-[9px] font-bold uppercase tracking-widest px-3 py-1 border rounded-sm"
-                        [class.text-emerald-500]="tech.difficulty === 'Initiate'"
-                        [class.border-emerald-500/30]="tech.difficulty === 'Initiate'"
-                        [class.text-yellow-500]="tech.difficulty === 'Adept'"
-                        [class.border-yellow-500/30]="tech.difficulty === 'Adept'"
-                        [class.text-crimson-500]="tech.difficulty === 'Master'"
-                        [class.border-crimson-500/30]="tech.difficulty === 'Master'"
-                      >
-                        {{ tech.difficulty }}
-                      </span>
-                      <lucide-icon
-                        [name]="expandedTechnique() === i ? 'ChevronUp' : 'ChevronDown'"
-                        class="w-5 h-5 text-noir-600 transition-transform duration-300"
-                        [class.rotate-180]="expandedTechnique() === i"
-                      ></lucide-icon>
-                    </div>
-                  </button>
+            @if (codexLoadError()) {
+              <div class="mb-8 rounded border border-amber-500/30 bg-amber-950/20 px-4 py-3 text-xs font-mono text-amber-300">
+                {{ codexLoadError() }}
+              </div>
+            }
 
-                  @if (expandedTechnique() === i) {
-                    <div class="border-t border-noir-800 bg-black/50 p-8 space-y-6 animate-fade-in">
-                      <p class="text-sm text-noir-300 font-mono leading-relaxed max-w-2xl">{{ tech.description }}</p>
-                      <div class="relative group/code">
-                        <div class="absolute -top-3 left-4 px-2 bg-noir-900 text-[10px] text-noir-500 uppercase tracking-widest border border-noir-800">JavaScript</div>
-                        <pre class="bg-noir-950 p-6 rounded border border-noir-800 overflow-x-auto"><code class="text-sm font-mono text-emerald-400 leading-relaxed">{{ tech.snippet }}</code></pre>
-                      </div>
+            @if (codexLoading()) {
+              <div class="noir-card p-8 flex items-center gap-3 text-noir-400 font-mono text-sm">
+                <lucide-icon name="Loader2" class="w-5 h-5 animate-spin text-crimson-500"></lucide-icon>
+                Syncing Codex from your LeetCode-backed profile...
+              </div>
+            } @else {
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+                <div class="noir-card p-6 md:col-span-2">
+                  <h3 class="text-lg font-black uppercase tracking-widest text-noir-200 mb-4">Tracked Skills</h3>
+                  @if (codexSkills().length > 0) {
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      @for (skill of codexSkills(); track skill.id) {
+                        <div class="border border-noir-800 rounded p-4 bg-black/40">
+                          <p class="text-xs font-bold uppercase tracking-widest text-noir-300">{{ skill.name }}</p>
+                          <p class="text-2xl font-black text-white mt-2">{{ skill.problemsSolved || 0 }}</p>
+                          <p class="text-[10px] font-mono text-noir-500 uppercase tracking-wider">Problems Solved</p>
+                          <p class="text-[10px] font-mono text-noir-500 mt-2">Rating: {{ skill.rating }}/5</p>
+                        </div>
+                      }
                     </div>
+                  } @else {
+                    <p class="text-xs font-mono text-noir-500">No language skills are available yet for this account.</p>
                   }
                 </div>
-              }
-            </div>
+
+                <div class="noir-card p-6 flex flex-col justify-center border-l-4 border-crimson-500">
+                  <p class="text-[10px] font-mono uppercase tracking-widest text-noir-500">Recently Solved</p>
+                  <p class="text-5xl font-black text-white leading-none mt-2">{{ codexSolvedCount() }}</p>
+                  <p class="text-[10px] font-mono uppercase tracking-widest text-noir-500 mt-2">Accepted Algorithms (LeetCode)</p>
+                </div>
+              </div>
+
+              <div class="noir-card p-6 mb-8">
+                <div class="flex items-center justify-between mb-4">
+                  <h3 class="text-lg font-black uppercase tracking-widest text-noir-200">Algorithm Mastery</h3>
+                  <span class="text-[10px] font-mono uppercase tracking-widest text-noir-500">Solved / Total per tag</span>
+                </div>
+                @if (algorithmMastery().length > 0) {
+                  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    @for (mastery of algorithmMastery(); track mastery.tagSlug) {
+                      <div class="border border-noir-800 rounded p-4 bg-black/40">
+                        <div class="flex items-start justify-between gap-3">
+                          <p class="text-xs font-bold uppercase tracking-widest text-noir-200">{{ mastery.tagName }}</p>
+                          <span class="text-[9px] font-mono uppercase tracking-widest text-noir-500">{{ mastery.level }}</span>
+                        </div>
+                        <div class="mt-3 flex items-end gap-2">
+                          <p class="text-2xl font-black text-white leading-none">{{ mastery.masteryPercent | number:'1.0-2' }}%</p>
+                          <span class="text-[10px] font-mono uppercase tracking-widest text-noir-500 pb-0.5">{{ mastery.masteryBand }}</span>
+                        </div>
+                        <p class="text-[10px] font-mono text-noir-500 mt-1">{{ mastery.problemsSolved }} / {{ mastery.totalQuestions || 0 }} questions</p>
+                        <div class="h-1.5 w-full bg-noir-900 rounded-full overflow-hidden mt-3">
+                          <div class="h-full bg-crimson-600" [style.width.%]="mastery.masteryPercent"></div>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                } @else {
+                  <p class="text-xs font-mono text-noir-500">Mastery data is not available yet for this profile.</p>
+                }
+              </div>
+
+              <div class="flex flex-wrap items-center gap-3 mb-4">
+                <button
+                  class="text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 border transition-colors"
+                  [class.border-crimson-500]="codexQuestionFilter() === 'ALL'"
+                  [class.text-crimson-400]="codexQuestionFilter() === 'ALL'"
+                  [class.border-noir-700]="codexQuestionFilter() !== 'ALL'"
+                  [class.text-noir-400]="codexQuestionFilter() !== 'ALL'"
+                  (click)="setCodexQuestionFilter('ALL')"
+                >
+                  All ({{ techniques().length }})
+                </button>
+                <button
+                  class="text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 border transition-colors"
+                  [class.border-crimson-500]="codexQuestionFilter() === 'SOLVED'"
+                  [class.text-crimson-400]="codexQuestionFilter() === 'SOLVED'"
+                  [class.border-noir-700]="codexQuestionFilter() !== 'SOLVED'"
+                  [class.text-noir-400]="codexQuestionFilter() !== 'SOLVED'"
+                  (click)="setCodexQuestionFilter('SOLVED')"
+                >
+                  Solved ({{ solvedTechniqueCount() }})
+                </button>
+                <button
+                  class="text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 border transition-colors"
+                  [class.border-crimson-500]="codexQuestionFilter() === 'UNSOLVED'"
+                  [class.text-crimson-400]="codexQuestionFilter() === 'UNSOLVED'"
+                  [class.border-noir-700]="codexQuestionFilter() !== 'UNSOLVED'"
+                  [class.text-noir-400]="codexQuestionFilter() !== 'UNSOLVED'"
+                  (click)="setCodexQuestionFilter('UNSOLVED')"
+                >
+                  Unsolved ({{ unsolvedTechniqueCount() }})
+                </button>
+
+                <div class="ml-auto flex items-center gap-2">
+                  <span class="text-[10px] font-mono uppercase tracking-widest text-noir-500">Language</span>
+                  <select
+                    class="bg-noir-900 border border-noir-700 text-noir-200 text-[10px] font-mono uppercase tracking-widest px-2 py-1.5 focus:border-crimson-500 focus:outline-none"
+                    [value]="codexLanguageFilter()"
+                    (change)="onCodexLanguageFilterChange($event)"
+                  >
+                    @for (language of availableCodexLanguages(); track language) {
+                      <option [value]="language">{{ language === 'ALL' ? 'All Languages' : language }}</option>
+                    }
+                  </select>
+                </div>
+              </div>
+
+              <p class="text-[10px] font-mono text-noir-600 mb-4">Solved/unsolved filter is based on LeetCode accepted-submission visibility for your profile.</p>
+
+              <div class="space-y-4 max-w-5xl">
+                @if (filteredTechniques().length === 0) {
+                  <div class="noir-card p-6 text-xs font-mono text-noir-500">
+                    No questions match this filter yet.
+                  </div>
+                }
+
+                @for (tech of filteredTechniques(); track tech.name; let i = $index) {
+                  <div class="noir-card overflow-hidden group">
+                    <button
+                      class="w-full flex items-center justify-between p-6 text-left hover:bg-noir-900 transition-colors"
+                      (click)="toggleTechnique(i)"
+                    >
+                      <div class="flex items-center gap-6">
+                        <span class="text-xs font-mono text-noir-700 w-6">0{{ i + 1 }}</span>
+                        <div>
+                          <h3 class="text-xl font-black uppercase tracking-tighter text-noir-100 group-hover:text-crimson-500 transition-colors">
+                            {{ tech.name }}
+                          </h3>
+                          <span class="text-[10px] font-mono text-noir-500 uppercase tracking-widest mt-1 block">{{ tech.pattern }}</span>
+                        </div>
+                      </div>
+
+                      <div class="flex items-center gap-2 md:gap-4">
+                        <span
+                          class="text-[9px] font-bold uppercase tracking-widest px-2.5 py-1 border rounded-sm"
+                          [class.text-emerald-500]="tech.solvedRecently"
+                          [class.border-emerald-500/30]="tech.solvedRecently"
+                          [class.text-noir-400]="!tech.solvedRecently"
+                          [class.border-noir-700]="!tech.solvedRecently"
+                        >
+                          {{ tech.solvedRecently ? 'Solved' : 'Pending' }}
+                        </span>
+                        @if (tech.solvedRecently && tech.dominantLanguage) {
+                          <span class="text-[9px] font-bold uppercase tracking-widest px-3 py-1 border rounded-sm text-blue-400 border-blue-500/30">
+                            {{ tech.dominantLanguage }}
+                          </span>
+                        }
+                        <span
+                          class="text-[9px] font-bold uppercase tracking-widest px-3 py-1 border rounded-sm"
+                          [class.text-emerald-500]="tech.difficulty === 'Initiate'"
+                          [class.border-emerald-500/30]="tech.difficulty === 'Initiate'"
+                          [class.text-yellow-500]="tech.difficulty === 'Adept'"
+                          [class.border-yellow-500/30]="tech.difficulty === 'Adept'"
+                          [class.text-crimson-500]="tech.difficulty === 'Master'"
+                          [class.border-crimson-500/30]="tech.difficulty === 'Master'"
+                        >
+                          {{ tech.difficulty }}
+                        </span>
+                        <lucide-icon
+                          [name]="expandedTechnique() === i ? 'ChevronUp' : 'ChevronDown'"
+                          class="w-5 h-5 text-noir-600 transition-transform duration-300"
+                          [class.rotate-180]="expandedTechnique() === i"
+                        ></lucide-icon>
+                      </div>
+                    </button>
+
+                    @if (expandedTechnique() === i) {
+                      <div class="border-t border-noir-800 bg-black/50 p-8 space-y-6 animate-fade-in">
+                        <p class="text-sm text-noir-300 font-mono leading-relaxed max-w-3xl">{{ tech.description }}</p>
+                        @if (tech.solvedRecently && tech.dominantLanguage) {
+                          <p class="text-[11px] font-mono uppercase tracking-widest text-noir-400">
+                            Mostly solved in {{ tech.dominantLanguage }} ({{ tech.dominantLanguageSharePercent | number:'1.0-0' }}% of recent accepted submissions for this problem)
+                          </p>
+                        }
+                        @if (tech.tags.length > 0) {
+                          <div class="flex flex-wrap gap-2">
+                            @for (tag of tech.tags; track tag) {
+                              <span class="text-[10px] font-mono uppercase tracking-widest text-noir-300 border border-noir-700 px-2 py-1 rounded">{{ tag }}</span>
+                            }
+                          </div>
+                        }
+                        @if (tech.url) {
+                          <a [href]="tech.url" target="_blank" class="inline-flex items-center gap-2 text-xs font-mono uppercase tracking-widest text-crimson-400 hover:text-crimson-300 transition-colors">
+                            <lucide-icon name="ExternalLink" class="w-4 h-4"></lucide-icon>
+                            Open on LeetCode
+                          </a>
+                        }
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+            }
           </section>
         }
 
@@ -544,32 +718,72 @@ export class ArsenalComponent implements OnInit {
 
   unlockedCount = signal(0); // Computed in effect or update
 
-  techniques = signal<Technique[]>([
-    {
-      name: 'Sliding Window',
-      pattern: 'Two Pointer / Window',
-      difficulty: 'Adept',
-      description: 'Maintain a dynamic window over a sequence to find subarrays/substrings satisfying a condition. Shrink from left, expand from right.',
-      snippet: `function maxSubarraySum(arr, k) {\n  let maxSum = 0, windowSum = 0;\n  for (let i = 0; i < arr.length; i++) {\n    windowSum += arr[i];\n    if (i >= k - 1) {\n      maxSum = Math.max(maxSum, windowSum);\n      windowSum -= arr[i - (k - 1)];\n    }\n  }\n  return maxSum;\n}`
-    },
-    {
-      name: 'Binary Search',
-      pattern: 'Divide & Conquer',
-      difficulty: 'Initiate',
-      description: 'Eliminate half the search space each iteration. Works on sorted arrays or monotonic functions. O(log n).',
-      snippet: `function binarySearch(arr, target) {\n  let lo = 0, hi = arr.length - 1;\n  while (lo <= hi) {\n    const mid = Math.floor((lo + hi) / 2);\n    if (arr[mid] === target) return mid;\n    if (arr[mid] < target) lo = mid + 1;\n    else hi = mid - 1;\n  }\n  return -1;\n}`
-    },
-    {
-      name: 'Backtracking',
-      pattern: 'Recursion / DFS',
-      difficulty: 'Master',
-      description: 'Explore all possible paths by building candidates incrementally and abandoning ("backtracking") when a constraint is violated.',
-      snippet: `function permute(nums) {\n  const result = [];\n  function backtrack(path, remaining) {\n    if (remaining.length === 0) {\n      result.push([...path]);\n      return;\n    }\n    for (let i = 0; i < remaining.length; i++) {\n      path.push(remaining[i]);\n      backtrack(path, [...remaining.slice(0,i), ...remaining.slice(i+1)]);\n      path.pop();\n    }\n  }\n  backtrack([], nums);\n  return result;\n}`
+  techniques = signal<Technique[]>([]);
+  codexSkills = signal<LanguageSkill[]>([]);
+  codexSolvedCount = signal(0);
+  codexLoadError = signal<string | null>(null);
+  codexLoading = signal(false);
+  codexQuestionFilter = signal<'ALL' | 'SOLVED' | 'UNSOLVED'>('ALL');
+  codexLanguageFilter = signal<string>('ALL');
+  algorithmMastery = signal<AlgorithmMastery[]>([]);
+  private readonly languagePalette = [
+    '#dc2626', // red
+    '#2563eb', // blue
+    '#d97706', // amber
+    '#059669', // emerald
+    '#7c3aed', // violet
+    '#0d9488', // teal
+    '#c026d3', // fuchsia
+    '#ea580c', // orange
+    '#4f46e5', // indigo
+    '#ca8a04'  // yellow
+  ];
+  filteredTechniques = computed(() => {
+    const filter = this.codexQuestionFilter();
+    const language = this.codexLanguageFilter();
+    const items = this.techniques();
+    let statusFiltered = items;
+    if (filter === 'SOLVED') {
+      statusFiltered = items.filter((item) => item.solvedRecently);
+    } else if (filter === 'UNSOLVED') {
+      statusFiltered = items.filter((item) => !item.solvedRecently);
     }
-  ]);
+
+    if (language === 'ALL') {
+      return statusFiltered;
+    }
+
+    return statusFiltered.filter((item) => item.dominantLanguage === language);
+  });
+  availableCodexLanguages = computed(() => {
+    const set = new Set<string>();
+    for (const item of this.techniques()) {
+      if (item.dominantLanguage) {
+        set.add(item.dominantLanguage);
+      }
+    }
+    return ['ALL', ...Array.from(set).sort((a, b) => a.localeCompare(b))];
+  });
+  solvedTechniqueCount = computed(() => this.techniques().filter((item) => item.solvedRecently).length);
+  unsolvedTechniqueCount = computed(() => this.techniques().filter((item) => !item.solvedRecently).length);
 
   toggleTechnique(index: number) {
     this.expandedTechnique.update(current => current === index ? null : index);
+  }
+
+  setCodexQuestionFilter(filter: 'ALL' | 'SOLVED' | 'UNSOLVED') {
+    this.codexQuestionFilter.set(filter);
+    this.expandedTechnique.set(null);
+  }
+
+  setCodexLanguageFilter(language: string) {
+    this.codexLanguageFilter.set(language || 'ALL');
+    this.expandedTechnique.set(null);
+  }
+
+  onCodexLanguageFilterChange(event: Event) {
+    const select = event.target as HTMLSelectElement | null;
+    this.setCodexLanguageFilter(select?.value ?? 'ALL');
   }
 
   http = inject(HttpClient);
@@ -707,9 +921,266 @@ export class ArsenalComponent implements OnInit {
       }
     });
   }
+
+  fetchCodexData() {
+    this.codexLoading.set(true);
+    this.codexLoadError.set(null);
+    this.expandedTechnique.set(null);
+
+    forkJoin({
+      stats: this.http.get<any>('/api/students/me/leetcode-stats').pipe(
+        catchError((err) => {
+          this.handleCodexLoadError(err);
+          return of({});
+        })
+      ),
+      skills: this.http.get<LanguageSkill[]>('/api/students/me/language-skills').pipe(
+        catchError((err) => {
+          this.handleCodexLoadError(err);
+          return of([]);
+        })
+      ),
+      questions: this.http.get<CommonQuestion[]>('/api/students/me/common-questions').pipe(
+        catchError((err) => {
+          this.handleCodexLoadError(err);
+          return of([]);
+        })
+      )
+    }).subscribe({
+      next: ({ stats, skills, questions }) => {
+        const recentlySolvedTitles = this.extractRecentlySolvedTitles(stats);
+        const solvedLanguageByTitle = this.extractSolvedLanguageByTitle(stats);
+        const allQuestions = Array.isArray(questions) ? questions : [];
+        const totalSolved = Number(stats?.totalSolved ?? stats?.allSolved ?? 0);
+        const mappedTechniques = allQuestions
+          .map((question) => this.toTechnique(question, recentlySolvedTitles, solvedLanguageByTitle))
+          .filter((technique): technique is Technique => technique !== null)
+          .sort((a, b) => {
+            if (a.solvedRecently !== b.solvedRecently) {
+              return Number(b.solvedRecently) - Number(a.solvedRecently);
+            }
+            return b.recommendationScore - a.recommendationScore;
+          });
+
+        const languageSkills = (Array.isArray(skills) ? skills : []).sort(
+          (a, b) => (b.problemsSolved || 0) - (a.problemsSolved || 0)
+        );
+        const mastery = this.normalizeAlgorithmMastery(stats?.algorithmMastery);
+        const solvedInDisplayedSet = mappedTechniques.filter((technique) => technique.solvedRecently).length;
+
+        this.techniques.set(mappedTechniques);
+        this.codexSkills.set(languageSkills);
+        this.algorithmMastery.set(mastery);
+        this.codexSolvedCount.set(totalSolved > 0 ? totalSolved : solvedInDisplayedSet);
+        const activeLanguage = this.codexLanguageFilter();
+        if (activeLanguage !== 'ALL') {
+          const hasLanguage = mappedTechniques.some((technique) => technique.dominantLanguage === activeLanguage);
+          if (!hasLanguage) {
+            this.codexLanguageFilter.set('ALL');
+          }
+        }
+        this.codexLoading.set(false);
+      },
+      error: (err) => {
+        console.error('Failed to fetch Codex data', err);
+        if (!this.codexLoadError()) {
+          this.codexLoadError.set('Could not load Codex data right now. Please try again shortly.');
+        }
+        this.techniques.set([]);
+        this.codexSkills.set([]);
+        this.algorithmMastery.set([]);
+        this.codexSolvedCount.set(0);
+        this.codexLoading.set(false);
+      }
+    });
+  }
+
+  private handleCodexLoadError(err: any) {
+    console.error('Codex request failed', err);
+    if (this.codexLoadError()) {
+      return;
+    }
+
+    if (err?.status === 401 || err?.status === 403) {
+      this.codexLoadError.set('Codex data is unavailable for this session. Please log in again if this continues.');
+      return;
+    }
+
+    this.codexLoadError.set('Could not load Codex data right now. Please try again shortly.');
+  }
+
+  private extractRecentlySolvedTitles(stats: any): Set<string> {
+    const titles = new Set<string>();
+    const submissions = Array.isArray(stats?.recentAcSubmissions)
+      ? (stats.recentAcSubmissions as RecentAcSubmission[])
+      : [];
+
+    submissions.forEach((submission) => {
+      const title = typeof submission?.title === 'string' ? submission.title.trim().toLowerCase() : '';
+      if (title) {
+        titles.add(title);
+      }
+    });
+
+    return titles;
+  }
+
+  private extractSolvedLanguageByTitle(stats: any): Map<string, { language: string; submissions: number; sharePercent: number }> {
+    const result = new Map<string, { language: string; submissions: number; sharePercent: number }>();
+    const submissions = Array.isArray(stats?.recentAcSubmissions)
+      ? (stats.recentAcSubmissions as RecentAcSubmission[])
+      : [];
+
+    const countByTitle = new Map<string, Map<string, number>>();
+    for (const submission of submissions) {
+      const title = typeof submission?.title === 'string' ? submission.title.trim().toLowerCase() : '';
+      if (!title) {
+        continue;
+      }
+
+      const language = typeof submission?.langName === 'string' && submission.langName.trim()
+        ? submission.langName.trim()
+        : (typeof submission?.lang === 'string' && submission.lang.trim() ? submission.lang.trim() : 'Unknown');
+
+      const languageMap = countByTitle.get(title) ?? new Map<string, number>();
+      languageMap.set(language, (languageMap.get(language) ?? 0) + 1);
+      countByTitle.set(title, languageMap);
+    }
+
+    for (const [title, languageMap] of countByTitle.entries()) {
+      let dominantLanguage = '';
+      let dominantCount = 0;
+      let totalCount = 0;
+      for (const [language, count] of languageMap.entries()) {
+        totalCount += count;
+        if (count > dominantCount) {
+          dominantLanguage = language;
+          dominantCount = count;
+        }
+      }
+
+      if (!dominantLanguage || totalCount <= 0) {
+        continue;
+      }
+
+      result.set(title, {
+        language: dominantLanguage,
+        submissions: dominantCount,
+        sharePercent: Math.round((dominantCount * 10000) / totalCount) / 100
+      });
+    }
+
+    return result;
+  }
+
+  private normalizeAlgorithmMastery(payload: any): AlgorithmMastery[] {
+    if (!Array.isArray(payload)) {
+      return [];
+    }
+
+    return payload
+      .map((entry): AlgorithmMastery | null => {
+        const tagName = typeof entry?.tagName === 'string' ? entry.tagName : '';
+        const tagSlug = typeof entry?.tagSlug === 'string' ? entry.tagSlug : '';
+        if (!tagName || !tagSlug) {
+          return null;
+        }
+
+        const problemsSolved = Number(entry?.problemsSolved ?? 0);
+        const totalQuestions = Number(entry?.totalQuestions ?? 0);
+        const masteryPercentRaw = Number(entry?.masteryPercent ?? 0);
+        const masteryPercent = Number.isFinite(masteryPercentRaw) ? Math.max(0, Math.min(100, masteryPercentRaw)) : 0;
+
+        return {
+          tagName,
+          tagSlug,
+          level: typeof entry?.level === 'string' ? entry.level : 'Unknown',
+          problemsSolved: Number.isFinite(problemsSolved) ? problemsSolved : 0,
+          totalQuestions: Number.isFinite(totalQuestions) ? totalQuestions : 0,
+          masteryPercent,
+          masteryBand: typeof entry?.masteryBand === 'string' ? entry.masteryBand : 'Unstarted'
+        };
+      })
+      .filter((entry): entry is AlgorithmMastery => entry !== null)
+      .sort((a, b) => {
+        if (a.masteryPercent !== b.masteryPercent) {
+          return b.masteryPercent - a.masteryPercent;
+        }
+        return b.problemsSolved - a.problemsSolved;
+      });
+  }
+
+  private toTechnique(
+    question: CommonQuestion,
+    recentlySolvedTitles: Set<string>,
+    solvedLanguageByTitle: Map<string, { language: string; submissions: number; sharePercent: number }>
+  ): Technique | null {
+    const rawName = typeof question?.title === 'string' ? question.title.trim() : '';
+    if (!rawName) {
+      return null;
+    }
+
+    const normalizedName = rawName.toLowerCase();
+    const tags = Array.isArray(question?.tags) ? question.tags.map((tag) => String(tag)) : [];
+    const matchedTags = Array.isArray(question?.matchedTags) ? question.matchedTags.map((tag) => String(tag)) : [];
+    const solvedRecently = recentlySolvedTitles.has(normalizedName);
+    const languageInsight = solvedLanguageByTitle.get(normalizedName);
+    const recommendationScore = Number(question?.recommendationScore ?? 0);
+    const recommended = question?.recommended === true;
+    const labelTags = matchedTags.length > 0 ? matchedTags : tags;
+    const pattern = labelTags.length > 0 ? labelTags.slice(0, 3).join(' / ') : 'general-problem-solving';
+    const recommendationHint = recommended
+      ? 'Recommended from your current LeetCode skill profile.'
+      : 'Included in your personalized algorithm set.';
+    const solvedHint = solvedRecently
+      ? 'Recently solved by your account.'
+      : 'Not found in your recent accepted submissions.';
+    const languageHint = solvedRecently && languageInsight?.language
+      ? ` Mostly solved in ${languageInsight.language}.`
+      : '';
+
+    return {
+      name: rawName,
+      pattern,
+      difficulty: this.toCodexDifficulty(question?.difficulty),
+      description: `${recommendationHint} ${solvedHint}${languageHint}`,
+      url: typeof question?.url === 'string' ? question.url : '',
+      tags,
+      solvedRecently,
+      dominantLanguage: languageInsight?.language ?? '',
+      dominantLanguageSharePercent: languageInsight?.sharePercent ?? 0,
+      recommendationScore
+    };
+  }
+
+  languageColor(name: string, index: number): string {
+    const safeName = (name || '').trim();
+    if (!safeName) {
+      return '#52525b';
+    }
+
+    let hash = 0;
+    for (let i = 0; i < safeName.length; i++) {
+      hash = ((hash << 5) - hash) + safeName.charCodeAt(i);
+      hash |= 0;
+    }
+    const normalized = Math.abs(hash + index);
+    return this.languagePalette[normalized % this.languagePalette.length];
+  }
+
+  private toCodexDifficulty(difficulty?: string): 'Initiate' | 'Adept' | 'Master' {
+    const value = (difficulty || '').toLowerCase();
+    if (value.includes('easy')) {
+      return 'Initiate';
+    }
+    if (value.includes('hard')) {
+      return 'Master';
+    }
+    return 'Adept';
+  }
   
   updateMedals(stats: any) {
-    const totalSolved = stats.totalSolved || 0;
+    const totalSolved = stats.totalSolved ?? stats.allSolved ?? 0;
     const hardSolved = stats.hardSolved || 0;
     // const ranking = stats.ranking || 999999; 
 
@@ -731,6 +1202,7 @@ export class ArsenalComponent implements OnInit {
   checkMedals() {
     this.fetchWeapons();
     this.fetchLeetCodeStats();
+    this.fetchCodexData();
   }
   
   startMedalCheckTimer() {

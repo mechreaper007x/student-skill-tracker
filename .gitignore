@@ -39,9 +39,11 @@ gha-creds-*.json
 *.mv.db
 *.trace.db
 skilltrackerdb.mv.db
+skilltrackerdb.lock.db
 
 # Secrets and sensitive configs
 src/main/resources/application.properties
+src/main/resources/application-prod.properties
 
 # AI Agent directory
 .agent/

@@ -216,6 +216,30 @@ public class StudentController {
                 .orElse(ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
     }
 
+    @GetMapping("/me/common-questions")
+    public ResponseEntity<?> getMyCommonQuestions() {
+        Optional<Student> studentOpt = getCurrentStudentFromContext();
+        if (studentOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Not authenticated"));
+        }
+
+        Student student = studentOpt.get();
+        List<Map<String, Object>> questions = commonQuestionsService.getCommonQuestionsForStudent(student.getId());
+        return ResponseEntity.ok(personalizeQuestionsForStudent(student, questions));
+    }
+
+    @GetMapping("/me/trending-questions")
+    public ResponseEntity<?> getMyTrendingQuestions() {
+        Optional<Student> studentOpt = getCurrentStudentFromContext();
+        if (studentOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Not authenticated"));
+        }
+
+        Student student = studentOpt.get();
+        List<Map<String, Object>> questions = commonQuestionsService.getTrendingQuestionsForStudent(student.getId());
+        return ResponseEntity.ok(personalizeQuestionsForStudent(student, questions));
+    }
+
     @GetMapping("/me/github-repos/{repoName}/languages")
     public ResponseEntity<?> getRepoLanguages(@PathVariable String repoName) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -284,23 +308,9 @@ public class StudentController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(resp);
         }
 
+        Student student = studentOpt.get();
         List<Map<String, Object>> questions = commonQuestionsService.getCommonQuestionsForStudent(id);
-
-        Optional<SkillData> skillDataOpt = skillDataRepository.findByStudent(studentOpt.get());
-        SkillData skillData;
-        if (skillDataOpt.isEmpty()) {
-            Student student = studentOpt.get();
-            skillService.updateSkillData(student);
-            skillService.updateLanguageSkills(student);
-            skillData = new SkillData(); // Temporary empty data while update happens
-            skillData.setStudent(student);
-        } else {
-            skillData = skillDataOpt.get();
-        }
-
-        List<Map<String, Object>> personalized = commonQuestionsService.personalizeQuestions(questions, skillData,
-                getTopPriority(skillData));
-        return ResponseEntity.ok(personalized);
+        return ResponseEntity.ok(personalizeQuestionsForStudent(student, questions));
     }
 
     private String getTopPriority(SkillData sd) {
@@ -333,23 +343,9 @@ public class StudentController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(resp);
         }
 
-        List<Map<String, Object>> tquestions = commonQuestionsService.getTrendingQuestionsForStudent(id);
-
-        Optional<SkillData> skillDataOpt2 = skillDataRepository.findByStudent(studentOpt.get());
-        SkillData skillData2;
-        if (skillDataOpt2.isEmpty()) {
-            Student student = studentOpt.get();
-            skillService.updateSkillData(student);
-            skillService.updateLanguageSkills(student);
-            skillData2 = new SkillData(); // Temporary empty data while update happens
-            skillData2.setStudent(student);
-        } else {
-            skillData2 = skillDataOpt2.get();
-        }
-
-        List<Map<String, Object>> personalizedTrending = commonQuestionsService.personalizeQuestions(tquestions,
-                skillData2, getTopPriority(skillData2));
-        return ResponseEntity.ok(personalizedTrending);
+        Student student = studentOpt.get();
+        List<Map<String, Object>> questions = commonQuestionsService.getTrendingQuestionsForStudent(id);
+        return ResponseEntity.ok(personalizeQuestionsForStudent(student, questions));
     }
 
     @GetMapping("/refresh/{id}")
@@ -490,5 +486,29 @@ public class StudentController {
         if (score >= 2500)
             return "Code Warrior";
         return "Novice Seeker";
+    }
+
+    private Optional<Student> getCurrentStudentFromContext() {
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        String email = authentication != null ? authentication.getName() : null;
+        if (email == null || "anonymousUser".equals(email)) {
+            return Optional.empty();
+        }
+        return studentRepository.findByEmailIgnoreCase(email);
+    }
+
+    private List<Map<String, Object>> personalizeQuestionsForStudent(Student student, List<Map<String, Object>> questions) {
+        Optional<SkillData> skillDataOpt = skillDataRepository.findByStudent(student);
+        SkillData skillData;
+        if (skillDataOpt.isEmpty()) {
+            skillService.updateSkillData(student);
+            skillService.updateLanguageSkills(student);
+            skillData = new SkillData();
+            skillData.setStudent(student);
+        } else {
+            skillData = skillDataOpt.get();
+        }
+
+        return commonQuestionsService.personalizeQuestions(questions, skillData, getTopPriority(skillData));
     }
 }
