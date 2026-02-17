@@ -12,31 +12,42 @@ const browserDistFolder = join(import.meta.dirname, '../browser');
 const app = express();
 const angularApp = new AngularNodeAppEngine();
 
-// Backend URL from environment or default to local for development
-const BACKEND_URL = process.env['BACKEND_URL'] || 'http://localhost:8082';
+// Normalize host-only values (like Render fromService host) into absolute URLs.
+const rawBackendUrl = (process.env['BACKEND_URL'] || 'http://localhost:8082').trim();
+const BACKEND_URL = (
+  rawBackendUrl.startsWith('http://') || rawBackendUrl.startsWith('https://')
+    ? rawBackendUrl
+    : `http://${rawBackendUrl}`
+).replace(/\/+$/, '');
 
 /**
  * Proxy /api requests to the Spring Boot backend
  */
-app.use('/api', (req, res) => {
+app.use('/api', async (req, res) => {
   const targetUrl = `${BACKEND_URL}/api${req.url}`;
-  
-  // Basic manual proxy for Express
-  fetch(targetUrl, {
+  const headers = { ...req.headers } as Record<string, string | string[] | undefined>;
+  delete headers['host'];
+
+  const requestInit: RequestInit & { duplex?: 'half' } = {
     method: req.method,
-    headers: req.headers as any,
-    body: req.method !== 'GET' && req.method !== 'HEAD' ? (req as any).body : undefined,
-  })
-    .then(async (backendRes) => {
-      res.status(backendRes.status);
-      backendRes.headers.forEach((value, key) => res.header(key, value));
-      const data = await backendRes.arrayBuffer();
-      res.send(Buffer.from(data));
-    })
-    .catch((err) => {
-      console.error('Proxy error:', err);
-      res.status(502).send('Internal Backend Error');
-    });
+    headers: headers as HeadersInit,
+  };
+
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
+    requestInit.body = req as unknown as BodyInit;
+    requestInit.duplex = 'half';
+  }
+
+  try {
+    const backendRes = await fetch(targetUrl, requestInit);
+    res.status(backendRes.status);
+    backendRes.headers.forEach((value, key) => res.header(key, value));
+    const data = await backendRes.arrayBuffer();
+    res.send(Buffer.from(data));
+  } catch (err) {
+    console.error('Proxy error:', err);
+    res.status(502).send('Internal Backend Error');
+  }
 });
 
 /**

@@ -63,6 +63,7 @@ public class SecurityConfig {
                                                                 "/forgot-password.html", "/reset-password.html",
                                                                 "/api/auth/forgot-password", "/api/auth/reset-password",
                                                                 "/error",
+                                                                "/actuator/health", "/actuator/health/**",
                                                                 "/css/**", "/js/**", "/images/**",
                                                                 "/index.html", "/favicon.ico", "/*.js", "/*.css",
                                                                 "/assets/**")
