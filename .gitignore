@@ -1,0 +1,54 @@
+HELP.md
+target/
+.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### VS Code ###
+.vscode/
+
+.gemini/
+gha-creds-*.json
+
+# H2 Database files
+*.mv.db
+*.trace.db
+skilltrackerdb.mv.db
+skilltrackerdb.lock.db
+
+# Secrets and sensitive configs
+src/main/resources/application.properties
+src/main/resources/application-prod.properties
+
+# AI Agent directory
+.agent/
+
+# Temporary logs
+tmp_backend_*.log
+*.err.log
+*.out.log

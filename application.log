@@ -1,0 +1,77 @@
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::               (v3.4.11)
+
+2026-02-19T04:33:53.436+05:30  INFO 19980 --- [student-skill-tracker] [           main] c.s.s.StudentSkillTrackerApplication     : Starting StudentSkillTrackerApplication v0.0.1-SNAPSHOT using Java 25.0.2 with PID 19980 (C:\Users\nchou\Desktop\major_project\student-skill-tracker-main\target\student-skill-tracker-0.0.1-SNAPSHOT.jar started by nchou in C:\Users\nchou\Desktop\major_project\student-skill-tracker-main)
+2026-02-19T04:33:53.440+05:30 DEBUG 19980 --- [student-skill-tracker] [           main] c.s.s.StudentSkillTrackerApplication     : Running with Spring Boot v3.4.11, Spring v6.2.12
+2026-02-19T04:33:53.443+05:30  INFO 19980 --- [student-skill-tracker] [           main] c.s.s.StudentSkillTrackerApplication     : No active profile set, falling back to 1 default profile: "default"
+2026-02-19T04:33:54.461+05:30  INFO 19980 --- [student-skill-tracker] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-02-19T04:33:54.521+05:30  INFO 19980 --- [student-skill-tracker] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 52 ms. Found 4 JPA repository interfaces.
+2026-02-19T04:33:55.128+05:30  INFO 19980 --- [student-skill-tracker] [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 8080 (http)
+2026-02-19T04:33:55.147+05:30  INFO 19980 --- [student-skill-tracker] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-02-19T04:33:55.147+05:30  INFO 19980 --- [student-skill-tracker] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.48]
+2026-02-19T04:33:55.212+05:30  INFO 19980 --- [student-skill-tracker] [           main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2026-02-19T04:33:55.213+05:30  INFO 19980 --- [student-skill-tracker] [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 1676 ms
+2026-02-19T04:33:55.624+05:30  INFO 19980 --- [student-skill-tracker] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-02-19T04:33:55.842+05:30  INFO 19980 --- [student-skill-tracker] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection conn0: url=jdbc:h2:mem:testdb user=SA
+2026-02-19T04:33:55.843+05:30  INFO 19980 --- [student-skill-tracker] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-02-19T04:33:55.919+05:30  INFO 19980 --- [student-skill-tracker] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:h2:mem:testdb (H2 2.3)
+2026-02-19T04:33:55.926+05:30  WARN 19980 --- [student-skill-tracker] [           main] o.f.c.internal.database.base.Database    : Flyway upgrade recommended: H2 2.3.232 is newer than this version of Flyway and support has not been tested. The latest supported version of H2 is 2.2.224.
+2026-02-19T04:33:55.944+05:30  INFO 19980 --- [student-skill-tracker] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Schema history table "PUBLIC"."flyway_schema_history" does not exist yet
+2026-02-19T04:33:55.946+05:30  INFO 19980 --- [student-skill-tracker] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 0 migrations (execution time 00:00.007s)
+2026-02-19T04:33:55.946+05:30  WARN 19980 --- [student-skill-tracker] [           main] o.f.core.internal.command.DbValidate     : No migrations found. Are your locations set up correctly?
+2026-02-19T04:33:55.956+05:30  INFO 19980 --- [student-skill-tracker] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Creating Schema History table "PUBLIC"."flyway_schema_history" ...
+2026-02-19T04:33:56.004+05:30  INFO 19980 --- [student-skill-tracker] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema "PUBLIC": << Empty Schema >>
+2026-02-19T04:33:56.010+05:30  INFO 19980 --- [student-skill-tracker] [           main] o.f.core.internal.command.DbMigrate      : Schema "PUBLIC" is up to date. No migration necessary.
+2026-02-19T04:33:56.185+05:30  INFO 19980 --- [student-skill-tracker] [           main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2026-02-19T04:33:56.245+05:30  INFO 19980 --- [student-skill-tracker] [           main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.6.33.Final
+2026-02-19T04:33:56.291+05:30  INFO 19980 --- [student-skill-tracker] [           main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2026-02-19T04:33:56.562+05:30  INFO 19980 --- [student-skill-tracker] [           main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-02-19T04:33:56.619+05:30  WARN 19980 --- [student-skill-tracker] [           main] org.hibernate.orm.deprecation            : HHH90000025: H2Dialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+2026-02-19T04:33:56.629+05:30  INFO 19980 --- [student-skill-tracker] [           main] org.hibernate.orm.connections.pooling    : HHH10001005: Database info:
+	Database JDBC URL [Connecting through datasource 'HikariDataSource (HikariPool-1)']
+	Database driver: undefined/unknown
+	Database version: 2.3.232
+	Autocommit mode: undefined/unknown
+	Isolation level: undefined/unknown
+	Minimum pool size: undefined/unknown
+	Maximum pool size: undefined/unknown
+2026-02-19T04:33:57.291+05:30  INFO 19980 --- [student-skill-tracker] [           main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2026-02-19T04:33:57.324+05:30  INFO 19980 --- [student-skill-tracker] [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-02-19T04:33:57.624+05:30 DEBUG 19980 --- [student-skill-tracker] [           main] c.s.s.security.JwtAuthenticationFilter   : Filter 'jwtAuthenticationFilter' configured for use
+2026-02-19T04:33:57.724+05:30  INFO 19980 --- [student-skill-tracker] [           main] c.s.s.service.CommonQuestionsService     : Loaded 500 common questions from resource
+2026-02-19T04:33:57.730+05:30  INFO 19980 --- [student-skill-tracker] [           main] c.s.s.service.CommonQuestionsService     : Loaded 500 trending questions from resource
+2026-02-19T04:33:57.734+05:30  INFO 19980 --- [student-skill-tracker] [           main] c.s.s.service.CommonQuestionsService     : Loaded 500 top tier questions from resource
+2026-02-19T04:33:57.787+05:30  INFO 19980 --- [student-skill-tracker] [           main] c.s.s.service.AiAdvisorService           : Loaded advice content from resource
+2026-02-19T04:33:57.854+05:30  INFO 19980 --- [student-skill-tracker] [           main] r$InitializeUserDetailsManagerConfigurer : Global AuthenticationManager configured with UserDetailsService bean with name userDetailsServiceImpl
+2026-02-19T04:33:57.936+05:30  INFO 19980 --- [student-skill-tracker] [           main] o.s.d.j.r.query.QueryEnhancerFactory     : Hibernate is in classpath; If applicable, HQL parser will be used.
+2026-02-19T04:33:58.180+05:30  WARN 19980 --- [student-skill-tracker] [           main] JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2026-02-19T04:33:58.461+05:30  INFO 19980 --- [student-skill-tracker] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 1 endpoint beneath base path '/actuator'
+2026-02-19T04:33:58.791+05:30  INFO 19980 --- [student-skill-tracker] [           main] o.s.b.a.h2.H2ConsoleAutoConfiguration    : H2 console available at '/h2-console'. Database available at 'jdbc:h2:mem:testdb'
+2026-02-19T04:33:58.849+05:30  WARN 19980 --- [student-skill-tracker] [           main] ConfigServletWebServerApplicationContext : Exception encountered during context initialization - cancelling refresh attempt: org.springframework.context.ApplicationContextException: Failed to start bean 'webServerStartStop'
+2026-02-19T04:33:58.852+05:30  INFO 19980 --- [student-skill-tracker] [           main] j.LocalContainerEntityManagerFactoryBean : Closing JPA EntityManagerFactory for persistence unit 'default'
+2026-02-19T04:33:58.858+05:30  INFO 19980 --- [student-skill-tracker] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown initiated...
+2026-02-19T04:33:58.861+05:30  INFO 19980 --- [student-skill-tracker] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown completed.
+2026-02-19T04:33:58.880+05:30  INFO 19980 --- [student-skill-tracker] [           main] .s.b.a.l.ConditionEvaluationReportLogger : 
+
+Error starting ApplicationContext. To display the condition evaluation report re-run your application with 'debug' enabled.
+2026-02-19T04:33:58.911+05:30 ERROR 19980 --- [student-skill-tracker] [           main] o.s.b.d.LoggingFailureAnalysisReporter   : 
+
+***************************
+APPLICATION FAILED TO START
+***************************
+
+Description:
+
+Web server failed to start. Port 8080 was already in use.
+
+Action:
+
+Identify and stop the process that's listening on port 8080 or configure this application to listen on another port.
+

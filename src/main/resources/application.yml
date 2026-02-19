@@ -1,0 +1,41 @@
+spring:
+  application:
+    name: student-skill-tracker
+  datasource:
+    url: jdbc:h2:mem:testdb
+    driverClassName: org.h2.Driver
+    username: sa
+    password: 
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+  h2:
+    console:
+      enabled: true
+
+server:
+  port: 8080
+
+jwt:
+  secret: your-super-secret-key-change-this-in-production
+  expiration: 86400000
+
+# SCORING CONFIGURATION (Required by SkillCalculator)
+scoring:
+  problem-solving:
+    divisor: 300
+  algorithms:
+    medium-weight: 1.0
+    hard-weight: 2.0
+    divisor: 100
+  data-structures:
+    easy-weight: 1.0
+    medium-weight: 1.5
+    divisor: 100
+
+logging:
+  level:
+    root: INFO
+    com.skilltracker: DEBUG
