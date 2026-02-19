@@ -53,7 +53,8 @@ public class AuthController {
                                                 "id", student.getId(),
                                                 "email", student.getEmail(),
                                                 "name", student.getName(),
-                                                "leetcodeUsername", student.getLeetcodeUsername())))
+                                                "leetcodeUsername", student.getLeetcodeUsername(),
+                                                "leetcodeSubmitConnected", student.hasLeetCodeSubmitAuth())))
                                 .orElse(ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED)
                                                 .body(Map.of("authenticated", false)));
         }
@@ -83,6 +84,7 @@ public class AuthController {
                                         .name(student.getName())
                                         .leetcodeUsername(student.getLeetcodeUsername())
                                         .githubUsername(student.getGithubUsername())
+                                        .leetcodeSubmitConnected(student.hasLeetCodeSubmitAuth())
                                         .build());
                 } catch (Exception e) {
                         System.out.println("DEBUG: Login failed for: " + email + " Error: " + e.getMessage());

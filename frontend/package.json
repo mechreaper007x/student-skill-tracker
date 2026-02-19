@@ -35,6 +35,8 @@
     "@ngrx/signals": "^21.0.1",
     "express": "^5.1.0",
     "lucide-angular": "^0.563.0",
+    "monaco-editor": "^0.55.1",
+    "ngx-monaco-editor-v2": "^21.1.4",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0"
   },

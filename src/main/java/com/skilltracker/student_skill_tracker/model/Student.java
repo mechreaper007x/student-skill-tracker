@@ -56,6 +56,14 @@ public class Student {
     @Column(name = "github_access_token")
     private String githubAccessToken;
 
+    @Column(name = "leetcode_session_enc", length = 4096)
+    @ToString.Exclude
+    private String leetcodeSessionEncrypted;
+
+    @Column(name = "leetcode_csrf_enc", length = 4096)
+    @ToString.Exclude
+    private String leetcodeCsrfTokenEncrypted;
+
     @Column(name = "ai_provider")
     private String aiProvider;
 
@@ -105,5 +113,10 @@ public class Student {
     public void levelUp() {
         this.level++;
         this.xp = 0;
+    }
+
+    public boolean hasLeetCodeSubmitAuth() {
+        return leetcodeSessionEncrypted != null && !leetcodeSessionEncrypted.isBlank()
+                && leetcodeCsrfTokenEncrypted != null && !leetcodeCsrfTokenEncrypted.isBlank();
     }
 }

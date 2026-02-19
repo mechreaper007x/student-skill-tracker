@@ -1,0 +1,10 @@
+:host {
+  display: block;
+  height: 100%;
+}
+
+/* Tab size and font for code */
+textarea {
+  tab-size: 4;
+  -moz-tab-size: 4;
+}

@@ -24,6 +24,9 @@ export class ShellComponent {
     { label: 'The Arena', icon: 'Trophy', route: '/leaderboard' },
     { label: 'The Rishi', icon: 'Brain', route: '/advisor' },
     { label: 'Arsenal', icon: 'Package', route: '/arsenal' },
+    { label: 'Proving Grounds', icon: 'Swords', route: '/proving-grounds' },
+    { label: 'Compiler', icon: 'Terminal', route: '/compiler' },
+    { label: 'Settings', icon: 'Settings', route: '/settings' },
   ];
 
   toggleSidebar() {

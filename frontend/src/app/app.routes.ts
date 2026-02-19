@@ -37,6 +37,23 @@ export const routes: Routes = [
         loadComponent: () => import('./arsenal/arsenal.component').then(m => m.ArsenalComponent)
       },
       {
+        path: 'proving-grounds',
+        loadComponent: () => import('./proving-grounds/proving-grounds.component').then(m => m.ProvingGroundsComponent)
+      },
+      {
+        path: 'compiler',
+        loadComponent: () => import('./battle-station/battle-station.component').then(m => m.BattleStationComponent)
+      },
+      {
+        path: 'settings',
+        loadComponent: () => import('./settings/settings.component').then(m => m.SettingsComponent)
+      },
+      {
+        path: 'battle-station',
+        redirectTo: 'compiler',
+        pathMatch: 'full'
+      },
+      {
         path: '',
         redirectTo: 'dashboard',
         pathMatch: 'full'

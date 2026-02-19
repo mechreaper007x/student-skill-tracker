@@ -1,0 +1,153 @@
+<div class="p-6 md:p-10 space-y-8 animate-reveal">
+  <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+    <div>
+      <p class="text-mono-technical mb-2">SECTOR_07 // SETTINGS</p>
+      <h1 class="text-3xl md:text-5xl text-display">
+        LEETCODE <span class="text-crimson-500">CONNECTION</span>
+      </h1>
+      <p class="text-noir-400 text-sm mt-2 max-w-2xl font-light">
+        Connect once here. Compiler will reuse this backend session for direct submissions.
+      </p>
+    </div>
+
+    <button
+      (click)="goToCompiler()"
+      class="px-5 py-3 text-[10px] font-black uppercase tracking-[0.2em] border border-noir-700 text-noir-300 hover:text-white hover:border-crimson-500 transition-all"
+    >
+      Back To Compiler
+    </button>
+  </div>
+
+  <div class="noir-card p-6 md:p-8 space-y-6">
+    <div class="flex items-center justify-between gap-4">
+      <div>
+        <p class="text-[9px] font-mono text-noir-500 uppercase tracking-widest">Connection Status</p>
+        <p class="text-sm mt-1 font-semibold" [class]="isConnected() ? 'text-emerald-400' : 'text-amber-400'">
+          {{ isConnected() ? 'Connected' : 'Not connected' }}
+        </p>
+      </div>
+      <button
+        (click)="loadStatus()"
+        [disabled]="isStatusLoading()"
+        class="px-4 py-2 text-[10px] font-black uppercase tracking-widest border border-noir-700 text-noir-400 hover:text-white hover:border-noir-500 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+      >
+        {{ isStatusLoading() ? 'Refreshing...' : 'Refresh Status' }}
+      </button>
+    </div>
+
+    <div *ngIf="isStatusLoading()" class="text-[10px] font-mono text-noir-500 uppercase tracking-widest">
+      Checking connection status...
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label class="text-[9px] font-mono text-noir-500 uppercase tracking-widest mb-2 block">LEETCODE_SESSION</label>
+        <input
+          type="password"
+          [ngModel]="leetcodeSession()"
+          (ngModelChange)="leetcodeSession.set($event || '')"
+          placeholder="Session cookie value"
+          class="w-full bg-black border border-noir-800 text-sm text-white px-3 py-2.5 focus:outline-none focus:border-crimson-500 placeholder:text-noir-600"
+        >
+      </div>
+      <div>
+        <label class="text-[9px] font-mono text-noir-500 uppercase tracking-widest mb-2 block">csrftoken</label>
+        <input
+          type="password"
+          [ngModel]="csrfToken()"
+          (ngModelChange)="csrfToken.set($event || '')"
+          placeholder="CSRF token value"
+          class="w-full bg-black border border-noir-800 text-sm text-white px-3 py-2.5 focus:outline-none focus:border-crimson-500 placeholder:text-noir-600"
+        >
+      </div>
+    </div>
+
+    <div class="flex flex-wrap gap-3">
+      <button
+        (click)="connectLeetCode()"
+        [disabled]="!canConnect()"
+        class="px-5 py-2.5 text-[10px] font-black uppercase tracking-widest border transition-all"
+        [class]="canConnect()
+          ? 'border-emerald-500 text-emerald-400 hover:bg-emerald-600 hover:text-white'
+          : 'border-noir-700 text-noir-500 cursor-not-allowed bg-noir-900'"
+      >
+        {{ isConnecting() ? 'Connecting...' : 'Connect Once' }}
+      </button>
+
+      <button
+        (click)="disconnectLeetCode()"
+        [disabled]="!isConnected() || isDisconnecting()"
+        class="px-5 py-2.5 text-[10px] font-black uppercase tracking-widest border transition-all"
+        [class]="isConnected() && !isDisconnecting()
+          ? 'border-crimson-500 text-crimson-400 hover:bg-crimson-600 hover:text-white'
+          : 'border-noir-700 text-noir-500 cursor-not-allowed bg-noir-900'"
+      >
+        {{ isDisconnecting() ? 'Disconnecting...' : 'Disconnect' }}
+      </button>
+    </div>
+
+    <div class="text-[10px] text-noir-500 leading-relaxed">
+      Use browser developer tools on a signed-in LeetCode session to copy cookie values. These values are sent once and stored encrypted on the backend.
+    </div>
+
+    <div *ngIf="successMessage()" class="border border-emerald-500/30 bg-emerald-950/20 p-3 text-[11px] text-emerald-300">
+      {{ successMessage() }}
+    </div>
+
+    <div *ngIf="errorMessage()" class="border border-crimson-500/40 bg-crimson-950/30 p-3 text-[11px] text-crimson-300">
+      {{ errorMessage() }}
+    </div>
+  </div>
+
+  <div class="noir-card p-6 md:p-8 space-y-5">
+    <div class="flex items-center gap-2">
+      <lucide-icon name="Info" class="w-4 h-4 text-crimson-400"></lucide-icon>
+      <p class="text-[10px] font-black uppercase tracking-[0.25em] text-noir-300">How To Connect LeetCode</p>
+    </div>
+
+    <div class="space-y-3 text-[12px] text-noir-300 leading-relaxed">
+      <p class="text-noir-400">
+        You need two cookie values from your logged-in LeetCode browser session:
+        <span class="text-white font-semibold">LEETCODE_SESSION</span> and
+        <span class="text-white font-semibold">csrftoken</span>.
+      </p>
+
+      <div>
+        <p class="text-[10px] font-black uppercase tracking-widest text-noir-400 mb-2">Chrome / Edge Steps</p>
+        <ol class="list-decimal pl-5 space-y-1">
+          <li>Log in to <span class="text-white">https://leetcode.com</span> in your browser.</li>
+          <li>Press <span class="text-white">F12</span> (or right-click and choose <span class="text-white">Inspect</span>).</li>
+          <li>Open <span class="text-white">Application</span> tab.</li>
+          <li>In left panel: <span class="text-white">Storage -> Cookies -> https://leetcode.com</span>.</li>
+          <li>Find row <span class="text-white">LEETCODE_SESSION</span> and copy its <span class="text-white">Value</span>.</li>
+          <li>Find row <span class="text-white">csrftoken</span> and copy its <span class="text-white">Value</span>.</li>
+          <li>Paste both values here and click <span class="text-white">Connect Once</span>.</li>
+        </ol>
+      </div>
+
+      <div>
+        <p class="text-[10px] font-black uppercase tracking-widest text-noir-400 mb-2">Firefox Steps</p>
+        <ol class="list-decimal pl-5 space-y-1">
+          <li>Log in to <span class="text-white">https://leetcode.com</span>.</li>
+          <li>Open DevTools and go to <span class="text-white">Storage</span> tab.</li>
+          <li>Open <span class="text-white">Cookies -> https://leetcode.com</span>.</li>
+          <li>Copy <span class="text-white">LEETCODE_SESSION</span> and <span class="text-white">csrftoken</span> values.</li>
+          <li>Paste and connect in this page.</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="border border-noir-700 bg-black/30 p-4 space-y-2 text-[11px]">
+      <p class="text-noir-200 font-semibold uppercase tracking-wide">Troubleshooting</p>
+      <ul class="list-disc pl-5 text-noir-400 space-y-1">
+        <li>If connect fails, re-login to LeetCode and recopy cookies.</li>
+        <li>Do not paste extra spaces before or after cookie values.</li>
+        <li>If submissions suddenly stop working later, your session likely expired; reconnect with fresh values.</li>
+      </ul>
+    </div>
+
+    <div class="border border-amber-500/30 bg-amber-950/20 p-3 text-[11px] text-amber-200">
+      Treat these cookie values like a password. Do not share them with anyone.
+    </div>
+  </div>
+</div>

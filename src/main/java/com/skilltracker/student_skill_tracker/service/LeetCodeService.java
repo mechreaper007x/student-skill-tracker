@@ -5,17 +5,29 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
 
 @Service
 public class LeetCodeService {
 
+    private static final Logger logger = LoggerFactory.getLogger(LeetCodeService.class);
+
     private static final String BASE_URL = "https://leetcode.com/graphql/";
+    private static final String SUBMIT_URL_TEMPLATE = "https://leetcode.com/problems/%s/submit/";
+    private static final String SUBMISSION_CHECK_URL_TEMPLATE = "https://leetcode.com/submissions/detail/%s/check/";
     private static final int RECENT_ACCEPTED_LIMIT = 200;
+    private static final int MAX_SUBMISSION_POLL_ATTEMPTS = 10;
+    private static final long SUBMISSION_POLL_INTERVAL_MS = 1200L;
+
     private final RestTemplate restTemplate;
 
     public LeetCodeService(RestTemplate restTemplate) {
@@ -23,14 +35,12 @@ public class LeetCodeService {
     }
 
     public Map<String, Object> fetchStats(String username) {
-        // This method might need to be updated to use the GraphQL API as well
-        // For now, we leave it as is to avoid breaking other parts of the application
         try {
             String url = "https://leetcode-stats-api.herokuapp.com/" + username;
             return restTemplate.getForObject(url, Map.class);
         } catch (Exception e) {
             System.err.println("⚠️  Failed to fetch LeetCode data: " + e.getMessage());
-            return Map.of(); // fallback empty map
+            return Map.of();
         }
     }
 
@@ -125,8 +135,8 @@ public class LeetCodeService {
             Map<String, Object> result = new HashMap<>();
 
             if (response != null && response.containsKey("data")) {
-                Map<String, Object> data = (Map<String, Object>) response.get("data");
-                Map<String, Object> matchedUser = (Map<String, Object>) data.get("matchedUser");
+                Map<String, Object> data = asMap(response.get("data"));
+                Map<String, Object> matchedUser = asMap(data.get("matchedUser"));
                 List<Map<String, Object>> topKnowledgeTags = asMapList(data.get("topKnowledgeTags"));
 
                 Map<String, Integer> totalQuestionsByTagSlug = new HashMap<>();
@@ -141,12 +151,12 @@ public class LeetCodeService {
                 List<Map<String, Object>> algorithmMastery = new ArrayList<>();
 
                 if (matchedUser != null) {
-                    Map<String, Object> submitStats = (Map<String, Object>) matchedUser.get("submitStats");
+                    Map<String, Object> submitStats = asMap(matchedUser.get("submitStats"));
                     List<Map<String, Object>> acSubmissionNum = submitStats == null ? List.of()
                             : asMapList(submitStats.get("acSubmissionNum"));
 
                     for (Map<String, Object> item : acSubmissionNum) {
-                        String diff = (String) item.get("difficulty");
+                        String diff = asString(item.get("difficulty"));
                         int count = asInt(item.get("count"));
                         if (diff == null || diff.isBlank()) {
                             continue;
@@ -157,13 +167,13 @@ public class LeetCodeService {
                         }
                     }
 
-                    Map<String, Object> profile = (Map<String, Object>) matchedUser.get("profile");
+                    Map<String, Object> profile = asMap(matchedUser.get("profile"));
                     if (profile != null) {
                         result.put("ranking", profile.get("ranking"));
                         result.put("reputation", profile.get("reputation"));
                     }
 
-                    Map<String, Object> tagProblemCounts = (Map<String, Object>) matchedUser.get("tagProblemCounts");
+                    Map<String, Object> tagProblemCounts = asMap(matchedUser.get("tagProblemCounts"));
                     algorithmMastery.addAll(buildAlgorithmMasteryForLevel("Fundamental", tagProblemCounts, "fundamental",
                             totalQuestionsByTagSlug));
                     algorithmMastery.addAll(buildAlgorithmMasteryForLevel("Intermediate", tagProblemCounts, "intermediate",
@@ -193,11 +203,211 @@ public class LeetCodeService {
         }
     }
 
+    public Map<String, Object> submitCodeToLeetCode(
+            String problemSlug,
+            String language,
+            String sourceCode,
+            String leetcodeSession,
+            String csrfToken,
+            boolean waitForResult) {
+
+        String normalizedSlug = normalizeSlug(problemSlug);
+        if (normalizedSlug.isBlank()) {
+            throw new IllegalArgumentException("Problem slug is required.");
+        }
+
+        if (sourceCode == null || sourceCode.isBlank()) {
+            throw new IllegalArgumentException("Source code cannot be empty.");
+        }
+
+        if (leetcodeSession == null || leetcodeSession.isBlank()) {
+            throw new IllegalArgumentException("LEETCODE_SESSION is required.");
+        }
+
+        if (csrfToken == null || csrfToken.isBlank()) {
+            throw new IllegalArgumentException("csrftoken is required.");
+        }
+
+        String leetCodeLanguage = resolveLeetCodeLanguageSlug(language);
+        String questionId = fetchQuestionId(normalizedSlug);
+        if (questionId.isBlank()) {
+            throw new IllegalArgumentException("Unable to resolve LeetCode question ID for slug: " + normalizedSlug);
+        }
+
+        HttpHeaders headers = createSubmissionHeaders(csrfToken.trim(), leetcodeSession.trim(), normalizedSlug);
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("lang", leetCodeLanguage);
+        payload.put("question_id", questionId);
+        payload.put("typed_code", sourceCode);
+
+        try {
+            String submitUrl = SUBMIT_URL_TEMPLATE.formatted(normalizedSlug);
+            ResponseEntity<Map> submitResponse = restTemplate.exchange(
+                    submitUrl,
+                    HttpMethod.POST,
+                    new HttpEntity<>(payload, headers),
+                    Map.class);
+
+            Map<String, Object> submitBody = submitResponse.getBody();
+            String submissionId = asString(submitBody == null ? null : submitBody.get("submission_id"));
+            if (submissionId == null || submissionId.isBlank()) {
+                submissionId = asString(submitBody == null ? null : submitBody.get("submission_id_v2"));
+            }
+
+            if (submissionId == null || submissionId.isBlank()) {
+                throw new IllegalArgumentException("LeetCode did not return a submission ID.");
+            }
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", true);
+            result.put("problemSlug", normalizedSlug);
+            result.put("language", leetCodeLanguage);
+            result.put("submissionId", submissionId);
+            result.put("status", "SUBMITTED");
+            result.put("leetcodeSubmissionUrl", "https://leetcode.com/submissions/detail/" + submissionId + "/");
+
+            if (waitForResult) {
+                Map<String, Object> judgeResult = pollSubmissionResult(submissionId, headers);
+                String statusMessage = asString(judgeResult.get("status_msg"));
+                if (statusMessage != null && !statusMessage.isBlank()) {
+                    result.put("status", statusMessage);
+                }
+                result.put("judgeResult", judgeResult);
+            }
+
+            return result;
+        } catch (HttpStatusCodeException ex) {
+            String responseBody = shorten(ex.getResponseBodyAsString());
+            logger.warn("LeetCode submission rejected for slug {}: status={}, body={}",
+                    normalizedSlug, ex.getStatusCode(), responseBody);
+            throw new IllegalArgumentException("LeetCode rejected submission: " + responseBody);
+        } catch (IllegalArgumentException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            logger.error("LeetCode submission error for slug {}", normalizedSlug, ex);
+            throw new RuntimeException("Could not submit to LeetCode right now.");
+        }
+    }
+
+    private String fetchQuestionId(String titleSlug) {
+        try {
+            String query = """
+                    query questionEditorData($titleSlug: String!) {
+                      question(titleSlug: $titleSlug) {
+                        questionId
+                      }
+                    }
+                    """;
+
+            Map<String, Object> payload = Map.of(
+                    "query", query,
+                    "variables", Map.of("titleSlug", titleSlug));
+
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(payload, createHeaders());
+            Map<String, Object> response = restTemplate.postForObject(BASE_URL, entity, Map.class);
+            Map<String, Object> data = asMap(response == null ? null : response.get("data"));
+            Map<String, Object> question = asMap(data == null ? null : data.get("question"));
+            return asString(question == null ? null : question.get("questionId"));
+        } catch (Exception ex) {
+            logger.warn("Failed to fetch question ID for slug {}: {}", titleSlug, ex.getMessage());
+            return "";
+        }
+    }
+
+    private Map<String, Object> pollSubmissionResult(String submissionId, HttpHeaders headers) {
+        String checkUrl = SUBMISSION_CHECK_URL_TEMPLATE.formatted(submissionId);
+        Map<String, Object> latestResponse = new HashMap<>();
+
+        for (int attempt = 0; attempt < MAX_SUBMISSION_POLL_ATTEMPTS; attempt++) {
+            try {
+                ResponseEntity<Map> checkResponse = restTemplate.exchange(
+                        checkUrl,
+                        HttpMethod.GET,
+                        new HttpEntity<>(headers),
+                        Map.class);
+
+                Map<String, Object> body = checkResponse.getBody();
+                if (body != null) {
+                    latestResponse = body;
+                    String state = asString(body.get("state"));
+                    if (!isPendingState(state)) {
+                        return latestResponse;
+                    }
+                }
+            } catch (Exception ex) {
+                logger.debug("LeetCode polling attempt {} failed: {}", attempt + 1, ex.getMessage());
+            }
+
+            if (attempt + 1 < MAX_SUBMISSION_POLL_ATTEMPTS) {
+                sleepBeforeNextPoll();
+            }
+        }
+
+        if (!latestResponse.containsKey("state")) {
+            latestResponse.put("state", "TIMEOUT");
+            latestResponse.put("status_msg", "Judge result not ready");
+        }
+        return latestResponse;
+    }
+
+    private boolean isPendingState(String state) {
+        if (state == null || state.isBlank()) {
+            return true;
+        }
+        return "PENDING".equalsIgnoreCase(state) || "STARTED".equalsIgnoreCase(state);
+    }
+
+    private void sleepBeforeNextPoll() {
+        try {
+            Thread.sleep(SUBMISSION_POLL_INTERVAL_MS);
+        } catch (InterruptedException interruptedException) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    private HttpHeaders createSubmissionHeaders(String csrfToken, String leetcodeSession, String problemSlug) {
+        HttpHeaders headers = createHeaders();
+        headers.set("Origin", "https://leetcode.com");
+        headers.set("Referer", "https://leetcode.com/problems/" + problemSlug + "/");
+        headers.set("x-csrftoken", csrfToken);
+        headers.set("x-requested-with", "XMLHttpRequest");
+        headers.set("Cookie", "LEETCODE_SESSION=%s; csrftoken=%s;".formatted(leetcodeSession, csrfToken));
+        return headers;
+    }
+
+    private String resolveLeetCodeLanguageSlug(String language) {
+        String normalized = language == null ? "" : language.trim().toLowerCase();
+        return switch (normalized) {
+            case "java" -> "java";
+            case "python", "python3", "py" -> "python3";
+            case "cpp", "c++" -> "cpp";
+            case "javascript", "js", "node" -> "javascript";
+            case "typescript", "ts" -> "typescript";
+            default -> throw new IllegalArgumentException("Unsupported LeetCode language: " + language);
+        };
+    }
+
+    private String normalizeSlug(String slug) {
+        if (slug == null) {
+            return "";
+        }
+
+        String trimmed = slug.trim();
+        if (trimmed.contains("leetcode.com/problems/")) {
+            int start = trimmed.indexOf("leetcode.com/problems/") + "leetcode.com/problems/".length();
+            String tail = trimmed.substring(start);
+            int slash = tail.indexOf('/');
+            return slash >= 0 ? tail.substring(0, slash) : tail;
+        }
+        return trimmed;
+    }
+
     private HttpHeaders createHeaders() {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.add("User-Agent",
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)"
+                        + " Chrome/124.0.0.0 Safari/537.36");
         return headers;
     }
 
@@ -230,6 +440,14 @@ public class LeetCodeService {
             result.add(row);
         }
         return result;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> asMap(Object value) {
+        if (!(value instanceof Map<?, ?> map)) {
+            return null;
+        }
+        return (Map<String, Object>) map;
     }
 
     @SuppressWarnings("unchecked")
@@ -299,5 +517,15 @@ public class LeetCodeService {
             return "Started";
         }
         return "Unstarted";
+    }
+
+    private String shorten(String text) {
+        if (text == null || text.isBlank()) {
+            return "No error details returned.";
+        }
+        if (text.length() <= 280) {
+            return text;
+        }
+        return text.substring(0, 280) + "...";
     }
 }

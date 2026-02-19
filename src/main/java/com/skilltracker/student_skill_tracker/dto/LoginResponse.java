@@ -15,4 +15,5 @@ public class LoginResponse {
     private String name;
     private String leetcodeUsername;
     private String githubUsername;
+    private boolean leetcodeSubmitConnected;
 }

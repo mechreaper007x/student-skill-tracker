@@ -16,6 +16,7 @@ export interface User {
   name: string;
   email: string;
   leetcodeUsername: string;
+  leetcodeSubmitConnected?: boolean;
   level: number;
   xp: number;
   roles: string;
