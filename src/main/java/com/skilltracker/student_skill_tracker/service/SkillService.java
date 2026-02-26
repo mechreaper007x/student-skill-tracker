@@ -87,6 +87,26 @@ public class SkillService {
         skillData.setHardProblems(hard);
         skillData.setRanking(rank);
 
+        // --- Calculate Cognitive / Humanistic scores ---
+        double reasoning = skillCalculator.calculateReasoningScore(
+                student.getAcceptedSubmissions(),
+                student.getTotalSubmissions(),
+                student.getAvgPlanningTimeMs());
+        double criticalThinking = skillCalculator.calculateCriticalThinkingScore(
+                student.getSuccessfulCompilations(),
+                student.getTotalCompilations());
+        double eq = skillCalculator.calculateEqScore(
+                student.getAvgRecoveryVelocityMs(),
+                student.getTotalSubmissions());
+        double psHuman = skillCalculator.calculateProblemSolvingHumanistic(
+                total,
+                student.getTotalSubmissions());
+
+        skillData.setReasoningScore(reasoning);
+        skillData.setCriticalThinkingScore(criticalThinking);
+        skillData.setProblemSolvingScoreHumanistic(psHuman);
+        skillData.setEqScore(eq);
+
         // Use AiAdvisorService to generate a consolidated advice summary
         AdvisorResult advisorResult = aiAdvisorService.advise(skillData);
         skillData.setAiAdvice(advisorResult.getSummary());

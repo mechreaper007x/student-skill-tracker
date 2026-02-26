@@ -20,7 +20,7 @@ export class ShellComponent {
   
   navItems = [
     { label: 'Command Center', icon: 'LayoutDashboard', route: '/dashboard' },
-    { label: 'Will to Power', icon: 'Zap', route: '/skills' },
+    { label: 'Will to Power', icon: 'Zap', route: '/duel-arena' },
     { label: 'The Arena', icon: 'Trophy', route: '/leaderboard' },
     { label: 'The Rishi', icon: 'Brain', route: '/advisor' },
     { label: 'Arsenal', icon: 'Package', route: '/arsenal' },

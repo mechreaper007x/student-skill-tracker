@@ -47,8 +47,9 @@ public class SecurityConfig {
                                                               // in headers
                                 .exceptionHandling(exception -> exception
                                                 .authenticationEntryPoint((request, response, authException) -> {
-                                                        System.out.println("DEBUG: Authentication Entry Point - Unauthenticated request to "
-                                                                        + request.getRequestURI());
+                                                        System.out.println(
+                                                                        "DEBUG: Authentication Entry Point - Unauthenticated request to "
+                                                                                        + request.getRequestURI());
                                                         response.setStatus(
                                                                         jakarta.servlet.http.HttpServletResponse.SC_UNAUTHORIZED);
                                                         response.setContentType("application/json");
@@ -66,7 +67,7 @@ public class SecurityConfig {
                                                                 "/actuator/health", "/actuator/health/**",
                                                                 "/css/**", "/js/**", "/images/**",
                                                                 "/index.html", "/favicon.ico", "/*.js", "/*.css",
-                                                                "/assets/**")
+                                                                "/assets/**", "/ws/**", "/ws")
                                                 .permitAll()
                                                 .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**")
                                                 .permitAll()

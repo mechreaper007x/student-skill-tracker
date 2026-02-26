@@ -50,6 +50,23 @@ public class SkillData {
     @Column(name = "total_problems_solved")
     private Integer totalProblemsSolved;
 
+    // --- Humanistic / Archetypal Scores ---
+    @Column(name = "reasoning_score")
+    @Builder.Default
+    private Double reasoningScore = 0.0;
+
+    @Column(name = "critical_thinking_score")
+    @Builder.Default
+    private Double criticalThinkingScore = 0.0;
+
+    @Column(name = "problem_solving_score_humanistic")
+    @Builder.Default
+    private Double problemSolvingScoreHumanistic = 0.0;
+
+    @Column(name = "eq_score")
+    @Builder.Default
+    private Double eqScore = 0.0;
+
     @Column(name = "easy_problems")
     private Integer easyProblems;
 

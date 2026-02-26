@@ -1,0 +1,54 @@
+:host {
+  display: block;
+  height: 100%;
+}
+
+/* Terminal output */
+.terminal-output {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.terminal-output pre {
+  margin: 0;
+  font-family: inherit;
+}
+
+/* Problem content */
+.puzzle-content-area pre {
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 1rem;
+  overflow-x: auto;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.puzzle-content-area code {
+  background: rgba(255, 255, 255, 0.08);
+  padding: 0.15rem 0.35rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85em;
+}
+
+.puzzle-content-area img {
+  max-width: 100%;
+  height: auto;
+  margin: 0.75rem 0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Monaco */
+ngx-monaco-editor {
+  display: block;
+}
+
+/* Memory card flip */
+.memory-card {
+  perspective: 600px;
+  transition: transform 0.3s ease;
+}
+
+.memory-card:hover:not(:disabled) {
+  transform: scale(1.05);
+}

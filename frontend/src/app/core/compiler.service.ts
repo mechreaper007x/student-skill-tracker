@@ -83,4 +83,8 @@ export class CompilerService {
   disconnectLeetCodeAuth(): Observable<LeetCodeAuthStatusResponse> {
     return this.http.delete<LeetCodeAuthStatusResponse>(`${this.apiUrl}/leetcode/connect`);
   }
+
+  getLeetCodeQuestionDetails(slug: string): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/leetcode/question-details`, { slug });
+  }
 }

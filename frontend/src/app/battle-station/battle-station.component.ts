@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { ActivatedRoute, Router } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { MonacoEditorModule } from 'ngx-monaco-editor-v2';
@@ -13,6 +14,9 @@ import {
 } from '../core/compiler.service';
 import { LeetCodeQuestion, QuestionBankService } from '../core/question-bank.service';
 
+export type StressMode = 'NORMAL' | 'ONE_SHOT' | 'BLITZ' | 'BLINDFOLD' | 'IRON_MAN';
+export type CognitiveTrack = 'HEURISTIC_FLOW' | 'SYSTEM2_OVERRIDE' | 'FAULT_TOLERANCE' | 'AFFECTIVE_REGULATION';
+
 @Component({
   selector: 'app-battle-station',
   standalone: true,
@@ -23,6 +27,7 @@ import { LeetCodeQuestion, QuestionBankService } from '../core/question-bank.ser
 export class BattleStationComponent implements OnInit, OnDestroy {
   private compilerService = inject(CompilerService);
   private questionBankService = inject(QuestionBankService);
+  private sanitizer = inject(DomSanitizer);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
 
@@ -43,6 +48,9 @@ export class BattleStationComponent implements OnInit, OnDestroy {
   isExecuting = signal(false);
   result = signal<CompilationResult | null>(null);
   timeoutSeconds = signal(10);
+  isSetupPanelCollapsed = signal(true);
+
+
 
   // Question state
   isQuestionLoading = signal(false);
@@ -50,6 +58,7 @@ export class BattleStationComponent implements OnInit, OnDestroy {
   questions = signal<LeetCodeQuestion[]>([]);
   questionSearch = signal('');
   selectedQuestion = signal<LeetCodeQuestion | null>(null);
+  questionHtml = signal<SafeHtml | null>(null);
   filteredQuestions = computed(() => {
     const search = this.questionSearch().trim().toLowerCase();
     const allQuestions = this.questions();
@@ -132,6 +141,10 @@ public:
     this.loadQuestions();
     this.loadLeetCodeAuthStatus();
     this.sourceCode.set(this.boilerplates['java']);
+  }
+
+  toggleSetupPanel() {
+    this.isSetupPanelCollapsed.update((current) => !current);
   }
 
   ngOnDestroy() {
@@ -292,6 +305,26 @@ public:
     this.selectedQuestion.set(normalized);
     this.submissionResponse.set(null);
     this.submissionError.set(null);
+    this.questionHtml.set(null);
+
+    if (normalized.slug) {
+      this.isQuestionLoading.set(true);
+      this.compilerService.getLeetCodeQuestionDetails(normalized.slug).subscribe({
+        next: (res) => {
+          const content = res?.data?.question?.content;
+          if (content) {
+             this.questionHtml.set(this.sanitizer.bypassSecurityTrustHtml(content));
+          } else {
+             this.questionHtml.set(this.sanitizer.bypassSecurityTrustHtml(`<p>Description unavailable via API. <a href="\${normalized.url}" target="_blank" class="text-indigo-400">View on LeetCode</a></p>`));
+          }
+          this.isQuestionLoading.set(false);
+        },
+        error: (err) => {
+          this.questionHtml.set(this.sanitizer.bypassSecurityTrustHtml(`<p class="text-crimson-400">Failed to load problem description. <a href="\${normalized.url}" target="_blank" class="text-indigo-400 underline">View on LeetCode</a></p>`));
+          this.isQuestionLoading.set(false);
+        }
+      });
+    }
 
     if (!updateRoute) {
       return;
@@ -310,6 +343,8 @@ public:
       replaceUrl: true
     });
   }
+
+
 
   selectQuestionBySlugOrUrl(slugOrUrl: string) {
     const normalizedKey = (slugOrUrl || '').toLowerCase();
@@ -484,4 +519,6 @@ public:
       .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
       .join(' ');
   }
+
+
 }

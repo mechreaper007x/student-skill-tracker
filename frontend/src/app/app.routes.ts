@@ -22,7 +22,8 @@ export const routes: Routes = [
       },
       {
         path: 'skills',
-        loadComponent: () => import('./skills/skill-grid.component').then(m => m.SkillGridComponent)
+        redirectTo: 'duel-arena',
+        pathMatch: 'full'
       },
       {
         path: 'advisor',
@@ -39,6 +40,10 @@ export const routes: Routes = [
       {
         path: 'proving-grounds',
         loadComponent: () => import('./proving-grounds/proving-grounds.component').then(m => m.ProvingGroundsComponent)
+      },
+      {
+        path: 'duel-arena',
+        loadComponent: () => import('./duel-arena/duel-arena.component').then(m => m.DuelArenaComponent)
       },
       {
         path: 'compiler',

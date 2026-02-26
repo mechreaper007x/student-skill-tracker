@@ -26,6 +26,7 @@ import com.skilltracker.student_skill_tracker.dto.LeetCodeAuthConnectRequest;
 import com.skilltracker.student_skill_tracker.dto.LeetCodeSubmissionRequest;
 import com.skilltracker.student_skill_tracker.model.Student;
 import com.skilltracker.student_skill_tracker.repository.StudentRepository;
+import com.skilltracker.student_skill_tracker.service.CognitiveMetricService;
 import com.skilltracker.student_skill_tracker.service.LeetCodeService;
 import com.skilltracker.student_skill_tracker.service.TokenCryptoService;
 
@@ -37,14 +38,17 @@ public class CompilerController {
     private final LeetCodeService leetCodeService;
     private final StudentRepository studentRepository;
     private final TokenCryptoService tokenCryptoService;
+    private final CognitiveMetricService cognitiveMetricService;
 
     public CompilerController(
             LeetCodeService leetCodeService,
             StudentRepository studentRepository,
-            TokenCryptoService tokenCryptoService) {
+            TokenCryptoService tokenCryptoService,
+            CognitiveMetricService cognitiveMetricService) {
         this.leetCodeService = leetCodeService;
         this.studentRepository = studentRepository;
         this.tokenCryptoService = tokenCryptoService;
+        this.cognitiveMetricService = cognitiveMetricService;
     }
 
     /**
@@ -52,9 +56,15 @@ public class CompilerController {
      * Protected by JWT via SecurityConfig (anyRequest().authenticated()).
      */
     @PostMapping("/execute")
-    public ResponseEntity<?> executeCode(@RequestBody CodeExecutionRequest request) {
+    public ResponseEntity<?> executeCode(@RequestBody CodeExecutionRequest request, Authentication authentication) {
         logger.info("Code execution request: language={}, timeout={}s",
                 request.getLanguage(), request.getTimeoutSeconds());
+
+        Optional<Student> studentOpt = getCurrentStudent(authentication);
+        studentOpt.ifPresent(student -> {
+            cognitiveMetricService.trackPlanningTime(student, request.getProblemSlug());
+            cognitiveMetricService.trackRecoveryVelocity(student);
+        });
 
         // Validate language
         if (request.getLanguage() == null || request.getLanguage().isBlank()) {
@@ -90,6 +100,10 @@ public class CompilerController {
             result.setTimestamp(LocalDateTime.now());
 
             logger.info("Execution complete: success={}, time={}ms", result.isSuccess(), elapsed);
+
+            studentOpt.ifPresent(student -> {
+                cognitiveMetricService.recordCompilation(student, result.isSuccess());
+            });
 
             return ResponseEntity.ok(result);
 
@@ -210,6 +224,13 @@ public class CompilerController {
                     leetCodeSession,
                     csrfToken,
                     request.isWaitForResult());
+
+            boolean accepted = "Accepted".equalsIgnoreCase(String.valueOf(submissionResult.get("status")));
+            cognitiveMetricService.recordSubmission(student, request.getProblemSlug(), accepted);
+            if (!accepted) {
+                // Logic for recovery velocity will trigger on the NEXT successful action
+            }
+
             return ResponseEntity.ok(submissionResult);
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(Map.of(
@@ -220,6 +241,23 @@ public class CompilerController {
                     "error", "LeetCode submission failed",
                     "details", ex.getMessage()));
         }
+    }
+
+    @PostMapping("/leetcode/question-details")
+    public ResponseEntity<?> getQuestionDetails(
+            @RequestBody Map<String, String> request,
+            Authentication authentication) {
+        String slug = request.get("slug");
+        if (slug == null || slug.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Slug is required"));
+        }
+
+        Optional<Student> studentOpt = getCurrentStudent(authentication);
+        studentOpt.ifPresent(student -> {
+            cognitiveMetricService.recordQuestionSelection(student, slug);
+        });
+
+        return leetCodeService.fetchQuestionDetails(slug);
     }
 
     private Optional<Student> getCurrentStudent(Authentication authentication) {

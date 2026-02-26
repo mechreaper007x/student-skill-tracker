@@ -78,6 +78,10 @@ public class DashboardService {
                 .hardProblems(skillData.getHardProblems())
                 .ranking(skillData.getRanking())
                 .aiAdvice(skillData.getAiAdvice())
+                .reasoningScore(skillData.getReasoningScore())
+                .criticalThinkingScore(skillData.getCriticalThinkingScore())
+                .problemSolvingScoreHumanistic(skillData.getProblemSolvingScoreHumanistic())
+                .eqScore(skillData.getEqScore())
                 .build();
     }
 }

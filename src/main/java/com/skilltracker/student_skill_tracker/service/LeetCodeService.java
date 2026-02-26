@@ -174,16 +174,19 @@ public class LeetCodeService {
                     }
 
                     Map<String, Object> tagProblemCounts = asMap(matchedUser.get("tagProblemCounts"));
-                    algorithmMastery.addAll(buildAlgorithmMasteryForLevel("Fundamental", tagProblemCounts, "fundamental",
-                            totalQuestionsByTagSlug));
-                    algorithmMastery.addAll(buildAlgorithmMasteryForLevel("Intermediate", tagProblemCounts, "intermediate",
-                            totalQuestionsByTagSlug));
+                    algorithmMastery
+                            .addAll(buildAlgorithmMasteryForLevel("Fundamental", tagProblemCounts, "fundamental",
+                                    totalQuestionsByTagSlug));
+                    algorithmMastery
+                            .addAll(buildAlgorithmMasteryForLevel("Intermediate", tagProblemCounts, "intermediate",
+                                    totalQuestionsByTagSlug));
                     algorithmMastery.addAll(buildAlgorithmMasteryForLevel("Advanced", tagProblemCounts, "advanced",
                             totalQuestionsByTagSlug));
                 }
 
                 algorithmMastery.sort((left, right) -> {
-                    int solvedCompare = Integer.compare(asInt(right.get("problemsSolved")), asInt(left.get("problemsSolved")));
+                    int solvedCompare = Integer.compare(asInt(right.get("problemsSolved")),
+                            asInt(left.get("problemsSolved")));
                     if (solvedCompare != 0) {
                         return solvedCompare;
                     }
@@ -200,6 +203,35 @@ public class LeetCodeService {
         } catch (Exception e) {
             System.err.println("⚠️  Failed to fetch full LeetCode stats: " + e.getMessage());
             return Map.of();
+        }
+    }
+
+    public ResponseEntity<?> fetchQuestionDetails(String titleSlug) {
+        String query = """
+                query questionData($titleSlug: String!) {
+                  question(titleSlug: $titleSlug) {
+                    questionId
+                    title
+                    titleSlug
+                    content
+                    difficulty
+                    topicTags {
+                      name
+                      slug
+                    }
+                    stats
+                  }
+                }
+                """;
+
+        Map<String, Object> variables = Map.of("titleSlug", titleSlug);
+        Map<String, Object> body = Map.of("query", query, "variables", variables);
+
+        try {
+            return restTemplate.postForEntity(BASE_URL, new HttpEntity<>(body, createHeaders()), Map.class);
+        } catch (Exception e) {
+            logger.error("Error fetching question details for {}: {}", titleSlug, e.getMessage());
+            return ResponseEntity.status(500).body(Map.of("error", "Failed to fetch LeetCode question details"));
         }
     }
 

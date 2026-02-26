@@ -110,6 +110,45 @@ public class Student {
     @Builder.Default
     private Integer xp = 0;
 
+    // --- Cognitive Telemetry & Humanistic Tracking ---
+
+    @Column(name = "total_compilations")
+    @Builder.Default
+    private Integer totalCompilations = 0;
+
+    @Column(name = "successful_compilations")
+    @Builder.Default
+    private Integer successfulCompilations = 0;
+
+    @Column(name = "total_submissions")
+    @Builder.Default
+    private Integer totalSubmissions = 0;
+
+    @Column(name = "accepted_submissions")
+    @Builder.Default
+    private Integer acceptedSubmissions = 0;
+
+    @Column(name = "first_attempt_success_count")
+    @Builder.Default
+    private Integer firstAttemptSuccessCount = 0;
+
+    @Column(name = "avg_recovery_velocity_ms")
+    @Builder.Default
+    private Long avgRecoveryVelocityMs = 0L;
+
+    @Column(name = "avg_planning_time_ms")
+    @Builder.Default
+    private Long avgPlanningTimeMs = 0L;
+
+    @Column(name = "last_failure_timestamp")
+    private LocalDateTime lastFailureTimestamp;
+
+    @Column(name = "last_selected_question_slug")
+    private String lastSelectedQuestionSlug;
+
+    @Column(name = "question_selection_timestamp")
+    private LocalDateTime questionSelectionTimestamp;
+
     public void levelUp() {
         this.level++;
         this.xp = 0;
