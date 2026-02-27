@@ -45,6 +45,14 @@ public class DuelSession {
     @Column(name = "player2score")
     private int player2Score = 0;
 
+    @Builder.Default
+    @Column(name = "player1_highest_bloom_level")
+    private int player1HighestBloomLevel = 1;
+
+    @Builder.Default
+    @Column(name = "player2_highest_bloom_level")
+    private int player2HighestBloomLevel = 1;
+
     @Column(name = "start_time")
     private java.time.LocalDateTime startTime;
 

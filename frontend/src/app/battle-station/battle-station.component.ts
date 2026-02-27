@@ -32,6 +32,7 @@ export class BattleStationComponent implements OnInit, OnDestroy {
   private router = inject(Router);
 
   private routeSubscription: Subscription | null = null;
+  private questionDetailRequestToken = 0;
 
   // Compiler state
   availableLanguages = signal<CompilerInfo[]>([]);
@@ -53,28 +54,50 @@ export class BattleStationComponent implements OnInit, OnDestroy {
 
 
   // Question state
+  isQuestionBankLoading = signal(false);
   isQuestionLoading = signal(false);
   questionLoadError = signal<string | null>(null);
   questions = signal<LeetCodeQuestion[]>([]);
+  questionCategory = signal<'all' | 'common' | 'top-tier' | 'trending'>('all');
+  questionDifficulty = signal<'all' | 'easy' | 'medium' | 'hard'>('all');
   questionSearch = signal('');
+  questionPage = signal(1);
+  readonly questionPageSize = 8;
   selectedQuestion = signal<LeetCodeQuestion | null>(null);
   questionHtml = signal<SafeHtml | null>(null);
-  filteredQuestions = computed(() => {
-    const search = this.questionSearch().trim().toLowerCase();
-    const allQuestions = this.questions();
 
-    if (!search) {
-      return allQuestions.slice(0, 200);
+  filteredQuestions = computed(() => {
+    const difficulty = this.questionDifficulty();
+    const search = this.questionSearch().trim().toLowerCase();
+    let allQuestions = this.questions();
+
+    if (difficulty !== 'all') {
+      allQuestions = allQuestions.filter((question) =>
+        (question.difficulty || '').toLowerCase() === difficulty
+      );
     }
 
-    return allQuestions
-      .filter((question) =>
-        question.title.toLowerCase().includes(search) ||
-        question.slug?.toLowerCase().includes(search) ||
-        question.tags.some((tag) => tag.toLowerCase().includes(search))
-      )
-      .slice(0, 200);
+    if (!search) {
+      return allQuestions;
+    }
+
+    return allQuestions.filter((question) =>
+      question.title.toLowerCase().includes(search) ||
+      question.slug?.toLowerCase().includes(search) ||
+      question.tags.some((tag) => tag.toLowerCase().includes(search))
+    );
   });
+  paginatedQuestions = computed(() => {
+    const start = (this.questionPage() - 1) * this.questionPageSize;
+    return this.filteredQuestions().slice(start, start + this.questionPageSize);
+  });
+  questionTotalPages = computed(() => {
+    const pages = Math.ceil(this.filteredQuestions().length / this.questionPageSize);
+    return Math.max(1, pages);
+  });
+  questionEasyCount = computed(() => this.questions().filter((question) => question.difficulty === 'Easy').length);
+  questionMediumCount = computed(() => this.questions().filter((question) => question.difficulty === 'Medium').length);
+  questionHardCount = computed(() => this.questions().filter((question) => question.difficulty === 'Hard').length);
 
   // LeetCode auth state (stored securely on backend)
   isLeetCodeConnected = signal(false);
@@ -84,6 +107,8 @@ export class BattleStationComponent implements OnInit, OnDestroy {
   isSubmittingLeetCode = signal(false);
   submissionResponse = signal<LeetCodeSubmissionResponse | null>(null);
   submissionError = signal<string | null>(null);
+  showEmotionModal = signal(false);
+  isSavingEmotion = signal(false);
   canSubmitToLeetCode = computed(() => {
     return Boolean(
       this.selectedQuestion()?.slug &&
@@ -138,7 +163,7 @@ public:
   ngOnInit() {
     this.registerRouteQuestionSync();
     this.loadAvailableLanguages();
-    this.loadQuestions();
+    this.loadQuestions('all');
     this.loadLeetCodeAuthStatus();
     this.sourceCode.set(this.boilerplates['java']);
   }
@@ -154,15 +179,16 @@ public:
   private loadAvailableLanguages() {
     this.compilerService.getAvailableLanguages().subscribe({
       next: (languages) => {
-        this.availableLanguages.set(languages);
-        if (!languages.length) {
+        const normalizedLanguages = this.deduplicateLanguages(languages);
+        this.availableLanguages.set(normalizedLanguages);
+        if (!normalizedLanguages.length) {
           this.selectLanguage('java');
           return;
         }
 
-        const current = this.selectedLanguage();
-        const active = languages.find((lang) => lang.command === current);
-        this.selectLanguage(active?.command || languages[0].command);
+        const current = this.normalizeLanguageCommand(this.selectedLanguage());
+        const active = normalizedLanguages.find((lang) => lang.command === current);
+        this.selectLanguage(active?.command || normalizedLanguages[0].command);
       },
       error: () => {
         this.selectLanguage('java');
@@ -170,15 +196,25 @@ public:
     });
   }
 
-  private loadQuestions() {
-    this.isQuestionLoading.set(true);
+  private loadQuestions(category: 'all' | 'common' | 'top-tier' | 'trending') {
+    this.questionCategory.set(category);
+    this.questionPage.set(1);
+    this.isQuestionBankLoading.set(true);
     this.questionLoadError.set(null);
 
-    this.questionBankService.getAllQuestions().subscribe({
+    const request$ = category === 'all'
+      ? this.questionBankService.getAllQuestions()
+      : category === 'common'
+        ? this.questionBankService.getCommonQuestions()
+        : category === 'top-tier'
+          ? this.questionBankService.getTopTierQuestions()
+          : this.questionBankService.getTrendingQuestions();
+
+    request$.subscribe({
       next: (questions) => {
         const normalized = questions.map((question) => this.normalizeQuestion(question));
         this.questions.set(normalized);
-        this.isQuestionLoading.set(false);
+        this.isQuestionBankLoading.set(false);
 
         this.syncSelectedQuestionWithLoadedData();
 
@@ -187,7 +223,7 @@ public:
         }
       },
       error: () => {
-        this.isQuestionLoading.set(false);
+        this.isQuestionBankLoading.set(false);
         this.questionLoadError.set('Question bank unavailable. Reload and try again.');
       }
     });
@@ -213,8 +249,11 @@ public:
         tags: this.parseTags(tagsParam)
       });
 
-      this.selectedQuestion.set(question);
-      this.syncSelectedQuestionWithLoadedData();
+      if (this.isSameQuestion(question, this.selectedQuestion())) {
+        return;
+      }
+
+      this.selectQuestion(question, false);
     });
   }
 
@@ -281,13 +320,14 @@ public:
   }
 
   selectLanguage(lang: string) {
-    this.selectedLanguage.set(lang);
-    this.editorOptions = { ...this.editorOptions, language: lang };
+    const normalizedLang = this.normalizeLanguageCommand(lang);
+    this.selectedLanguage.set(normalizedLang);
+    this.editorOptions = { ...this.editorOptions, language: normalizedLang };
 
     const currentCode = this.sourceCode();
     const isBoilerplate = Object.values(this.boilerplates).some((snippet) => snippet === currentCode);
     if (!currentCode.trim() || isBoilerplate) {
-      this.sourceCode.set(this.boilerplates[lang] || this.boilerplates['java']);
+      this.sourceCode.set(this.boilerplates[normalizedLang] || this.boilerplates['java']);
     }
   }
 
@@ -298,32 +338,85 @@ public:
   onQuestionSearchChange(event: Event) {
     const target = event.target as HTMLInputElement;
     this.questionSearch.set(target.value || '');
+    this.questionPage.set(1);
+  }
+
+  setQuestionCategory(category: 'all' | 'common' | 'top-tier' | 'trending') {
+    if (this.questionCategory() === category) {
+      return;
+    }
+    this.loadQuestions(category);
+  }
+
+  setQuestionDifficulty(difficulty: 'all' | 'easy' | 'medium' | 'hard') {
+    this.questionDifficulty.set(difficulty);
+    this.questionPage.set(1);
+  }
+
+  nextQuestionPage() {
+    if (this.questionPage() < this.questionTotalPages()) {
+      this.questionPage.update((current) => current + 1);
+    }
+  }
+
+  prevQuestionPage() {
+    if (this.questionPage() > 1) {
+      this.questionPage.update((current) => current - 1);
+    }
   }
 
   selectQuestion(question: LeetCodeQuestion, updateRoute = true) {
     const normalized = this.normalizeQuestion(question);
+
+    if (this.isSameQuestion(normalized, this.selectedQuestion()) && this.questionHtml()) {
+      if (updateRoute) {
+        this.router.navigate([], {
+          relativeTo: this.route,
+          queryParams: {
+            slug: normalized.slug || null,
+            title: normalized.title || null,
+            difficulty: normalized.difficulty || null,
+            url: normalized.url || null,
+            tags: normalized.tags.length ? normalized.tags.join(',') : null
+          },
+          queryParamsHandling: 'merge',
+          replaceUrl: true
+        });
+      }
+      return;
+    }
+
     this.selectedQuestion.set(normalized);
     this.submissionResponse.set(null);
     this.submissionError.set(null);
     this.questionHtml.set(null);
 
-    if (normalized.slug) {
+    if (normalized.slug || normalized.title) {
+      const requestToken = ++this.questionDetailRequestToken;
       this.isQuestionLoading.set(true);
-      this.compilerService.getLeetCodeQuestionDetails(normalized.slug).subscribe({
+      this.compilerService.getLeetCodeQuestionDetails(normalized.slug || '', normalized.title, normalized.url).subscribe({
         next: (res) => {
-          const content = res?.data?.question?.content;
+          if (requestToken !== this.questionDetailRequestToken) {
+            return;
+          }
+          const content = this.extractQuestionContent(res);
           if (content) {
              this.questionHtml.set(this.sanitizer.bypassSecurityTrustHtml(content));
           } else {
-             this.questionHtml.set(this.sanitizer.bypassSecurityTrustHtml(`<p>Description unavailable via API. <a href="\${normalized.url}" target="_blank" class="text-indigo-400">View on LeetCode</a></p>`));
+             this.questionHtml.set(this.sanitizer.bypassSecurityTrustHtml(`<p>Description unavailable via API. <a href="${normalized.url}" target="_blank" class="text-indigo-400">View on LeetCode</a></p>`));
           }
           this.isQuestionLoading.set(false);
         },
-        error: (err) => {
-          this.questionHtml.set(this.sanitizer.bypassSecurityTrustHtml(`<p class="text-crimson-400">Failed to load problem description. <a href="\${normalized.url}" target="_blank" class="text-indigo-400 underline">View on LeetCode</a></p>`));
+        error: () => {
+          if (requestToken !== this.questionDetailRequestToken) {
+            return;
+          }
+          this.questionHtml.set(this.sanitizer.bypassSecurityTrustHtml(`<p class="text-crimson-400">Failed to load problem description. <a href="${normalized.url}" target="_blank" class="text-indigo-400 underline">View on LeetCode</a></p>`));
           this.isQuestionLoading.set(false);
         }
       });
+    } else {
+      this.isQuestionLoading.set(false);
     }
 
     if (!updateRoute) {
@@ -437,6 +530,8 @@ public:
     }).subscribe({
       next: (response) => {
         this.submissionResponse.set(response);
+        const accepted = this.isAcceptedStatus(response?.status);
+        this.showEmotionModal.set(!accepted);
         this.isSubmittingLeetCode.set(false);
       },
       error: (err) => {
@@ -454,6 +549,7 @@ public:
   clearSubmissionState() {
     this.submissionResponse.set(null);
     this.submissionError.set(null);
+    this.showEmotionModal.set(false);
   }
 
   resetCode() {
@@ -461,7 +557,29 @@ public:
     this.result.set(null);
     this.submissionResponse.set(null);
     this.submissionError.set(null);
+    this.showEmotionModal.set(false);
     this.stdinInput.set('');
+  }
+
+  recordFailureEmotion(emotion: 'frustrated' | 'neutral' | 'motivated') {
+    if (this.isSavingEmotion()) {
+      return;
+    }
+
+    this.isSavingEmotion.set(true);
+    this.compilerService.recordFailureEmotion(emotion).subscribe({
+      next: () => {
+        this.showEmotionModal.set(false);
+        this.isSavingEmotion.set(false);
+      },
+      error: () => {
+        this.isSavingEmotion.set(false);
+      }
+    });
+  }
+
+  dismissEmotionModal() {
+    this.showEmotionModal.set(false);
   }
 
   onInputChange(event: Event) {
@@ -496,6 +614,51 @@ public:
     return value == null ? '' : String(value);
   }
 
+  private deduplicateLanguages(languages: CompilerInfo[]): CompilerInfo[] {
+    const deduped = new Map<string, CompilerInfo>();
+
+    for (const language of languages) {
+      const normalizedCommand = this.normalizeLanguageCommand(language.command);
+      if (!normalizedCommand || deduped.has(normalizedCommand)) {
+        continue;
+      }
+
+      deduped.set(normalizedCommand, {
+        ...language,
+        command: normalizedCommand,
+        languageName: this.normalizeLanguageName(language.languageName, normalizedCommand)
+      });
+    }
+
+    return Array.from(deduped.values());
+  }
+
+  private normalizeLanguageCommand(command: string): string {
+    const normalized = (command || '').trim().toLowerCase();
+    if (normalized === 'c++') {
+      return 'cpp';
+    }
+    if (normalized === 'js') {
+      return 'javascript';
+    }
+    return normalized;
+  }
+
+  private normalizeLanguageName(languageName: string, command: string): string {
+    switch (command) {
+      case 'java':
+        return 'Java';
+      case 'python':
+        return 'Python';
+      case 'cpp':
+        return 'C++';
+      case 'javascript':
+        return 'JavaScript';
+      default:
+        return languageName;
+    }
+  }
+
   private extractSlug(url: string): string {
     const match = url.match(/leetcode\.com\/problems\/([^/?#]+)/i);
     return match?.[1] || '';
@@ -518,6 +681,53 @@ public:
       .filter((part) => part)
       .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
       .join(' ');
+  }
+
+  private isAcceptedStatus(status: string | undefined): boolean {
+    return (status || '').trim().toLowerCase() === 'accepted';
+  }
+
+  private isSameQuestion(
+    left: Partial<LeetCodeQuestion> | null,
+    right: Partial<LeetCodeQuestion> | null
+  ): boolean {
+    if (!left || !right) {
+      return false;
+    }
+
+    const leftSlug = (left.slug || '').trim().toLowerCase();
+    const rightSlug = (right.slug || '').trim().toLowerCase();
+    if (leftSlug && rightSlug && leftSlug === rightSlug) {
+      return true;
+    }
+
+    const leftUrl = (left.url || '').trim().toLowerCase();
+    const rightUrl = (right.url || '').trim().toLowerCase();
+    if (leftUrl && rightUrl && leftUrl === rightUrl) {
+      return true;
+    }
+
+    const leftTitle = (left.title || '').trim().toLowerCase();
+    const rightTitle = (right.title || '').trim().toLowerCase();
+    return !!leftTitle && !!rightTitle && leftTitle === rightTitle;
+  }
+
+  private extractQuestionContent(response: any): string | null {
+    const contentCandidates = [
+      response?.data?.question?.content,
+      response?.data?.question?.translatedContent,
+      response?.question?.content,
+      response?.question?.translatedContent,
+      response?.content
+    ];
+
+    for (const candidate of contentCandidates) {
+      if (typeof candidate === 'string' && candidate.trim()) {
+        return candidate;
+      }
+    }
+
+    return null;
   }
 
 

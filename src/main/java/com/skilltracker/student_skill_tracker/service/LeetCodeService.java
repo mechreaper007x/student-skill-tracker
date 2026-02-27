@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,10 +26,25 @@ public class LeetCodeService {
     private static final String SUBMIT_URL_TEMPLATE = "https://leetcode.com/problems/%s/submit/";
     private static final String SUBMISSION_CHECK_URL_TEMPLATE = "https://leetcode.com/submissions/detail/%s/check/";
     private static final int RECENT_ACCEPTED_LIMIT = 200;
+    private static final int PROBLEMSET_QUERY_LIMIT = 10;
     private static final int MAX_SUBMISSION_POLL_ATTEMPTS = 10;
     private static final long SUBMISSION_POLL_INTERVAL_MS = 1200L;
+    private static final int GRAPHQL_RETRY_ATTEMPTS = 2;
+    private static final long GRAPHQL_RETRY_DELAY_MS = 250L;
+    private static final long QUESTION_DETAILS_CACHE_TTL_MS = 30 * 60 * 1000L;
 
     private final RestTemplate restTemplate;
+    private final Map<String, QuestionDetailsCacheEntry> questionDetailsCache = new ConcurrentHashMap<>();
+
+    private static final class QuestionDetailsCacheEntry {
+        private final Map<String, Object> payload;
+        private final long expiresAtMs;
+
+        private QuestionDetailsCacheEntry(Map<String, Object> payload, long expiresAtMs) {
+            this.payload = payload;
+            this.expiresAtMs = expiresAtMs;
+        }
+    }
 
     public LeetCodeService(RestTemplate restTemplate) {
         this.restTemplate = restTemplate;
@@ -206,31 +222,57 @@ public class LeetCodeService {
         }
     }
 
-    public ResponseEntity<?> fetchQuestionDetails(String titleSlug) {
-        String query = """
-                query questionData($titleSlug: String!) {
-                  question(titleSlug: $titleSlug) {
-                    questionId
-                    title
-                    titleSlug
-                    content
-                    difficulty
-                    topicTags {
-                      name
-                      slug
-                    }
-                    stats
-                  }
-                }
-                """;
+    public ResponseEntity<?> fetchQuestionDetails(String titleSlug, String titleHint, String urlHint) {
+        String normalizedSlug = normalizeSlug(titleSlug);
+        String slugFromUrl = extractSlugFromUrl(urlHint);
+        String normalizedTitleHint = titleHint == null ? "" : titleHint.trim();
+        String normalizedTitleKey = normalizeTitleKey(normalizedTitleHint);
 
-        Map<String, Object> variables = Map.of("titleSlug", titleSlug);
-        Map<String, Object> body = Map.of("query", query, "variables", variables);
+        if (normalizedSlug.isBlank() && slugFromUrl.isBlank() && normalizedTitleHint.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Slug, URL, or title is required"));
+        }
 
         try {
-            return restTemplate.postForEntity(BASE_URL, new HttpEntity<>(body, createHeaders()), Map.class);
+            Map<String, Object> cachedPayload = getCachedQuestionPayload(normalizedSlug, slugFromUrl, normalizedTitleKey);
+            if (cachedPayload != null) {
+                return ResponseEntity.ok(cachedPayload);
+            }
+
+            List<String> slugCandidates = new ArrayList<>();
+            if (!normalizedSlug.isBlank()) {
+                slugCandidates.add(normalizedSlug);
+            }
+            if (!slugFromUrl.isBlank() && !slugCandidates.contains(slugFromUrl)) {
+                slugCandidates.add(slugFromUrl);
+            }
+
+            for (String slugCandidate : slugCandidates) {
+                Map<String, Object> payload = fetchQuestionBySlug(slugCandidate);
+                if (hasQuestion(payload)) {
+                    cacheQuestionPayload(payload, slugCandidate, normalizedTitleKey);
+                    return ResponseEntity.ok(payload);
+                }
+            }
+
+            if (!normalizedTitleHint.isBlank()) {
+                String resolvedSlug = resolveSlugByTitle(normalizedTitleHint);
+                if (!resolvedSlug.isBlank()) {
+                    Map<String, Object> resolvedPayload = fetchQuestionBySlug(resolvedSlug);
+                    if (hasQuestion(resolvedPayload)) {
+                        cacheQuestionPayload(resolvedPayload, resolvedSlug, normalizedTitleKey);
+                        return ResponseEntity.ok(resolvedPayload);
+                    }
+                }
+            }
+
+            return ResponseEntity.status(404).body(Map.of(
+                    "error", "Question description not available on LeetCode for this entry.",
+                    "slug", normalizedSlug,
+                    "slugFromUrl", slugFromUrl,
+                    "titleHint", normalizedTitleHint));
         } catch (Exception e) {
-            logger.error("Error fetching question details for {}: {}", titleSlug, e.getMessage());
+            logger.error("Error fetching question details for slug={} urlHint={} titleHint={}: {}",
+                    normalizedSlug, urlHint, normalizedTitleHint, e.getMessage());
             return ResponseEntity.status(500).body(Map.of("error", "Failed to fetch LeetCode question details"));
         }
     }
@@ -346,6 +388,234 @@ public class LeetCodeService {
         }
     }
 
+    private Map<String, Object> fetchQuestionBySlug(String titleSlug) {
+        String query = """
+                query questionData($titleSlug: String!) {
+                  question(titleSlug: $titleSlug) {
+                    questionId
+                    title
+                    titleSlug
+                    content
+                    difficulty
+                    topicTags {
+                      name
+                      slug
+                    }
+                    stats
+                  }
+                }
+                """;
+
+        Map<String, Object> variables = Map.of("titleSlug", titleSlug);
+        Map<String, Object> body = Map.of("query", query, "variables", variables);
+        return postGraphQlWithRetry(body);
+    }
+
+    private boolean hasQuestion(Map<String, Object> payload) {
+        Map<String, Object> data = asMap(payload.get("data"));
+        Map<String, Object> question = asMap(data == null ? null : data.get("question"));
+        return question != null;
+    }
+
+    private Map<String, Object> getCachedQuestionPayload(String slug, String slugFromUrl, String titleKey) {
+        evictExpiredQuestionCacheEntries();
+
+        for (String key : buildQuestionCacheKeys(slug, slugFromUrl, titleKey)) {
+            QuestionDetailsCacheEntry entry = questionDetailsCache.get(key);
+            if (entry != null && entry.expiresAtMs > System.currentTimeMillis()) {
+                return entry.payload;
+            }
+        }
+        return null;
+    }
+
+    private void cacheQuestionPayload(Map<String, Object> payload, String slugHint, String titleKeyHint) {
+        if (!hasQuestion(payload)) {
+            return;
+        }
+
+        Map<String, Object> data = asMap(payload.get("data"));
+        Map<String, Object> question = asMap(data == null ? null : data.get("question"));
+        String resolvedSlug = normalizeSlug(asString(question == null ? null : question.get("titleSlug")));
+
+        String cacheSlug = !resolvedSlug.isBlank() ? resolvedSlug : normalizeSlug(slugHint);
+        String cacheTitleKey = titleKeyHint == null ? "" : titleKeyHint;
+
+        long expiresAt = System.currentTimeMillis() + QUESTION_DETAILS_CACHE_TTL_MS;
+        QuestionDetailsCacheEntry entry = new QuestionDetailsCacheEntry(payload, expiresAt);
+        for (String key : buildQuestionCacheKeys(cacheSlug, "", cacheTitleKey)) {
+            questionDetailsCache.put(key, entry);
+        }
+    }
+
+    private List<String> buildQuestionCacheKeys(String slug, String slugFromUrl, String titleKey) {
+        List<String> keys = new ArrayList<>();
+
+        String normalizedSlug = normalizeSlug(slug);
+        if (!normalizedSlug.isBlank()) {
+            keys.add("slug:" + normalizedSlug);
+        }
+
+        String normalizedSlugFromUrl = normalizeSlug(slugFromUrl);
+        if (!normalizedSlugFromUrl.isBlank() && !normalizedSlugFromUrl.equals(normalizedSlug)) {
+            keys.add("slug:" + normalizedSlugFromUrl);
+        }
+
+        if (titleKey != null && !titleKey.isBlank()) {
+            keys.add("title:" + titleKey);
+        }
+
+        return keys;
+    }
+
+    private void evictExpiredQuestionCacheEntries() {
+        long now = System.currentTimeMillis();
+        questionDetailsCache.entrySet().removeIf(entry -> entry.getValue().expiresAtMs <= now);
+    }
+
+    private String resolveSlugByTitle(String titleHint) {
+        for (String variant : buildTitleSearchVariants(titleHint)) {
+            try {
+                String resolved = resolveSlugByTitleVariant(variant, titleHint);
+                if (!resolved.isBlank()) {
+                    return resolved;
+                }
+            } catch (Exception ex) {
+                logger.debug("Failed resolving slug by title variant '{}': {}", variant, ex.getMessage());
+            }
+        }
+        return "";
+    }
+
+    private String resolveSlugByTitleVariant(String searchKeyword, String originalTitleHint) {
+        String query = """
+                query problemsetQuestionList($categorySlug: String, $skip: Int, $limit: Int, $filters: QuestionListFilterInput) {
+                  problemsetQuestionList(categorySlug: $categorySlug, skip: $skip, limit: $limit, filters: $filters) {
+                    questions {
+                      title
+                      titleSlug
+                    }
+                  }
+                }
+                """;
+
+        Map<String, Object> filters = Map.of("searchKeywords", searchKeyword);
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("categorySlug", "");
+        variables.put("skip", 0);
+        variables.put("limit", PROBLEMSET_QUERY_LIMIT);
+        variables.put("filters", filters);
+
+        Map<String, Object> body = Map.of("query", query, "variables", variables);
+        Map<String, Object> responseBody = postGraphQlWithRetry(body);
+        Map<String, Object> data = asMap(responseBody == null ? null : responseBody.get("data"));
+        Map<String, Object> list = asMap(data == null ? null : data.get("problemsetQuestionList"));
+        List<Map<String, Object>> questions = asMapList(list == null ? null : list.get("questions"));
+        if (questions.isEmpty()) {
+            return "";
+        }
+
+        String targetTitleKey = normalizeTitleKey(originalTitleHint);
+        String targetVariantKey = normalizeTitleKey(searchKeyword);
+
+        for (Map<String, Object> question : questions) {
+            String title = asString(question.get("title"));
+            String slug = asString(question.get("titleSlug"));
+            if (title == null || slug == null) {
+                continue;
+            }
+
+            String currentTitleKey = normalizeTitleKey(title);
+            if (currentTitleKey.equals(targetTitleKey) || currentTitleKey.equals(targetVariantKey)) {
+                return normalizeSlug(slug);
+            }
+        }
+
+        String firstSlug = asString(questions.get(0).get("titleSlug"));
+        return normalizeSlug(firstSlug);
+    }
+
+    private List<String> buildTitleSearchVariants(String titleHint) {
+        String raw = titleHint == null ? "" : titleHint.trim();
+        if (raw.isBlank()) {
+            return List.of();
+        }
+
+        List<String> variants = new ArrayList<>();
+        variants.add(raw);
+
+        String withoutSiteSuffix = raw
+                .replaceAll("(?i)\\s*[|\\-:]\\s*leetcode\\s*$", "")
+                .trim();
+        if (!withoutSiteSuffix.isBlank() && !variants.contains(withoutSiteSuffix)) {
+            variants.add(withoutSiteSuffix);
+        }
+
+        String withoutLeadingNumber = withoutSiteSuffix
+                .replaceAll("^\\s*\\d+[\\.)\\-:\\s]+", "")
+                .trim();
+        if (!withoutLeadingNumber.isBlank() && !variants.contains(withoutLeadingNumber)) {
+            variants.add(withoutLeadingNumber);
+        }
+
+        String asciiSimplified = withoutLeadingNumber
+                .replaceAll("[^a-zA-Z0-9\\s]", " ")
+                .replaceAll("\\s{2,}", " ")
+                .trim();
+        if (!asciiSimplified.isBlank() && !variants.contains(asciiSimplified)) {
+            variants.add(asciiSimplified);
+        }
+
+        return variants;
+    }
+
+    private String normalizeTitleKey(String title) {
+        if (title == null) {
+            return "";
+        }
+        return title.toLowerCase()
+                .replaceAll("[^a-z0-9]", "");
+    }
+
+    private String extractSlugFromUrl(String urlHint) {
+        if (urlHint == null || urlHint.isBlank()) {
+            return "";
+        }
+        return normalizeSlug(urlHint);
+    }
+
+    private Map<String, Object> postGraphQlWithRetry(Map<String, Object> body) {
+        Exception lastException = null;
+
+        for (int attempt = 1; attempt <= GRAPHQL_RETRY_ATTEMPTS; attempt++) {
+            try {
+                ResponseEntity<Map> response = restTemplate.postForEntity(
+                        BASE_URL,
+                        new HttpEntity<>(body, createHeaders()),
+                        Map.class);
+                return response.getBody() == null ? Map.of() : response.getBody();
+            } catch (Exception ex) {
+                lastException = ex;
+                if (attempt < GRAPHQL_RETRY_ATTEMPTS) {
+                    sleepForRetry();
+                }
+            }
+        }
+
+        if (lastException instanceof RuntimeException runtimeException) {
+            throw runtimeException;
+        }
+        throw new RuntimeException("LeetCode GraphQL request failed after retries.", lastException);
+    }
+
+    private void sleepForRetry() {
+        try {
+            Thread.sleep(GRAPHQL_RETRY_DELAY_MS);
+        } catch (InterruptedException interruptedException) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
     private Map<String, Object> pollSubmissionResult(String submissionId, HttpHeaders headers) {
         String checkUrl = SUBMISSION_CHECK_URL_TEMPLATE.formatted(submissionId);
         Map<String, Object> latestResponse = new HashMap<>();
@@ -437,6 +707,9 @@ public class LeetCodeService {
     private HttpHeaders createHeaders() {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.add("Accept", "application/json");
+        headers.add("Origin", "https://leetcode.com");
+        headers.add("Referer", "https://leetcode.com/problemset/");
         headers.add("User-Agent",
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)"
                         + " Chrome/124.0.0.0 Safari/537.36");

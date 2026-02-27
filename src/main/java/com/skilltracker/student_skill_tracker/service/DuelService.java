@@ -19,8 +19,10 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.skilltracker.student_skill_tracker.model.DojoPuzzle;
 import com.skilltracker.student_skill_tracker.model.DuelSession;
+import com.skilltracker.student_skill_tracker.model.Student;
 import com.skilltracker.student_skill_tracker.repository.DojoPuzzleRepository;
 import com.skilltracker.student_skill_tracker.repository.DuelSessionRepository;
+import com.skilltracker.student_skill_tracker.repository.StudentRepository;
 
 @Service
 public class DuelService {
@@ -29,6 +31,7 @@ public class DuelService {
 
     private final DojoPuzzleRepository puzzleRepository;
     private final DuelSessionRepository duelRepository;
+    private final StudentRepository studentRepository;
     private final SimpMessagingTemplate messagingTemplate;
     private final ObjectMapper objectMapper;
     private final JdbcTemplate jdbcTemplate;
@@ -37,11 +40,13 @@ public class DuelService {
 
     public DuelService(DojoPuzzleRepository puzzleRepository,
             DuelSessionRepository duelRepository,
+            StudentRepository studentRepository,
             SimpMessagingTemplate messagingTemplate,
             ObjectMapper objectMapper,
             JdbcTemplate jdbcTemplate) {
         this.puzzleRepository = puzzleRepository;
         this.duelRepository = duelRepository;
+        this.studentRepository = studentRepository;
         this.messagingTemplate = messagingTemplate;
         this.objectMapper = objectMapper;
         this.jdbcTemplate = jdbcTemplate;
@@ -58,9 +63,15 @@ public class DuelService {
             jdbcTemplate.execute(
                     "ALTER TABLE duel_sessions ADD COLUMN IF NOT EXISTS player2score INTEGER DEFAULT 0");
             jdbcTemplate.execute(
+                    "ALTER TABLE duel_sessions ADD COLUMN IF NOT EXISTS player1_highest_bloom_level INTEGER DEFAULT 1");
+            jdbcTemplate.execute(
+                    "ALTER TABLE duel_sessions ADD COLUMN IF NOT EXISTS player2_highest_bloom_level INTEGER DEFAULT 1");
+            jdbcTemplate.execute(
                     "UPDATE duel_sessions SET current_round = COALESCE(current_round, 1), "
                             + "player1score = COALESCE(player1score, 0), "
-                            + "player2score = COALESCE(player2score, 0)");
+                            + "player2score = COALESCE(player2score, 0), "
+                            + "player1_highest_bloom_level = COALESCE(player1_highest_bloom_level, 1), "
+                            + "player2_highest_bloom_level = COALESCE(player2_highest_bloom_level, 1)");
         } catch (Exception e) {
             log.warn("Could not auto-heal duel_sessions schema columns", e);
         }
@@ -121,6 +132,8 @@ public class DuelService {
                 .currentRound(1)
                 .player1Score(0)
                 .player2Score(0)
+                .player1HighestBloomLevel(1)
+                .player2HighestBloomLevel(1)
                 .startTime(LocalDateTime.now())
                 .build();
 
@@ -177,6 +190,7 @@ public class DuelService {
         int currentRound = session.getCurrentRound();
         boolean isCorrect = false;
         int pointsAwarded = 0;
+        String roundType = "";
 
         try {
             JsonNode rounds = objectMapper.readTree(puzzle.getRoundsJson());
@@ -186,9 +200,9 @@ public class DuelService {
                 return;
             }
 
-            String type = roundData.path("type").asText();
+            roundType = roundData.path("type").asText();
 
-            switch (type) {
+            switch (roundType) {
                 case "MCQ" -> {
                     // Answer is the index of chosen option (e.g. "2")
                     // For MCQ with multiple questions, answer format: "0,2,1,3" (comma-separated
@@ -245,6 +259,7 @@ public class DuelService {
         } else {
             session.setPlayer2Score(session.getPlayer2Score() + pointsAwarded);
         }
+        updateBloomProgress(session, isPlayer1, currentRound, roundType, pointsAwarded);
 
         duelRepository.save(session);
 
@@ -282,12 +297,15 @@ public class DuelService {
                             : "DRAW";
             session.setWinnerUsername(winner);
             duelRepository.save(session);
+            persistHighestBloomLevels(session);
 
             Map<String, Object> endPayload = Map.of(
                     "status", "FINISHED",
                     "winner", winner,
                     "player1Score", session.getPlayer1Score(),
-                    "player2Score", session.getPlayer2Score());
+                    "player2Score", session.getPlayer2Score(),
+                    "player1HighestBloomLevel", session.getPlayer1HighestBloomLevel(),
+                    "player2HighestBloomLevel", session.getPlayer2HighestBloomLevel());
             messagingTemplate.convertAndSend("/topic/duel/" + sessionId + "/roundAdvance", endPayload);
             log.info("Duel {} finished. Winner: {}", sessionId, winner);
         } else {
@@ -301,6 +319,63 @@ public class DuelService {
                     "player2Score", session.getPlayer2Score());
             messagingTemplate.convertAndSend("/topic/duel/" + sessionId + "/roundAdvance", advancePayload);
             log.info("Duel {} advancing to round {}", sessionId, nextRound);
+        }
+    }
+
+    private void updateBloomProgress(DuelSession session, boolean isPlayer1, int roundNumber, String roundType, int pointsAwarded) {
+        if (pointsAwarded <= 0) {
+            return;
+        }
+
+        int bloomLevel = bloomLevelForRound(roundNumber, roundType);
+        if (bloomLevel <= 0) {
+            return;
+        }
+
+        if (isPlayer1) {
+            session.setPlayer1HighestBloomLevel(Math.max(session.getPlayer1HighestBloomLevel(), bloomLevel));
+        } else {
+            session.setPlayer2HighestBloomLevel(Math.max(session.getPlayer2HighestBloomLevel(), bloomLevel));
+        }
+    }
+
+    private int bloomLevelForRound(int roundNumber, String roundType) {
+        if ("CODING".equalsIgnoreCase(roundType)) {
+            return 6;
+        }
+
+        return switch (roundNumber) {
+            case 1 -> 2; // Remember + Understand
+            case 2 -> 3; // Understand + Apply
+            case 3 -> 4; // Analyze
+            case 4 -> 5; // Evaluate
+            case 5 -> 6; // Apply + Create
+            default -> 1;
+        };
+    }
+
+    private void persistHighestBloomLevels(DuelSession session) {
+        persistBloomForUsername(session.getPlayer1Username(), session.getPlayer1HighestBloomLevel());
+        persistBloomForUsername(session.getPlayer2Username(), session.getPlayer2HighestBloomLevel());
+    }
+
+    private void persistBloomForUsername(String username, int duelBloomLevel) {
+        if (username == null || username.isBlank()) {
+            return;
+        }
+
+        Optional<Student> studentOpt = studentRepository.findByEmailIgnoreCase(username);
+        if (studentOpt.isEmpty()) {
+            log.debug("No student profile found for duel user {}", username);
+            return;
+        }
+
+        Student student = studentOpt.get();
+        int currentHighest = student.getHighestBloomLevel() == null ? 1 : student.getHighestBloomLevel();
+        int updatedHighest = Math.max(currentHighest, duelBloomLevel);
+        if (updatedHighest != currentHighest) {
+            student.setHighestBloomLevel(updatedHighest);
+            studentRepository.save(student);
         }
     }
 

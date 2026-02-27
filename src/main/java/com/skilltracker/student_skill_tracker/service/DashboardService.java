@@ -63,6 +63,9 @@ public class DashboardService {
                 .leetcodeUsername(student.getLeetcodeUsername())
                 .level(student.getLevel())
                 .xp(student.getXp())
+                .thinkingStyle(student.getThinkingStyle())
+                .highestBloomLevel(student.getHighestBloomLevel())
+                .lastEmotionAfterFailure(student.getLastEmotionAfterFailure())
                 .build();
     }
 

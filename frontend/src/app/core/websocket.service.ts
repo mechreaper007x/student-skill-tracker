@@ -16,6 +16,8 @@ export interface RoundData {
   round: number;
   type: 'MCQ' | 'MEMORY' | 'PUZZLE' | 'PROBLEM_SOLVING' | 'CODING';
   title: string;
+  bloomLevel?: number;
+  bloomLevelName?: string;
   timeLimitSeconds: number;
   // MCQ
   questions?: Array<{

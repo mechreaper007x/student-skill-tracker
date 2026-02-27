@@ -126,20 +126,25 @@ export class ProvingGroundsComponent implements OnInit {
   }
 
   openQuestionInCompiler(question: LeetCodeQuestion) {
-    const slug = this.extractSlug(question.url);
+    const slug = (question.slug || this.extractSlug(question.url) || '').trim();
+    const resolvedUrl = question.url || (slug ? this.toLeetCodeUrl(slug) : '');
     this.router.navigate(['/compiler'], {
       queryParams: {
         slug,
         title: question.title,
         difficulty: question.difficulty,
-        url: question.url,
+        url: resolvedUrl,
         tags: (question.tags || []).join(',')
       }
     });
   }
 
   private extractSlug(url: string): string {
-    const match = url.match(/leetcode\.com\/problems\/([^/]+)/i);
+    const match = (url || '').match(/leetcode\.com\/problems\/([^/?#]+)/i);
     return match?.[1] || '';
+  }
+
+  private toLeetCodeUrl(slug: string): string {
+    return slug ? `https://leetcode.com/problems/${slug}/` : '';
   }
 }

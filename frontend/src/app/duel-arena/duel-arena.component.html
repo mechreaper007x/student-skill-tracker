@@ -56,6 +56,7 @@
     <div class="text-6xl">{{ getRoundIcon(currentRoundData()?.type || '') }}</div>
     <h2 class="text-3xl text-display">{{ getRoundLabel(currentRoundData()?.type || '') }}</h2>
     <p class="text-sm text-noir-400">{{ currentRoundData()?.title }}</p>
+    <p class="text-[10px] font-mono text-amber-300 uppercase tracking-widest">{{ getBloomChip(currentRoundData()) }}</p>
     <div class="flex items-center justify-center gap-6 text-sm font-mono">
       <span class="text-emerald-400">{{ currentUser() }}: {{ myScore() }}</span>
       <span class="text-noir-600">vs</span>
@@ -77,6 +78,9 @@
     <div class="flex items-center gap-3">
       <span class="text-[8px] font-mono text-noir-500 uppercase tracking-widest">R{{ currentRound() }}/5</span>
       <span class="text-lg">{{ getRoundIcon(currentRoundData()?.type || '') }}</span>
+      <span class="hidden md:inline text-[8px] font-mono text-amber-300 uppercase tracking-widest">
+        {{ getBloomChip(currentRoundData()) }}
+      </span>
       <span class="font-mono text-sm font-bold tracking-wider" [class]="roundTimerSeconds() <= 30 ? 'text-crimson-500 animate-pulse' : 'text-white'">
         {{ formattedRoundTimer() }}
       </span>
@@ -94,6 +98,7 @@
       [class]="currentRound() === r.round ? 'bg-crimson-600/20 text-crimson-400' : currentRound() > r.round ? 'bg-emerald-900/10 text-emerald-500' : 'text-noir-600'">
       <span>{{ getRoundIcon(r.type) }}</span>
       <span class="hidden md:inline">{{ getRoundLabel(r.type) }}</span>
+      <span class="hidden lg:inline text-amber-300/80">L{{ r.bloomLevel || '?' }}</span>
     </div>
   </div>
 
@@ -105,6 +110,7 @@
       <div class="text-center mb-4">
         <p class="text-mono-technical">ROUND {{ currentRound() }} // QUIZ</p>
         <h2 class="text-2xl text-display mt-1">{{ currentRoundData()?.title }}</h2>
+        <p class="text-[10px] font-mono text-amber-300 uppercase tracking-widest mt-2">{{ getBloomChip(currentRoundData()) }}</p>
       </div>
 
       <div *ngFor="let q of currentRoundData()?.questions; let qi = index" class="noir-card p-5 space-y-3">
@@ -136,6 +142,7 @@
       <div class="text-center mb-4">
         <p class="text-mono-technical">ROUND {{ currentRound() }} // MEMORY</p>
         <h2 class="text-2xl text-display mt-1">{{ currentRoundData()?.title }}</h2>
+        <p class="text-[10px] font-mono text-amber-300 uppercase tracking-widest mt-2">{{ getBloomChip(currentRoundData()) }}</p>
         <p class="text-[10px] text-noir-500 mt-2 font-mono">Match the CS concepts with their properties. Pairs matched: {{ memoryMatchCount() }}/{{ currentRoundData()?.pairs?.length || 0 }}</p>
       </div>
 
@@ -164,6 +171,7 @@
       <div class="text-center mb-4">
         <p class="text-mono-technical">ROUND {{ currentRound() }} // PUZZLE</p>
         <h2 class="text-2xl text-display mt-1">{{ currentRoundData()?.title }}</h2>
+        <p class="text-[10px] font-mono text-amber-300 uppercase tracking-widest mt-2">{{ getBloomChip(currentRoundData()) }}</p>
       </div>
 
       <div class="noir-card p-6">
@@ -192,6 +200,7 @@
       <div class="text-center mb-4">
         <p class="text-mono-technical">ROUND {{ currentRound() }} // PROBLEM SOLVING</p>
         <h2 class="text-2xl text-display mt-1">{{ currentRoundData()?.title }}</h2>
+        <p class="text-[10px] font-mono text-amber-300 uppercase tracking-widest mt-2">{{ getBloomChip(currentRoundData()) }}</p>
       </div>
 
       <div class="noir-card p-6">
@@ -264,6 +273,7 @@
           <div class="flex items-center gap-2 px-4 py-1.5 border-b border-noir-800 bg-noir-900/30">
             <lucide-icon name="FileText" class="w-3.5 h-3.5 text-noir-500"></lucide-icon>
             <span class="text-[8px] font-mono text-noir-400 uppercase tracking-widest">PROBLEM // {{ currentRoundData()?.title }}</span>
+            <span class="ml-auto text-[8px] font-mono text-amber-300 uppercase tracking-widest">{{ getBloomChip(currentRoundData()) }}</span>
           </div>
           <div class="flex-1 overflow-y-auto p-5 puzzle-content-area">
             <div class="prose prose-invert prose-sm max-w-none text-noir-100 leading-relaxed" [innerHTML]="currentRoundData()?.descriptionHtml || ''"></div>

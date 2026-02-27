@@ -46,6 +46,10 @@ export const routes: Routes = [
         loadComponent: () => import('./duel-arena/duel-arena.component').then(m => m.DuelArenaComponent)
       },
       {
+        path: 'cognitive-sprint',
+        loadComponent: () => import('./cognitive-sprint/cognitive-sprint.component').then(m => m.CognitiveSprintComponent)
+      },
+      {
         path: 'compiler',
         loadComponent: () => import('./battle-station/battle-station.component').then(m => m.BattleStationComponent)
       },

@@ -148,6 +148,8 @@ public class DuelGenerationService {
                       "round": 1,
                       "type": "MCQ",
                       "title": "Round title",
+                      "bloomLevel": 2,
+                      "bloomLevelName": "Remember & Understand",
                       "timeLimitSeconds": 120,
                       "questions": [
                         {
@@ -161,6 +163,8 @@ public class DuelGenerationService {
                       "round": 2,
                       "type": "MEMORY",
                       "title": "Round title",
+                      "bloomLevel": 3,
+                      "bloomLevelName": "Understand & Apply",
                       "timeLimitSeconds": 120,
                       "gridSize": 4,
                       "pairs": [
@@ -178,6 +182,8 @@ public class DuelGenerationService {
                       "round": 3,
                       "type": "PUZZLE",
                       "title": "Round title",
+                      "bloomLevel": 4,
+                      "bloomLevelName": "Analyze",
                       "timeLimitSeconds": 180,
                       "puzzleHtml": "<p>HTML formatted logic puzzle (find pattern, decode, sequence, etc)</p>",
                       "answer": "the correct answer as a string",
@@ -187,6 +193,8 @@ public class DuelGenerationService {
                       "round": 4,
                       "type": "PROBLEM_SOLVING",
                       "title": "Round title",
+                      "bloomLevel": 5,
+                      "bloomLevelName": "Evaluate",
                       "timeLimitSeconds": 180,
                       "problemHtml": "<p>HTML formatted math/logic word problem that does NOT require code</p>",
                       "answer": "the correct answer as a string",
@@ -196,6 +204,8 @@ public class DuelGenerationService {
                       "round": 5,
                       "type": "CODING",
                       "title": "Coding problem title",
+                      "bloomLevel": 6,
+                      "bloomLevelName": "Apply & Create",
                       "timeLimitSeconds": 600,
                       "descriptionHtml": "<p>HTML formatted beginner-friendly coding problem with examples</p>",
                       "starterCode": {
@@ -220,6 +230,12 @@ public class DuelGenerationService {
                 - Round 5 CODING: Create a very beginner-friendly coding problem (array sum, string reversal, basic loops). Include 3+ hidden test cases. Time limit is 10 minutes.
                 - All content should be educational, fun, and have a slightly intense/competitive tone.
                 - Use HTML tags (<p>, <b>, <code>, <ul>, <li>) for formatted text, NOT markdown.
+                - Keep Bloom metadata exactly aligned to round order:
+                  Round 1 -> bloomLevel 2 ("Remember & Understand")
+                  Round 2 -> bloomLevel 3 ("Understand & Apply")
+                  Round 3 -> bloomLevel 4 ("Analyze")
+                  Round 4 -> bloomLevel 5 ("Evaluate")
+                  Round 5 -> bloomLevel 6 ("Apply & Create")
                 """;
     }
 
@@ -250,6 +266,7 @@ public class DuelGenerationService {
             JsonNode copied = roundNode.deepCopy();
             if (copied instanceof ObjectNode roundObject) {
                 String type = roundObject.path("type").asText("");
+                ensureBloomMetadata(roundObject);
                 if ("CODING".equalsIgnoreCase(type)) {
                     sanitizeCodingRound(roundObject);
                 }
@@ -305,6 +322,47 @@ public class DuelGenerationService {
             case "javascript" -> "function solve(nums) {\n  return nums.reduce((sum, n) => sum + n, 0);\n}";
             case "java" -> "class Solution {\n  public int solve(int[] nums) {\n    int sum = 0;\n    for (int n : nums) {\n      sum += n;\n    }\n    return sum;\n  }\n}";
             default -> "class Solution {\n  public int solve(int[] nums) {\n    return 0;\n  }\n}";
+        };
+    }
+
+    private void ensureBloomMetadata(ObjectNode roundObject) {
+        int roundNumber = roundObject.path("round").asInt(0);
+        int defaultLevel = defaultBloomLevel(roundNumber);
+        String defaultLevelName = defaultBloomLevelName(roundNumber);
+
+        int bloomLevel = roundObject.path("bloomLevel").asInt(defaultLevel);
+        if (bloomLevel <= 0) {
+            bloomLevel = defaultLevel;
+        }
+
+        String bloomLevelName = roundObject.path("bloomLevelName").asText("").trim();
+        if (bloomLevelName.isBlank()) {
+            bloomLevelName = defaultLevelName;
+        }
+
+        roundObject.put("bloomLevel", bloomLevel);
+        roundObject.put("bloomLevelName", bloomLevelName);
+    }
+
+    private int defaultBloomLevel(int roundNumber) {
+        return switch (roundNumber) {
+            case 1 -> 2;
+            case 2 -> 3;
+            case 3 -> 4;
+            case 4 -> 5;
+            case 5 -> 6;
+            default -> 1;
+        };
+    }
+
+    private String defaultBloomLevelName(int roundNumber) {
+        return switch (roundNumber) {
+            case 1 -> "Remember & Understand";
+            case 2 -> "Understand & Apply";
+            case 3 -> "Analyze";
+            case 4 -> "Evaluate";
+            case 5 -> "Apply & Create";
+            default -> "Remember";
         };
     }
 

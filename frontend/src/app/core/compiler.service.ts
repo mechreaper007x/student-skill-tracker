@@ -39,6 +39,7 @@ export interface LeetCodeSubmissionResponse {
   language: string;
   status: string;
   leetcodeSubmissionUrl: string;
+  emotionCheckRequired?: boolean;
   judgeResult?: Record<string, unknown>;
   error?: string;
   details?: string;
@@ -53,12 +54,41 @@ export interface LeetCodeAuthStatusResponse {
   connected: boolean;
 }
 
+export interface CognitiveSprintQuestion {
+  prompt: string;
+  options: string[];
+}
+
+export interface CognitiveSprintStartResponse {
+  sprintId: string;
+  system1TimeLimitSeconds: number;
+  roundA: CognitiveSprintQuestion;
+  roundB: CognitiveSprintQuestion;
+}
+
+export interface CognitiveSprintRoundAResponse {
+  sprintId: string;
+  round: 'A';
+  withinTimeLimit: boolean;
+  timeTakenMs: number;
+  correct: boolean;
+  nextRound: 'B';
+}
+
+export interface CognitiveSprintResultResponse {
+  sprintId: string;
+  roundA: { correct: boolean };
+  roundB: { correct: boolean; timeTakenMs: number };
+  thinkingStyle: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
 export class CompilerService {
   private http = inject(HttpClient);
   private apiUrl = '/api/compiler';
+  private cognitiveApiUrl = '/api/cognitive';
 
   executeCode(request: CodeExecutionRequest): Observable<CompilationResult> {
     return this.http.post<CompilationResult>(`${this.apiUrl}/execute`, request);
@@ -84,7 +114,33 @@ export class CompilerService {
     return this.http.delete<LeetCodeAuthStatusResponse>(`${this.apiUrl}/leetcode/connect`);
   }
 
-  getLeetCodeQuestionDetails(slug: string): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}/leetcode/question-details`, { slug });
+  getLeetCodeQuestionDetails(slug: string, title?: string, url?: string): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/leetcode/question-details`, { slug, title, url });
+  }
+
+  startCognitiveSprint(): Observable<CognitiveSprintStartResponse> {
+    return this.http.post<CognitiveSprintStartResponse>(`${this.cognitiveApiUrl}/sprint`, {
+      action: 'start'
+    });
+  }
+
+  submitCognitiveSprintRoundA(sprintId: string, selectedIndex: number): Observable<CognitiveSprintRoundAResponse> {
+    return this.http.post<CognitiveSprintRoundAResponse>(`${this.cognitiveApiUrl}/sprint`, {
+      action: 'submit_round_a',
+      sprintId,
+      selectedIndex
+    });
+  }
+
+  submitCognitiveSprintRoundB(sprintId: string, selectedIndex: number): Observable<CognitiveSprintResultResponse> {
+    return this.http.post<CognitiveSprintResultResponse>(`${this.cognitiveApiUrl}/sprint`, {
+      action: 'submit_round_b',
+      sprintId,
+      selectedIndex
+    });
+  }
+
+  recordFailureEmotion(emotion: 'frustrated' | 'neutral' | 'motivated'): Observable<{ status: string }> {
+    return this.http.post<{ status: string }>(`${this.cognitiveApiUrl}/emotion`, { emotion });
   }
 }

@@ -226,6 +226,7 @@ public class CompilerController {
                     request.isWaitForResult());
 
             boolean accepted = "Accepted".equalsIgnoreCase(String.valueOf(submissionResult.get("status")));
+            submissionResult.put("emotionCheckRequired", !accepted);
             cognitiveMetricService.recordSubmission(student, request.getProblemSlug(), accepted);
             if (!accepted) {
                 // Logic for recovery velocity will trigger on the NEXT successful action
@@ -248,16 +249,22 @@ public class CompilerController {
             @RequestBody Map<String, String> request,
             Authentication authentication) {
         String slug = request.get("slug");
-        if (slug == null || slug.isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Slug is required"));
+        String title = request.get("title");
+        String url = request.get("url");
+        if ((slug == null || slug.isBlank()) && (title == null || title.isBlank()) && (url == null || url.isBlank())) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Slug, title, or URL is required"));
         }
 
         Optional<Student> studentOpt = getCurrentStudent(authentication);
         studentOpt.ifPresent(student -> {
-            cognitiveMetricService.recordQuestionSelection(student, slug);
+            if (slug != null && !slug.isBlank()) {
+                cognitiveMetricService.recordQuestionSelection(student, slug);
+            } else {
+                cognitiveMetricService.recordQuestionSelection(student, title);
+            }
         });
 
-        return leetCodeService.fetchQuestionDetails(slug);
+        return leetCodeService.fetchQuestionDetails(slug, title, url);
     }
 
     private Optional<Student> getCurrentStudent(Authentication authentication) {

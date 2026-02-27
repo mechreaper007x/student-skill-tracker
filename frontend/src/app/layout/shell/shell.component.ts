@@ -26,6 +26,7 @@ export class ShellComponent {
     { label: 'Arsenal', icon: 'Package', route: '/arsenal' },
     { label: 'Proving Grounds', icon: 'Swords', route: '/proving-grounds' },
     { label: 'Compiler', icon: 'Terminal', route: '/compiler' },
+    { label: 'Cognitive Sprint', icon: 'Brain', route: '/cognitive-sprint' },
     { label: 'Settings', icon: 'Settings', route: '/settings' },
   ];
 

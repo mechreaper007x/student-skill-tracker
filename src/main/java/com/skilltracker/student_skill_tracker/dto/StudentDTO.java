@@ -12,4 +12,7 @@ public class StudentDTO {
     private String leetcodeUsername;
     private Integer level;
     private Integer xp;
+    private String thinkingStyle;
+    private Integer highestBloomLevel;
+    private String lastEmotionAfterFailure;
 }

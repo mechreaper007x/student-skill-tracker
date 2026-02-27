@@ -494,11 +494,14 @@ export class DuelArenaComponent implements OnInit, OnDestroy {
     if (!Array.isArray(raw)) return [];
 
     return raw.map((item: any, idx) => {
+      const roundNumber = Number(item?.round) || (idx + 1);
       const type = this.normalizeRoundType(item?.type);
       const normalizedRound = {
         ...item,
-        round: Number(item?.round) || (idx + 1),
+        round: roundNumber,
         type,
+        bloomLevel: Number(item?.bloomLevel) || this.defaultBloomLevel(roundNumber),
+        bloomLevelName: String(item?.bloomLevelName || '').trim() || this.defaultBloomLevelName(roundNumber),
         timeLimitSeconds: Number(item?.timeLimitSeconds) || 120,
       } as RoundData;
 
@@ -593,6 +596,8 @@ export class DuelArenaComponent implements OnInit, OnDestroy {
         round: 1,
         type: 'MCQ',
         title: 'Quick Fire Quiz',
+        bloomLevel: 2,
+        bloomLevelName: 'Remember & Understand',
         timeLimitSeconds: 120,
         questions: [
           {
@@ -611,6 +616,8 @@ export class DuelArenaComponent implements OnInit, OnDestroy {
         round: 2,
         type: 'MEMORY',
         title: 'Memory Match',
+        bloomLevel: 3,
+        bloomLevelName: 'Understand & Apply',
         timeLimitSeconds: 120,
         gridSize: 4,
         pairs: [
@@ -624,6 +631,8 @@ export class DuelArenaComponent implements OnInit, OnDestroy {
         round: 3,
         type: 'PUZZLE',
         title: 'Pattern Decode',
+        bloomLevel: 4,
+        bloomLevelName: 'Analyze',
         timeLimitSeconds: 180,
         puzzleHtml:
           '<p>Find the next number in the sequence: <b>2, 6, 12, 20, 30, ?</b></p><p>Hint: differences increase by 2.</p>',
@@ -633,6 +642,8 @@ export class DuelArenaComponent implements OnInit, OnDestroy {
         round: 4,
         type: 'PROBLEM_SOLVING',
         title: 'Logic Gate',
+        bloomLevel: 5,
+        bloomLevelName: 'Evaluate',
         timeLimitSeconds: 180,
         problemHtml:
           '<p>A farmer has <b>17 sheep</b>. All but <b>9</b> run away. How many are left?</p>',
@@ -642,6 +653,8 @@ export class DuelArenaComponent implements OnInit, OnDestroy {
         round: 5,
         type: 'CODING',
         title: 'Echo Sum',
+        bloomLevel: 6,
+        bloomLevelName: 'Apply & Create',
         timeLimitSeconds: 600,
         descriptionHtml:
           '<p><b>Task:</b> Given an integer array <code>nums</code>, return the sum of all values.</p>',
@@ -675,6 +688,35 @@ export class DuelArenaComponent implements OnInit, OnDestroy {
       case 'PROBLEM_SOLVING': return 'PROBLEM SOLVING';
       case 'CODING': return 'CODING';
       default: return type;
+    }
+  }
+
+  getBloomChip(round: RoundData | null): string {
+    if (!round) return '';
+    const level = round.bloomLevel || this.defaultBloomLevel(round.round);
+    const name = round.bloomLevelName || this.defaultBloomLevelName(round.round);
+    return `Bloom L${level}: ${name}`;
+  }
+
+  private defaultBloomLevel(roundNumber: number): number {
+    switch (roundNumber) {
+      case 1: return 2;
+      case 2: return 3;
+      case 3: return 4;
+      case 4: return 5;
+      case 5: return 6;
+      default: return 1;
+    }
+  }
+
+  private defaultBloomLevelName(roundNumber: number): string {
+    switch (roundNumber) {
+      case 1: return 'Remember & Understand';
+      case 2: return 'Understand & Apply';
+      case 3: return 'Analyze';
+      case 4: return 'Evaluate';
+      case 5: return 'Apply & Create';
+      default: return 'Remember';
     }
   }
 

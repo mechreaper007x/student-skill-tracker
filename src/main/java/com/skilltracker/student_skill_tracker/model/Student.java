@@ -149,6 +149,21 @@ public class Student {
     @Column(name = "question_selection_timestamp")
     private LocalDateTime questionSelectionTimestamp;
 
+    @Column(name = "thinking_style")
+    private String thinkingStyle;
+
+    @Column(name = "highest_bloom_level")
+    @Builder.Default
+    private Integer highestBloomLevel = 1;
+
+    @Column(name = "last_emotion_after_failure")
+    private String lastEmotionAfterFailure;
+
+    @Lob
+    @Column(name = "emotion_log_json")
+    @ToString.Exclude
+    private String emotionLogJson;
+
     public void levelUp() {
         this.level++;
         this.xp = 0;

@@ -3,7 +3,6 @@ package com.skilltracker.student_skill_tracker.service;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
@@ -38,9 +37,9 @@ public class QuestionService {
 
     @PostConstruct
     public void init() {
-        commonQuestions = normalizeAndDeduplicate(loadQuestions("common_questions.json"));
-        topTierQuestions = normalizeAndDeduplicate(loadQuestions("top_tier_questions.json"));
-        trendingQuestions = normalizeAndDeduplicate(loadQuestions("trending_questions.json"));
+        commonQuestions = normalizeQuestions(loadQuestions("common_questions.json"), "common");
+        topTierQuestions = normalizeQuestions(loadQuestions("top_tier_questions.json"), "top-tier");
+        trendingQuestions = normalizeQuestions(loadQuestions("trending_questions.json"), "trending");
 
         logger.info("Loaded questions — Common: {}, Top-Tier: {}, Trending: {}",
                 commonQuestions.size(), topTierQuestions.size(), trendingQuestions.size());
@@ -57,34 +56,61 @@ public class QuestionService {
         }
     }
 
-    /**
-     * Normalize the raw question shape and deduplicate by canonical slug.
-     * Some data sources contain synthetic variants like /problem-slug/remix which
-     * are not real LeetCode pages and cause 404. We canonicalize each URL to
-     * /problems/{slug}/.
-     */
-    private List<Map<String, Object>> normalizeAndDeduplicate(List<Map<String, Object>> questions) {
-        Map<String, Map<String, Object>> bySlug = new LinkedHashMap<>();
+    private List<Map<String, Object>> normalizeQuestions(List<Map<String, Object>> questions, String source) {
+        List<Map<String, Object>> normalizedQuestions = new ArrayList<>();
+        int skipped = 0;
 
         for (Map<String, Object> question : questions) {
             Map<String, Object> normalized = normalizeQuestion(question);
             String slug = asString(normalized.get("slug"));
             if (slug == null || slug.isBlank()) {
+                skipped++;
                 continue;
             }
 
-            bySlug.merge(slug, normalized, this::pickBetterVariant);
+            normalized.put("source", source);
+            normalizedQuestions.add(normalized);
         }
 
-        return new ArrayList<>(bySlug.values());
+        logger.info("Question source {} normalized: kept={}, skipped={}", source, normalizedQuestions.size(), skipped);
+        return normalizedQuestions;
     }
 
     private Map<String, Object> normalizeQuestion(Map<String, Object> rawQuestion) {
         Map<String, Object> normalized = new HashMap<>();
 
-        String title = sanitizeTitle(asString(rawQuestion.get("title")));
-        String difficulty = normalizeDifficulty(asString(rawQuestion.get("difficulty")));
-        String slug = extractProblemSlug(asString(rawQuestion.get("url")));
+        String title = sanitizeTitle(
+                firstNonBlank(rawQuestion,
+                        "title",
+                        "questionTitle",
+                        "question_name",
+                        "name",
+                        "problemName"));
+
+        String difficulty = normalizeDifficulty(
+                firstNonBlank(rawQuestion,
+                        "difficulty",
+                        "level"));
+
+        String explicitSlug = sanitizeSlug(
+                firstNonBlank(rawQuestion,
+                        "slug",
+                        "titleSlug",
+                        "questionSlug",
+                        "problemSlug",
+                        "questionTitleSlug"));
+
+        String url = sanitizeUrl(
+                firstNonBlank(rawQuestion,
+                        "url",
+                        "problemUrl",
+                        "questionUrl",
+                        "link"));
+
+        String slug = explicitSlug;
+        if (slug == null || slug.isBlank()) {
+            slug = extractProblemSlug(url);
+        }
         if (slug == null || slug.isBlank()) {
             slug = slugify(title);
         }
@@ -95,45 +121,36 @@ public class QuestionService {
 
         normalized.put("title", title == null || title.isBlank() ? humanizeSlug(slug) : title);
         normalized.put("difficulty", difficulty);
-        normalized.put("tags", normalizeTags(rawQuestion.get("tags")));
+        normalized.put("tags", normalizeTags(resolveTagsValue(rawQuestion)));
         normalized.put("slug", slug);
         normalized.put("url", buildCanonicalUrl(slug));
         return normalized;
     }
 
-    private Map<String, Object> pickBetterVariant(Map<String, Object> existing, Map<String, Object> candidate) {
-        int existingScore = questionQualityScore(existing);
-        int candidateScore = questionQualityScore(candidate);
-
-        if (candidateScore > existingScore) {
-            return candidate;
+    private Object resolveTagsValue(Map<String, Object> rawQuestion) {
+        Object tags = rawQuestion.get("tags");
+        if (tags != null) {
+            return tags;
         }
-        return existing;
+        Object topicTags = rawQuestion.get("topicTags");
+        if (topicTags != null) {
+            return topicTags;
+        }
+        Object topics = rawQuestion.get("topics");
+        if (topics != null) {
+            return topics;
+        }
+        return rawQuestion.get("category");
     }
 
-    private int questionQualityScore(Map<String, Object> question) {
-        String title = asString(question.get("title"));
-        String difficulty = asString(question.get("difficulty"));
-        int tags = normalizeTags(question.get("tags")).size();
-
-        int score = 0;
-        if (title != null) {
-            String lower = title.toLowerCase(Locale.ROOT);
-            if (!lower.contains("remix") && !lower.contains("ultimate") && !lower.contains("extreme")) {
-                score += 4;
-            }
-            if (title.length() <= 50) {
-                score += 2;
+    private String firstNonBlank(Map<String, Object> source, String... keys) {
+        for (String key : keys) {
+            String value = asString(source.get(key));
+            if (value != null && !value.isBlank()) {
+                return value;
             }
         }
-
-        if (difficulty != null && !"Unknown".equalsIgnoreCase(difficulty)) {
-            score += 2;
-        }
-        if (tags > 0) {
-            score += 1;
-        }
-        return score;
+        return "";
     }
 
     private String extractProblemSlug(String url) {
@@ -157,6 +174,13 @@ public class QuestionService {
                 .replaceAll("[^a-z0-9-]", "")
                 .replaceAll("-{2,}", "-")
                 .replaceAll("^-|-$", "");
+    }
+
+    private String sanitizeUrl(String url) {
+        if (url == null || url.isBlank()) {
+            return "";
+        }
+        return url.trim();
     }
 
     private String buildCanonicalUrl(String slug) {
@@ -184,6 +208,17 @@ public class QuestionService {
     }
 
     private List<String> normalizeTags(Object tagsValue) {
+        if (tagsValue instanceof String tagsAsString) {
+            if (tagsAsString.isBlank()) {
+                return List.of();
+            }
+            return List.of(tagsAsString.split(",")).stream()
+                    .map(String::trim)
+                    .filter(tag -> !tag.isBlank())
+                    .distinct()
+                    .collect(Collectors.toList());
+        }
+
         if (!(tagsValue instanceof List<?> rawList)) {
             return List.of();
         }
@@ -193,12 +228,31 @@ public class QuestionService {
             if (tag == null) {
                 continue;
             }
-            String str = String.valueOf(tag).trim();
+            String str;
+            if (tag instanceof Map<?, ?> tagMap) {
+                str = firstTagValue(tagMap, "name", "slug", "title", "value", "tag");
+            } else {
+                str = String.valueOf(tag).trim();
+            }
             if (!str.isBlank()) {
                 normalized.add(str);
             }
         }
-        return normalized;
+        return normalized.stream().distinct().collect(Collectors.toList());
+    }
+
+    private String firstTagValue(Map<?, ?> source, String... keys) {
+        for (String key : keys) {
+            Object value = source.get(key);
+            if (value == null) {
+                continue;
+            }
+            String text = String.valueOf(value).trim();
+            if (!text.isBlank()) {
+                return text;
+            }
+        }
+        return "";
     }
 
     private String slugify(String input) {
@@ -237,14 +291,14 @@ public class QuestionService {
     }
 
     /**
-     * Get all questions from all categories, deduplicated.
+     * Get all questions from all categories.
      */
     public List<Map<String, Object>> getAllQuestions() {
         List<Map<String, Object>> all = new ArrayList<>();
         all.addAll(commonQuestions);
         all.addAll(topTierQuestions);
         all.addAll(trendingQuestions);
-        return normalizeAndDeduplicate(all);
+        return all;
     }
 
     /**
