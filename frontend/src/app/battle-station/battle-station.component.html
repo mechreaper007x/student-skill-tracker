@@ -1,0 +1,474 @@
+<div class="min-h-full flex flex-col bg-noir-950">
+  <div class="p-6 border-b border-noir-800 flex flex-col gap-5">
+    <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+      <div>
+        <p class="text-mono-technical mb-1">SECTOR_06 // COMPILER</p>
+        <h1 class="text-2xl md:text-3xl text-display">
+          LEETCODE <span class="text-crimson-500">COMPILER</span>
+        </h1>
+        <p class="text-noir-400 text-sm mt-2 max-w-3xl">
+          Open a problem, code in Monaco, run locally, and submit to LeetCode from one screen.
+        </p>
+      </div>
+
+      <button
+        (click)="toggleSetupPanel()"
+        class="self-start px-4 py-2 text-[10px] font-black uppercase tracking-widest border border-noir-700 text-noir-300 hover:text-white hover:border-crimson-500 transition-all"
+      >
+        {{ isSetupPanelCollapsed() ? 'Slide Down' : 'Slide Up' }}
+      </button>
+    </div>
+
+    <div
+      class="overflow-hidden transition-all duration-300 ease-in-out"
+      [style.max-height]="isSetupPanelCollapsed() ? '0px' : '2400px'"
+    >
+      <div class="pt-4 space-y-5">
+
+
+    <div class="grid grid-cols-1 2xl:grid-cols-[minmax(0,1fr)_minmax(0,34rem)] gap-5 items-start">
+    <div class="border border-noir-800 bg-noir-900/30 p-4 w-full max-w-[34rem] aspect-square 2xl:justify-self-end 2xl:order-2 flex flex-col gap-4 overflow-hidden">
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <div>
+          <p class="text-[9px] font-mono text-noir-500 uppercase tracking-widest">Embedded Proving Grounds</p>
+          <p class="text-[11px] text-noir-400 mt-1">Browse and load LeetCode targets without leaving Compiler.</p>
+        </div>
+        <div class="flex gap-2">
+          <div class="border border-noir-700 px-2 py-1 text-[9px] font-mono text-emerald-400">E {{ questionEasyCount() }}</div>
+          <div class="border border-noir-700 px-2 py-1 text-[9px] font-mono text-amber-400">M {{ questionMediumCount() }}</div>
+          <div class="border border-noir-700 px-2 py-1 text-[9px] font-mono text-crimson-400">H {{ questionHardCount() }}</div>
+          <div
+            class="border border-noir-700 px-2 py-1 text-[9px] font-mono"
+            [class]="isLeetCodeConnected() ? 'text-emerald-300' : 'text-amber-300'"
+          >
+            LC {{ isLeetCodeConnected() ? 'ON' : 'OFF' }}
+          </div>
+        </div>
+      </div>
+
+      <div class="flex-1 min-h-0 overflow-y-auto pr-1 space-y-4">
+      <div class="flex gap-1 flex-wrap">
+        <button
+          *ngFor="let category of [
+            { id: 'all', label: 'ALL' },
+            { id: 'common', label: 'CRUCIBLE' },
+            { id: 'top-tier', label: 'APEX' },
+            { id: 'trending', label: 'VANGUARD' }
+          ]"
+          (click)="setQuestionCategory($any(category.id))"
+          class="text-[9px] font-black uppercase tracking-widest px-3 py-2 border transition-all"
+          [class]="questionCategory() === category.id
+            ? 'bg-crimson-600 border-crimson-600 text-white'
+            : 'border-noir-800 text-noir-400 hover:text-white hover:border-noir-600'"
+        >
+          {{ category.label }}
+        </button>
+      </div>
+
+      <div class="flex gap-1 flex-wrap">
+        <button
+          *ngFor="let difficulty of ['all', 'easy', 'medium', 'hard']"
+          (click)="setQuestionDifficulty($any(difficulty))"
+          class="text-[9px] font-black uppercase tracking-widest px-3 py-2 border transition-all"
+          [class]="questionDifficulty() === difficulty
+            ? 'bg-noir-800 border-noir-600 text-white'
+            : 'border-noir-800 text-noir-500 hover:text-white hover:border-noir-600'"
+        >
+          {{ difficulty }}
+        </button>
+      </div>
+
+      <div class="relative">
+        <lucide-icon name="Search" class="w-4 h-4 text-noir-500 absolute left-3 top-1/2 -translate-y-1/2"></lucide-icon>
+        <input
+          [value]="questionSearch()"
+          (input)="onQuestionSearchChange($event)"
+          type="text"
+          spellcheck="false"
+          placeholder="Search by title, tag, or slug..."
+          class="w-full bg-black border border-noir-800 text-sm text-white pl-10 pr-3 py-2.5 focus:outline-none focus:border-crimson-500 placeholder:text-noir-600"
+        >
+      </div>
+
+      <div *ngIf="isQuestionBankLoading()" class="text-[10px] font-mono text-noir-500 uppercase tracking-widest">
+        Loading question bank...
+      </div>
+
+      <div class="border border-noir-800 bg-black/40 max-h-64 overflow-y-auto">
+        <button
+          *ngFor="let question of paginatedQuestions()"
+          (click)="selectQuestion(question)"
+          class="w-full text-left px-3 py-2.5 border-b border-noir-800/60 hover:bg-noir-900 transition-all"
+        >
+          <div class="flex items-start justify-between gap-3">
+            <p class="text-[12px] text-noir-100 font-semibold leading-tight">{{ question.title }}</p>
+            <span class="text-[9px] font-black uppercase px-2 py-0.5 border shrink-0"
+              [ngClass]="question.difficulty === 'Easy'
+                ? 'text-emerald-400 border-emerald-500/40'
+                : question.difficulty === 'Medium'
+                  ? 'text-amber-400 border-amber-500/40'
+                  : question.difficulty === 'Hard'
+                    ? 'text-crimson-400 border-crimson-500/40'
+                    : 'text-noir-400 border-noir-700'">
+              {{ question.difficulty }}
+            </span>
+          </div>
+          <p class="text-[9px] text-noir-500 mt-1 truncate">
+            {{ question.slug }}
+          </p>
+        </button>
+
+        <div *ngIf="!isQuestionBankLoading() && paginatedQuestions().length === 0" class="px-3 py-6 text-center text-[10px] font-mono text-noir-500 uppercase tracking-widest">
+          No matching questions
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between">
+        <p class="text-[9px] font-mono text-noir-500 uppercase tracking-widest">
+          Page {{ questionPage() }} / {{ questionTotalPages() }} // {{ filteredQuestions().length }} items
+        </p>
+        <div class="flex gap-1">
+          <button
+            (click)="prevQuestionPage()"
+            [disabled]="questionPage() <= 1"
+            class="px-3 py-1.5 text-[9px] font-black uppercase tracking-widest border border-noir-800 text-noir-400 hover:text-white hover:border-noir-600 disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            Prev
+          </button>
+          <button
+            (click)="nextQuestionPage()"
+            [disabled]="questionPage() >= questionTotalPages()"
+            class="px-3 py-1.5 text-[9px] font-black uppercase tracking-widest border border-noir-800 text-noir-400 hover:text-white hover:border-noir-600 disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            Next
+          </button>
+        </div>
+      </div>
+      </div>
+    </div>
+
+    <div class="space-y-4 order-2 2xl:order-1 h-full flex flex-col">
+    <div *ngIf="questionLoadError()" class="text-[11px] text-crimson-400">
+      {{ questionLoadError() }}
+    </div>
+
+    <div *ngIf="selectedQuestion()" class="border border-noir-800 bg-noir-900/50 p-4 relative overflow-hidden">
+
+
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <div>
+          <p class="text-[9px] font-mono text-noir-500 uppercase tracking-widest mb-1">Selected Question</p>
+          <h2 class="text-lg font-black text-white uppercase leading-tight">{{ selectedQuestion()?.title }}</h2>
+          <p class="text-[11px] text-noir-400 mt-1">
+            Difficulty: <span class="text-white">{{ selectedQuestion()?.difficulty }}</span>
+            <span *ngIf="selectedQuestion()?.slug"> | Slug: <span class="text-white">{{ selectedQuestion()?.slug }}</span></span>
+          </p>
+        </div>
+        <button
+          (click)="openSelectedQuestion()"
+          class="px-4 py-2 text-[10px] font-black uppercase tracking-widest border border-noir-700 text-noir-300 hover:text-white hover:border-crimson-500 transition-all"
+        >
+          Open on LeetCode
+        </button>
+      </div>
+
+      <div class="flex gap-2 flex-wrap mt-3" *ngIf="selectedQuestion()?.tags?.length">
+        <span
+          *ngFor="let tag of selectedQuestion()?.tags"
+          class="text-[8px] font-mono text-noir-400 border border-noir-700 px-2 py-1 uppercase"
+        >
+          {{ tag }}
+        </span>
+      </div>
+    </div>
+
+    <div class="border border-noir-800 bg-black/40 p-4 space-y-4">
+      <div class="flex items-center justify-between gap-4">
+        <div>
+          <p class="text-[9px] font-mono text-noir-500 uppercase tracking-widest">LeetCode Connection</p>
+          <p class="text-[11px] mt-1" [class]="isLeetCodeConnected() ? 'text-emerald-400' : 'text-amber-400'">
+            {{ isLeetCodeConnected() ? 'Connected' : 'Not connected' }}
+          </p>
+        </div>
+        <button
+          (click)="goToLeetCodeSettings()"
+          class="px-4 py-2 text-[10px] font-black uppercase tracking-widest border border-noir-700 text-noir-300 hover:text-white hover:border-crimson-500 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          Manage Connection
+        </button>
+      </div>
+
+      <div *ngIf="isLeetCodeAuthLoading()" class="text-[10px] font-mono text-noir-500 uppercase tracking-widest">
+        Checking connection status...
+      </div>
+
+      <div class="text-[11px] text-noir-400">
+        Configure your LeetCode session once in Settings. Compiler now only handles coding and submission.
+      </div>
+    </div>
+    <div class="mt-auto space-y-3">
+      <div class="flex items-center gap-3 flex-wrap">
+        <div class="flex gap-1 flex-wrap">
+          <button
+            *ngFor="let lang of availableLanguages()"
+            (click)="selectLanguage(lang.command)"
+            class="text-[10px] font-black uppercase tracking-widest px-4 py-2.5 border transition-all flex items-center gap-2"
+            [class]="selectedLanguage() === lang.command
+              ? 'bg-crimson-600 border-crimson-600 text-white'
+              : 'border-noir-800 text-noir-400 hover:text-white hover:border-noir-600'"
+          >
+            <span>{{ getLanguageIcon(lang.command) }}</span>
+            {{ lang.languageName }}
+          </button>
+        </div>
+
+        <button
+          (click)="executeCode()"
+          [disabled]="isExecuting()"
+          class="flex items-center gap-2 px-6 py-2.5 text-[10px] font-black uppercase tracking-[0.3em] border transition-all"
+          [class]="isExecuting()
+            ? 'border-noir-700 text-noir-500 cursor-wait bg-noir-900'
+            : 'border-crimson-500 text-crimson-500 hover:bg-crimson-600 hover:text-white hover:shadow-[0_0_30px_rgba(239,68,68,0.3)]'"
+        >
+          <lucide-icon *ngIf="!isExecuting()" name="Play" class="w-4 h-4"></lucide-icon>
+          <lucide-icon *ngIf="isExecuting()" name="Loader2" class="w-4 h-4 animate-spin"></lucide-icon>
+          {{ isExecuting() ? 'RUNNING...' : 'RUN LOCAL' }}
+        </button>
+
+        <button
+          (click)="submitToLeetCode()"
+          [disabled]="!canSubmitToLeetCode()"
+          class="flex items-center gap-2 px-6 py-2.5 text-[10px] font-black uppercase tracking-[0.3em] border transition-all"
+          [class]="canSubmitToLeetCode()
+            ? 'border-emerald-500 text-emerald-400 hover:bg-emerald-600 hover:text-white'
+            : 'border-noir-700 text-noir-400 cursor-not-allowed bg-noir-900'"
+        >
+          <lucide-icon *ngIf="!isSubmittingLeetCode()" name="Send" class="w-4 h-4"></lucide-icon>
+          <lucide-icon *ngIf="isSubmittingLeetCode()" name="Loader2" class="w-4 h-4 animate-spin"></lucide-icon>
+          {{ isSubmittingLeetCode() ? 'SUBMITTING...' : 'SUBMIT TO LEETCODE' }}
+        </button>
+
+        <button
+          (click)="askRishiForReview()"
+          [disabled]="!sourceCode().trim()"
+          class="flex items-center gap-2 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest border border-noir-800 transition-all ml-auto"
+          [class]="sourceCode().trim() 
+            ? 'text-amber-400 hover:bg-amber-600/10 hover:text-amber-300 hover:border-amber-500/50' 
+            : 'text-noir-500 cursor-not-allowed bg-noir-900'"
+        >
+          <lucide-icon name="Brain" class="w-3.5 h-3.5"></lucide-icon>
+          ASK RISHI
+        </button>
+
+        <button
+          (click)="resetCode()"
+          class="flex items-center gap-2 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest border border-noir-800 text-noir-500 hover:text-white hover:border-noir-600 transition-all"
+        >
+          <lucide-icon name="RotateCcw" class="w-3.5 h-3.5"></lucide-icon>
+          RESET
+        </button>
+      </div>
+
+      <p *ngIf="!canSubmitToLeetCode()" class="text-[10px] text-amber-300">
+        {{ submitGateReason() }}
+      </p>
+
+      <p class="text-[10px] text-noir-500 leading-relaxed">
+        Local Run executes code as a standalone program. LeetCode-style method-only templates may need a small local driver
+        (for example, <span class="text-noir-300">main()</span> in Java/C++).
+      </p>
+    </div>
+    </div>
+    </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="flex-1 flex flex-col xl:flex-row overflow-hidden">
+    <!-- Editor Pane -->
+    <div class="flex-1 flex flex-col border-r border-noir-800 min-w-0">
+      <div class="flex items-center justify-between px-4 py-2 border-b border-noir-800 bg-noir-900/50">
+        <div class="flex items-center gap-2">
+          <div class="w-2 h-2 bg-crimson-500 rounded-full"></div>
+          <span class="text-[9px] font-mono text-noir-400 uppercase tracking-widest">
+            SOURCE // {{ selectedLanguage() | uppercase }}
+          </span>
+        </div>
+        <span class="text-[8px] font-mono text-noir-600">
+          TIMEOUT: {{ timeoutSeconds() }}s
+        </span>
+      </div>
+
+      <ngx-monaco-editor
+        class="flex-1 w-full h-full min-h-[360px]"
+        [options]="editorOptions"
+        [ngModel]="sourceCode()"
+        (ngModelChange)="onCodeChange($event)"
+      ></ngx-monaco-editor>
+
+      <div class="border-t border-noir-800">
+        <div class="flex items-center px-4 py-2 border-b border-noir-800/50 bg-noir-900/30">
+          <lucide-icon name="Terminal" class="w-3.5 h-3.5 text-noir-500 mr-2"></lucide-icon>
+          <span class="text-[9px] font-mono text-noir-500 uppercase tracking-widest">STDIN // INPUT</span>
+        </div>
+        <textarea
+          [value]="stdinInput()"
+          (input)="onInputChange($event)"
+          spellcheck="false"
+          rows="3"
+          class="w-full bg-black text-amber-300 font-mono text-xs p-3 resize-none focus:outline-none border-none"
+          placeholder="Standard input for local run (optional)..."
+        ></textarea>
+      </div>
+    </div>
+
+    <div class="flex-1 flex flex-col min-w-0 xl:max-w-[35%] bg-noir-950/40 border-r border-noir-800">
+      <div class="flex items-center justify-between px-4 py-2 border-b border-noir-800 bg-noir-900/50">
+        <div class="flex items-center gap-2">
+          <div class="w-2 h-2 rounded-full" [class]="result()?.success ? 'bg-emerald-400' : result() ? 'bg-crimson-500' : 'bg-noir-600'"></div>
+          <span class="text-[9px] font-mono text-noir-400 uppercase tracking-widest">
+            OUTPUT // {{ result()?.success ? 'SUCCESS' : result() ? 'FAILURE' : 'AWAITING' }}
+          </span>
+        </div>
+        <div class="flex items-center gap-3">
+          <span *ngIf="result()?.executionTime" class="text-[8px] font-mono text-noir-500">
+            ⏱ {{ result()?.executionTime }}
+          </span>
+          <button *ngIf="result()" (click)="clearOutput()" class="text-noir-600 hover:text-noir-300 transition-colors">
+            <lucide-icon name="X" class="w-3.5 h-3.5"></lucide-icon>
+          </button>
+        </div>
+      </div>
+
+      <div class="flex-1 overflow-auto p-4 border-b border-noir-800">
+        <div *ngIf="!result() && !isExecuting()" class="h-full flex flex-col items-center justify-center text-center">
+          <lucide-icon name="Terminal" class="w-12 h-12 text-noir-800 mb-4"></lucide-icon>
+          <p class="text-noir-600 font-mono text-xs uppercase tracking-widest">Awaiting Local Run</p>
+          <p class="text-noir-700 text-[9px] mt-1">Press RUN LOCAL to execute on this server.</p>
+        </div>
+
+        <div *ngIf="isExecuting()" class="h-full flex flex-col items-center justify-center text-center">
+          <div class="w-8 h-8 border-2 border-crimson-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+          <p class="text-crimson-500 font-mono text-xs uppercase tracking-widest animate-pulse">EXECUTING...</p>
+        </div>
+
+        <pre *ngIf="result()?.success" class="text-emerald-300 font-mono text-sm whitespace-pre-wrap break-words leading-relaxed">{{ result()?.output }}</pre>
+        <pre
+          *ngIf="result() && !result()?.success"
+          class="text-crimson-400 font-mono text-sm whitespace-pre-wrap break-words leading-relaxed"
+        >{{ result()?.error }}{{ result()?.output ? '\n\n' + result()?.output : '' }}</pre>
+      </div>
+
+      <div class="p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <p class="text-[9px] font-mono text-noir-500 uppercase tracking-widest">LEETCODE SUBMISSION STATUS</p>
+          <button
+            *ngIf="submissionResponse() || submissionError()"
+            (click)="clearSubmissionState()"
+            class="text-[9px] font-mono text-noir-500 hover:text-noir-300 uppercase"
+          >
+            Clear
+          </button>
+        </div>
+
+        <div *ngIf="!submissionResponse() && !submissionError() && !isSubmittingLeetCode()" class="text-[11px] text-noir-500">
+          Ready to submit once question, code, and LeetCode connection are set.
+        </div>
+
+        <div *ngIf="isSubmittingLeetCode()" class="text-[11px] text-emerald-400 font-mono uppercase tracking-wide">
+          Submitting to LeetCode and waiting for judge...
+        </div>
+
+        <div *ngIf="submissionError()" class="border border-crimson-500/40 bg-crimson-950/30 p-3 text-[11px] text-crimson-300">
+          {{ submissionError() }}
+        </div>
+
+        <div *ngIf="submissionResponse() as submission" class="border border-emerald-500/40 bg-emerald-950/20 p-3 space-y-2">
+          <p class="text-[11px] text-emerald-300">
+            Submission ID: <span class="font-mono">{{ submission.submissionId }}</span>
+          </p>
+          <p class="text-[11px] text-noir-200">
+            Status: <span class="font-semibold">{{ submission.status }}</span>
+          </p>
+          <p *ngIf="getJudgeField('status_msg')" class="text-[11px] text-noir-200">
+            Judge: <span class="font-semibold">{{ getJudgeField('status_msg') }}</span>
+          </p>
+          <p *ngIf="getJudgeField('runtime')" class="text-[11px] text-noir-300">Runtime: {{ getJudgeField('runtime') }}</p>
+          <p *ngIf="getJudgeField('memory')" class="text-[11px] text-noir-300">Memory: {{ getJudgeField('memory') }}</p>
+          <a
+            [href]="submission.leetcodeSubmissionUrl"
+            target="_blank"
+            rel="noopener"
+            class="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-emerald-300 border border-emerald-500/40 px-3 py-2 hover:bg-emerald-600 hover:text-white transition-all"
+          >
+            View Submission
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Problem Description Pane -->
+    <div class="flex-1 flex flex-col min-w-0 xl:max-w-[30%] bg-noir-950/20">
+      <div class="flex items-center justify-between px-4 py-2 border-b border-noir-800 bg-black/40">
+        <div class="flex items-center gap-2">
+          <lucide-icon name="FileText" class="w-3.5 h-3.5 text-noir-500"></lucide-icon>
+          <span class="text-[9px] font-mono text-noir-400 uppercase tracking-widest">
+            PROBLEM DESCRIPTION
+          </span>
+        </div>
+      </div>
+      <div class="flex-1 overflow-y-auto p-5 puzzle-content-area relative">
+        <div *ngIf="isQuestionLoading()" class="absolute inset-0 flex items-center justify-center bg-noir-950/80 z-10">
+           <div class="text-[10px] text-indigo-400 font-mono flex items-center gap-2"><lucide-icon name="loader-2" class="w-4 h-4 animate-spin"></lucide-icon> FETCHING...</div>
+        </div>
+        <div *ngIf="!selectedQuestion() && !isQuestionLoading()" class="h-full flex flex-col items-center justify-center text-center opacity-50">
+           <lucide-icon name="FileQuestion" class="w-10 h-10 text-noir-600 mb-3"></lucide-icon>
+           <p class="text-[10px] font-mono text-noir-500 uppercase tracking-widest">NO TARGET</p>
+        </div>
+        <div *ngIf="selectedQuestion() && questionHtml()" class="prose prose-invert prose-sm max-w-none text-noir-100 font-sans leading-relaxed" [innerHTML]="questionHtml()"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div *ngIf="showEmotionModal()" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+  <div class="w-full max-w-md border border-noir-700 bg-noir-950 p-6 space-y-5">
+    <p class="text-[10px] font-mono text-crimson-500 uppercase tracking-[0.3em]">Resilience Check</p>
+    <h3 class="text-xl font-black text-white uppercase leading-tight">That one did not go through.</h3>
+    <p class="text-sm text-noir-300">How are you feeling right now?</p>
+
+    <div class="grid grid-cols-1 gap-2">
+      <button
+        (click)="recordFailureEmotion('frustrated')"
+        [disabled]="isSavingEmotion()"
+        class="text-left px-4 py-3 border border-noir-700 hover:border-crimson-500 hover:bg-crimson-950/40 transition-all disabled:opacity-50"
+      >
+        <span class="text-sm">😤 Frustrated</span>
+      </button>
+      <button
+        (click)="recordFailureEmotion('neutral')"
+        [disabled]="isSavingEmotion()"
+        class="text-left px-4 py-3 border border-noir-700 hover:border-noir-400 hover:bg-noir-900 transition-all disabled:opacity-50"
+      >
+        <span class="text-sm">😐 Neutral</span>
+      </button>
+      <button
+        (click)="recordFailureEmotion('motivated')"
+        [disabled]="isSavingEmotion()"
+        class="text-left px-4 py-3 border border-noir-700 hover:border-emerald-500 hover:bg-emerald-950/40 transition-all disabled:opacity-50"
+      >
+        <span class="text-sm">💪 Motivated</span>
+      </button>
+    </div>
+
+    <div class="flex items-center justify-between">
+      <span *ngIf="isSavingEmotion()" class="text-[10px] font-mono text-amber-300 uppercase tracking-widest">Saving...</span>
+      <button
+        (click)="dismissEmotionModal()"
+        class="ml-auto px-3 py-1.5 text-[9px] font-black uppercase tracking-widest border border-noir-700 text-noir-300 hover:text-white hover:border-noir-500 transition-all"
+      >
+        Skip
+      </button>
+    </div>
+  </div>
+</div>

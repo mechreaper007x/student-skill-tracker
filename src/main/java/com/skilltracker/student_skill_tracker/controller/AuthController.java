@@ -53,7 +53,12 @@ public class AuthController {
                                                 "id", student.getId(),
                                                 "email", student.getEmail(),
                                                 "name", student.getName(),
-                                                "leetcodeUsername", student.getLeetcodeUsername())))
+                                                "leetcodeUsername", student.getLeetcodeUsername(),
+                                                "leetcodeSubmitConnected", student.hasLeetCodeSubmitAuth(),
+                                                "level", student.getLevel() != null ? student.getLevel() : 1,
+                                                "xp", student.getXp() != null ? student.getXp() : 0,
+                                                "duelWins", student.getDuelWins() != null ? student.getDuelWins() : 0,
+                                                "highestBloomLevel", student.getHighestBloomLevel() != null ? student.getHighestBloomLevel() : 1)))
                                 .orElse(ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED)
                                                 .body(Map.of("authenticated", false)));
         }
@@ -83,6 +88,11 @@ public class AuthController {
                                         .name(student.getName())
                                         .leetcodeUsername(student.getLeetcodeUsername())
                                         .githubUsername(student.getGithubUsername())
+                                        .leetcodeSubmitConnected(student.hasLeetCodeSubmitAuth())
+                                        .level(student.getLevel() != null ? student.getLevel() : 1)
+                                        .xp(student.getXp() != null ? student.getXp() : 0)
+                                        .duelWins(student.getDuelWins() != null ? student.getDuelWins() : 0)
+                                        .highestBloomLevel(student.getHighestBloomLevel() != null ? student.getHighestBloomLevel() : 1)
                                         .build());
                 } catch (Exception e) {
                         System.out.println("DEBUG: Login failed for: " + email + " Error: " + e.getMessage());

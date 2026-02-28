@@ -1,0 +1,32 @@
+:host {
+  display: block;
+  height: 100%;
+}
+
+/* Tab size and font for code */
+textarea {
+  tab-size: 4;
+  -moz-tab-size: 4;
+}
+
+.puzzle-content-area pre {
+  background: rgba(0,0,0,0.5);
+  border: 1px solid rgba(255,255,255,0.1);
+  padding: 1rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  font-family: monospace;
+}
+.puzzle-content-area code {
+  background: rgba(255,255,255,0.1);
+  padding: 0.2rem 0.4rem;
+  border-radius: 0.25rem;
+  font-family: monospace;
+}
+.puzzle-content-area img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+  margin: 1rem 0;
+  border: 1px solid rgba(255,255,255,0.1);
+}

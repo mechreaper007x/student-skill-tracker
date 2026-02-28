@@ -1,10 +1,11 @@
 package com.skilltracker.student_skill_tracker.compiler;
 
+import java.time.LocalDateTime;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import java.time.LocalDateTime;
 
 @Data
 @Builder
@@ -17,7 +18,7 @@ public class CompilationResult {
     private String executionTime;
     private String language;
     private LocalDateTime timestamp;
-    
+
     public String getFormattedResult() {
         if (!success) {
             return "❌ Error:\n" + error;

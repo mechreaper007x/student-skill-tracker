@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -26,7 +27,7 @@ import com.skilltracker.student_skill_tracker.repository.StudentRepository;
 import com.skilltracker.student_skill_tracker.service.AiAdvisorService;
 import com.skilltracker.student_skill_tracker.service.RishiGenAiService;
 import com.skilltracker.student_skill_tracker.service.RishiMemoryService;
-import com.skilltracker.student_skill_tracker.service.RishiMemoryService.MemoryMessage;
+import com.skilltracker.student_skill_tracker.service.TokenCryptoService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -45,6 +46,7 @@ public class AdvisorController {
     private final StudentRepository studentRepo;
     private final RishiGenAiService rishiGenAiService;
     private final RishiMemoryService rishiMemoryService;
+    private final TokenCryptoService tokenCryptoService;
 
     @GetMapping("/me")
     public ResponseEntity<AdvisorResult> myAdvice(Authentication auth) {
@@ -77,9 +79,18 @@ public class AdvisorController {
         Student student = studentOpt.get();
         String provider = isBlank(student.getAiProvider()) ? DEFAULT_PROVIDER : student.getAiProvider();
         String model = isBlank(student.getAiModel()) ? DEFAULT_MODEL : student.getAiModel();
-        String apiKey = student.getAiApiKey();
-        boolean hasApiKey = !isBlank(apiKey);
-        String maskedApiKey = hasApiKey ? maskKey(apiKey) : "";
+        String encryptedKey = student.getAiApiKeyEncrypted();
+        boolean hasApiKey = !isBlank(encryptedKey);
+        
+        String maskedApiKey = "";
+        if (hasApiKey) {
+            try {
+                String plainKey = tokenCryptoService.decrypt(encryptedKey);
+                maskedApiKey = maskKey(plainKey);
+            } catch (Exception e) {
+                maskedApiKey = "INVALID_KEY";
+            }
+        }
 
         return ResponseEntity.ok(Map.of(
                 "provider", provider,
@@ -112,7 +123,7 @@ public class AdvisorController {
         student.setAiProvider(provider.trim().toLowerCase());
         student.setAiModel(model.trim());
         if (!isBlank(apiKey)) {
-            student.setAiApiKey(apiKey.trim());
+            student.setAiApiKeyEncrypted(tokenCryptoService.encrypt(apiKey.trim()));
         }
         studentRepo.save(student);
 
@@ -120,8 +131,48 @@ public class AdvisorController {
                 "message", "GenAI config saved",
                 "provider", student.getAiProvider(),
                 "model", student.getAiModel(),
-                "hasApiKey", !isBlank(student.getAiApiKey()),
-                "maskedApiKey", maskKey(student.getAiApiKey())));
+                "hasApiKey", !isBlank(student.getAiApiKeyEncrypted()),
+                "maskedApiKey", maskKey(apiKey)));
+    }
+
+    // Chat History Endpoints
+    @GetMapping("/me/threads")
+    public ResponseEntity<?> getMyThreads(Authentication auth) {
+        Optional<Student> studentOpt = getCurrentStudent(auth);
+        if (studentOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Student not found"));
+        }
+        List<RishiMemoryService.ChatThread> threads = rishiMemoryService.getAllThreads(studentOpt.get());
+        return ResponseEntity.ok(threads);
+    }
+
+    @GetMapping("/me/thread/{threadId}")
+    public ResponseEntity<?> getMyThread(Authentication auth, @PathVariable String threadId) {
+        Optional<Student> studentOpt = getCurrentStudent(auth);
+        if (studentOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Student not found"));
+        }
+        RishiMemoryService.ChatThread thread = rishiMemoryService.getThread(studentOpt.get(), threadId);
+        if (thread == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Thread not found"));
+        }
+        return ResponseEntity.ok(Map.of(
+            "id", thread.id,
+            "messages", thread.messages,
+            "count", thread.messages.size()
+        ));
+    }
+
+    @DeleteMapping("/me/thread/{threadId}")
+    public ResponseEntity<?> deleteMyThread(Authentication auth, @PathVariable String threadId) {
+        Optional<Student> studentOpt = getCurrentStudent(auth);
+        if (studentOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Student not found"));
+        }
+        Student student = studentOpt.get();
+        rishiMemoryService.deleteThread(student, threadId);
+        studentRepo.save(student);
+        return ResponseEntity.ok(Map.of("message", "Thread deleted"));
     }
 
     @GetMapping("/me/memory")
@@ -131,7 +182,7 @@ public class AdvisorController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Student not found"));
         }
 
-        List<MemoryMessage> messages = rishiMemoryService.getMemory(studentOpt.get());
+        List<RishiMemoryService.MemoryMessage> messages = rishiMemoryService.getMemory(studentOpt.get());
         return ResponseEntity.ok(Map.of(
                 "messages", messages,
                 "count", messages.size()));
@@ -150,6 +201,7 @@ public class AdvisorController {
         return ResponseEntity.ok(Map.of("message", "Rishi memory cleared"));
     }
 
+    // Study Plan & Learn
     @GetMapping("/me/study-plan")
     public ResponseEntity<?> getMyStudyPlan(Authentication auth) {
         Optional<Student> studentOpt = getCurrentStudent(auth);
@@ -167,12 +219,13 @@ public class AdvisorController {
         }
 
         Student student = studentOpt.get();
-        String apiKey = student.getAiApiKey();
-        if (isBlank(apiKey)) {
+        String encryptedKey = student.getAiApiKeyEncrypted();
+        if (isBlank(encryptedKey)) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(Map.of("error", "GenAI API key is not configured. Please attach your key first."));
         }
 
+        String apiKey = tokenCryptoService.decrypt(encryptedKey);
         String provider = isBlank(student.getAiProvider()) ? DEFAULT_PROVIDER : student.getAiProvider();
         if (!DEFAULT_PROVIDER.equalsIgnoreCase(provider)) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -191,21 +244,23 @@ public class AdvisorController {
             model = isBlank(student.getAiModel()) ? DEFAULT_MODEL : student.getAiModel();
         }
 
-        List<MemoryMessage> memory = rishiMemoryService.getMemory(student);
+        List<RishiMemoryService.MemoryMessage> memory = rishiMemoryService.getMemory(student);
         List<Map<String, String>> context = rishiMemoryService.toModelContext(memory, MAX_CONTEXT_MESSAGES);
         String skillSnapshot = buildSkillSnapshot(student);
 
         try {
-            String plan = rishiGenAiService.generateStudyPlan(apiKey, model, topic, goals, durationDays, skillSnapshot,
-                    context);
+            String plan = rishiGenAiService.generateStudyPlan(apiKey, model, topic, goals, durationDays, skillSnapshot, context);
             student.setRishiStudyPlan(plan);
             student.setRishiStudyTopic(topic.trim());
             student.setRishiStudyDays(durationDays);
             student.setRishiStudyGeneratedAt(LocalDateTime.now());
 
-            String userPromptSummary = "Generate a " + durationDays + "-day study plan for topic: " + topic.trim()
-                    + (isBlank(goals) ? "" : ". Goals: " + goals.trim());
-            rishiMemoryService.appendExchange(student, userPromptSummary, "strategy", plan, "strategy");
+            String userPromptSummary = "Generate a " + durationDays + "-day study plan for topic: " + topic.trim() + (isBlank(goals) ? "" : ". Goals: " + goals.trim());
+            
+            // For study plans, we append to the most recent thread or create a new one
+            List<RishiMemoryService.ChatThread> threads = rishiMemoryService.getAllThreads(student);
+            String threadId = threads.isEmpty() ? null : threads.get(0).id;
+            rishiMemoryService.appendExchange(student, threadId, userPromptSummary, "strategy", plan, "strategy");
             studentRepo.save(student);
 
             Map<String, Object> response = toStudyPlanResponse(student);
@@ -229,12 +284,13 @@ public class AdvisorController {
         }
 
         Student student = studentOpt.get();
-        String apiKey = student.getAiApiKey();
-        if (isBlank(apiKey)) {
+        String encryptedKey = student.getAiApiKeyEncrypted();
+        if (isBlank(encryptedKey)) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(Map.of("error", "GenAI API key is not configured. Please attach your key first."));
         }
 
+        String apiKey = tokenCryptoService.decrypt(encryptedKey);
         String provider = isBlank(student.getAiProvider()) ? DEFAULT_PROVIDER : student.getAiProvider();
         if (!DEFAULT_PROVIDER.equalsIgnoreCase(provider)) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -255,20 +311,39 @@ public class AdvisorController {
         if (isBlank(responseType)) {
             responseType = "text";
         }
+        
+        String threadId = payload.get("threadId");
 
-        List<MemoryMessage> memory = rishiMemoryService.getMemory(student);
+        // Fetch context for the specific thread
+        List<RishiMemoryService.MemoryMessage> memory = null;
+        if (threadId != null && !threadId.isBlank()) {
+            RishiMemoryService.ChatThread thread = rishiMemoryService.getThread(student, threadId);
+            if (thread != null) {
+                memory = thread.messages;
+            }
+        }
+        
+        if (memory == null) {
+            memory = List.of();
+        }
+
         List<Map<String, String>> context = rishiMemoryService.toModelContext(memory, MAX_CONTEXT_MESSAGES);
+        String studentContext = buildSkillSnapshot(student);
 
         try {
-            String reply = rishiGenAiService.generateLearningResponse(apiKey, model, message, context);
-            rishiMemoryService.appendExchange(student, message, "text", reply, responseType);
+            String reply = rishiGenAiService.generateLearningResponse(apiKey, model, message, context, studentContext);
+            String newOrExistingThreadId = rishiMemoryService.appendExchange(student, threadId, message, "text", reply, responseType);
             studentRepo.save(student);
+
+            RishiMemoryService.ChatThread updatedThread = rishiMemoryService.getThread(student, newOrExistingThreadId);
+            int count = updatedThread != null ? updatedThread.messages.size() : 0;
 
             return ResponseEntity.ok(Map.of(
                     "reply", reply,
                     "provider", DEFAULT_PROVIDER,
                     "model", model,
-                    "memoryCount", rishiMemoryService.getMemory(student).size()));
+                    "threadId", newOrExistingThreadId,
+                    "memoryCount", count));
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
         } catch (Exception ex) {

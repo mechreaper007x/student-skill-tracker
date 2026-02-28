@@ -13,7 +13,10 @@ export interface Skill {
   maxRating: number;
   icon?: string;
   description?: string;
+  color?: string; // Hex color for the skill theme
+  insight?: string; // Psychological insight blurb
   problemsSolved?: number; // For language skills from LeetCode
+  testTrack?: 'HEURISTIC_FLOW' | 'SYSTEM2_OVERRIDE' | 'FAULT_TOLERANCE' | 'AFFECTIVE_REGULATION';
 }
 
 export interface SkillState {

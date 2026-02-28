@@ -1,0 +1,125 @@
+<div class="p-6 md:p-10 space-y-8 animate-reveal">
+  <div>
+    <p class="text-mono-technical mb-2">COGNITIVE LAB // SYSTEM 1 vs SYSTEM 2</p>
+    <h1 class="text-3xl md:text-5xl text-display">
+      COGNITIVE <span class="text-crimson-500">SPRINT</span>
+    </h1>
+    <p class="text-noir-400 text-sm mt-2 max-w-2xl">
+      Round A is an 8-second intuition test. Round B uses similar difficulty with deliberate thinking.
+    </p>
+  </div>
+
+  <div *ngIf="error()" class="border border-crimson-500/40 bg-crimson-950/30 p-4 text-sm text-crimson-300">
+    {{ error() }}
+  </div>
+
+  <div *ngIf="phase() === 'idle'" class="noir-card p-6 space-y-4">
+    <p class="text-noir-300 text-sm">Run the sprint to estimate your current thinking style and store it on your profile.</p>
+    <button
+      (click)="startSprint()"
+      [disabled]="loading()"
+      class="px-6 py-3 text-[10px] font-black uppercase tracking-[0.3em] border-2 border-crimson-500 text-crimson-500 hover:bg-crimson-600 hover:text-white transition-all disabled:opacity-50"
+    >
+      {{ loading() ? 'Starting...' : 'Start Sprint' }}
+    </button>
+  </div>
+
+  <div *ngIf="phase() === 'round-a'" class="noir-card p-6 space-y-5">
+    <div class="flex items-center justify-between gap-4">
+      <div>
+        <p class="text-[10px] font-mono text-crimson-500 uppercase tracking-[0.3em]">Round A // System 1</p>
+        <p class="text-noir-300 text-sm">Answer before time expires.</p>
+      </div>
+      <div class="text-right">
+        <p class="text-[9px] font-mono text-noir-500 uppercase tracking-widest">Time Left</p>
+        <p class="text-2xl font-black" [class]="roundATimeLeft() <= 3 ? 'text-crimson-500' : 'text-amber-300'">{{ roundATimeLeft() }}s</p>
+      </div>
+    </div>
+
+    <p class="text-white text-lg font-semibold">{{ roundAQuestion()?.prompt }}</p>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+      <button
+        *ngFor="let option of roundAQuestion()?.options; let idx = index"
+        (click)="selectRoundA(idx)"
+        class="text-left px-4 py-3 border transition-all"
+        [class]="roundASelectedIndex() === idx
+          ? 'border-crimson-500 bg-crimson-600/20 text-white'
+          : 'border-noir-800 text-noir-300 hover:border-noir-600 hover:text-white'"
+      >
+        <span class="text-noir-500 mr-2">{{ ['A', 'B', 'C', 'D'][idx] }}.</span>{{ option }}
+      </button>
+    </div>
+
+    <button
+      (click)="submitRoundA()"
+      [disabled]="loading()"
+      class="px-6 py-3 text-[10px] font-black uppercase tracking-[0.3em] border border-noir-700 text-noir-200 hover:border-crimson-500 hover:text-white transition-all disabled:opacity-50"
+    >
+      {{ loading() ? 'Submitting...' : 'Submit Round A' }}
+    </button>
+  </div>
+
+  <div *ngIf="phase() === 'round-b'" class="noir-card p-6 space-y-5">
+    <div class="flex items-center justify-between gap-4">
+      <div>
+        <p class="text-[10px] font-mono text-emerald-400 uppercase tracking-[0.3em]">Round B // System 2</p>
+        <p class="text-noir-300 text-sm">Take your time and reason carefully.</p>
+      </div>
+      <div class="text-right">
+        <p class="text-[9px] font-mono text-noir-500 uppercase tracking-widest">Elapsed</p>
+        <p class="text-2xl font-black text-emerald-300">{{ roundBElapsedSeconds() }}s</p>
+      </div>
+    </div>
+
+    <p *ngIf="roundAFeedback()" class="text-[11px] text-noir-400">{{ roundAFeedback() }}</p>
+    <p class="text-white text-lg font-semibold">{{ roundBQuestion()?.prompt }}</p>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+      <button
+        *ngFor="let option of roundBQuestion()?.options; let idx = index"
+        (click)="selectRoundB(idx)"
+        class="text-left px-4 py-3 border transition-all"
+        [class]="roundBSelectedIndex() === idx
+          ? 'border-emerald-500 bg-emerald-600/20 text-white'
+          : 'border-noir-800 text-noir-300 hover:border-noir-600 hover:text-white'"
+      >
+        <span class="text-noir-500 mr-2">{{ ['A', 'B', 'C', 'D'][idx] }}.</span>{{ option }}
+      </button>
+    </div>
+
+    <button
+      (click)="submitRoundB()"
+      [disabled]="loading()"
+      class="px-6 py-3 text-[10px] font-black uppercase tracking-[0.3em] border border-emerald-500 text-emerald-300 hover:bg-emerald-600 hover:text-white transition-all disabled:opacity-50"
+    >
+      {{ loading() ? 'Submitting...' : 'Submit Round B' }}
+    </button>
+  </div>
+
+  <div *ngIf="phase() === 'result'" class="noir-card p-6 space-y-4">
+    <p class="text-[10px] font-mono text-noir-500 uppercase tracking-[0.3em]">Result</p>
+    <h2 class="text-2xl font-black text-white uppercase">{{ getThinkingStyleLabel(result()?.thinkingStyle) }}</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+      <div class="border border-noir-800 p-3">
+        <p class="text-noir-500 text-[10px] uppercase tracking-widest">Round A</p>
+        <p [class]="result()?.roundA?.correct ? 'text-emerald-400' : 'text-crimson-400'">
+          {{ result()?.roundA?.correct ? 'Correct' : 'Incorrect' }}
+        </p>
+      </div>
+      <div class="border border-noir-800 p-3">
+        <p class="text-noir-500 text-[10px] uppercase tracking-widest">Round B</p>
+        <p [class]="result()?.roundB?.correct ? 'text-emerald-400' : 'text-crimson-400'">
+          {{ result()?.roundB?.correct ? 'Correct' : 'Incorrect' }}
+        </p>
+      </div>
+    </div>
+
+    <button
+      (click)="restart()"
+      class="px-6 py-3 text-[10px] font-black uppercase tracking-[0.3em] border border-noir-700 text-noir-200 hover:border-crimson-500 hover:text-white transition-all"
+    >
+      Run Again
+    </button>
+  </div>
+</div>

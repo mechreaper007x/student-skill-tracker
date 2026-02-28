@@ -1,0 +1,386 @@
+<!-- LOBBY / MATCHMAKING PHASE -->
+<div *ngIf="phase() === 'lobby' || phase() === 'matchmaking'" class="min-h-full flex flex-col items-center justify-center bg-noir-950 p-6">
+  <div class="text-center max-w-lg space-y-8 animate-reveal">
+    <p class="text-mono-technical">SECTOR_07 // WILL TO POWER</p>
+    <h1 class="text-4xl md:text-6xl text-display">
+      DUEL<br><span class="text-crimson-500">ARENA</span>
+    </h1>
+    <p class="text-noir-400 text-sm font-light max-w-sm mx-auto">
+      5-round gauntlet. Quiz → Memory → Puzzle → Problem Solving → Code. Prove your mind.
+    </p>
+
+    <div class="flex items-center justify-center gap-2">
+      <div class="w-2 h-2 rounded-full" [class]="wsConnected() ? 'bg-emerald-400 animate-pulse' : 'bg-crimson-500'"></div>
+      <span class="text-[9px] font-mono uppercase tracking-widest" [class]="wsConnected() ? 'text-emerald-400' : 'text-crimson-400'">
+        {{ wsConnected() ? 'CONNECTED' : 'CONNECTING...' }}
+      </span>
+    </div>
+
+    <!-- Round Preview -->
+    <div class="flex justify-center gap-3 flex-wrap">
+      <div *ngFor="let r of [
+        {icon: '❓', label: 'QUIZ'},
+        {icon: '🧠', label: 'MEMORY'},
+        {icon: '🧩', label: 'PUZZLE'},
+        {icon: '💡', label: 'LOGIC'},
+        {icon: '💻', label: 'CODE'}
+      ]" class="flex flex-col items-center gap-2 p-4 border border-noir-800 bg-noir-900/50 min-w-[100px] hover:border-crimson-500/50 transition-colors">
+        <span class="text-3xl">{{ r.icon }}</span>
+        <span class="text-[10px] font-black font-mono text-noir-400 uppercase tracking-widest">{{ r.label }}</span>
+      </div>
+    </div>
+
+    <div *ngIf="phase() === 'lobby'">
+      <button (click)="findMatch()"
+        class="group relative px-10 py-4 border-2 border-crimson-500 text-crimson-500 text-sm font-black uppercase tracking-[0.4em] hover:bg-crimson-600 hover:text-white hover:shadow-[0_0_60px_rgba(239,68,68,0.4)] transition-all duration-300">
+        FIND MATCH
+      </button>
+    </div>
+
+    <div *ngIf="phase() === 'matchmaking'" class="space-y-6">
+      <div class="flex flex-col items-center gap-4">
+        <div class="w-12 h-12 border-2 border-crimson-500 border-t-transparent rounded-full animate-spin"></div>
+        <p class="text-[10px] font-mono text-crimson-500 uppercase tracking-[0.3em] animate-pulse">SEARCHING FOR OPPONENT...</p>
+      </div>
+      <button (click)="cancelMatchmaking()" class="px-6 py-2 text-[10px] font-black uppercase tracking-widest border border-noir-700 text-noir-400 hover:text-white hover:border-crimson-500 transition-all">
+        CANCEL
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ROUND TRANSITION PHASE -->
+<div *ngIf="phase() === 'round-transition'" class="min-h-full flex flex-col items-center justify-center bg-noir-950 p-6">
+  <div class="text-center space-y-6 animate-reveal">
+    <p class="text-[9px] font-mono text-noir-500 uppercase tracking-widest">ROUND {{ currentRound() }} OF 5</p>
+    <div class="text-6xl">{{ getRoundIcon(currentRoundData()?.type || '') }}</div>
+    <h2 class="text-3xl text-display">{{ getRoundLabel(currentRoundData()?.type || '') }}</h2>
+    <p class="text-sm text-noir-400">{{ currentRoundData()?.title }}</p>
+    <p class="text-[10px] font-mono text-amber-300 uppercase tracking-widest">{{ getBloomChip(currentRoundData()) }}</p>
+    <div class="flex items-center justify-center gap-6 text-sm font-mono">
+      <span class="text-emerald-400">{{ currentUser() }}: {{ myScore() }}</span>
+      <span class="text-noir-600">vs</span>
+      <span class="text-crimson-400">{{ opponent() }}: {{ opponentScoreValue() }}</span>
+    </div>
+    <div class="w-6 h-6 border-2 border-crimson-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+  </div>
+</div>
+
+<!-- DUEL PHASE -->
+<div *ngIf="phase() === 'dueling'" class="h-full flex flex-col bg-noir-950">
+
+  <!-- Top Bar -->
+  <div class="flex items-center justify-between px-4 py-2 border-b border-noir-800 bg-black/60">
+    <div class="flex items-center gap-3">
+      <div class="w-2 h-2 bg-emerald-400 rounded-full"></div>
+      <span class="text-[9px] font-mono text-emerald-400 uppercase tracking-widest font-bold">{{ currentUser() }} · {{ myScore() }}pts</span>
+    </div>
+    <div class="flex items-center gap-3">
+      <span class="text-[8px] font-mono text-noir-500 uppercase tracking-widest">R{{ currentRound() }}/5</span>
+      <span class="text-lg">{{ getRoundIcon(currentRoundData()?.type || '') }}</span>
+      <span class="hidden md:inline text-[8px] font-mono text-amber-300 uppercase tracking-widest">
+        {{ getBloomChip(currentRoundData()) }}
+      </span>
+      <span class="font-mono text-sm font-bold tracking-wider" [class]="roundTimerSeconds() <= 30 ? 'text-crimson-500 animate-pulse' : 'text-white'">
+        {{ formattedRoundTimer() }}
+      </span>
+    </div>
+    <div class="flex items-center gap-3">
+      <span class="text-[9px] font-mono text-crimson-400 uppercase tracking-widest font-bold">{{ opponent() }} · {{ opponentScoreValue() }}pts</span>
+      <div class="w-2 h-2 bg-crimson-500 rounded-full"></div>
+    </div>
+  </div>
+
+  <!-- Round Progress Bar -->
+  <div class="flex border-b border-noir-800/50 bg-noir-900/20">
+    <div *ngFor="let r of allRounds(); let i = index"
+      class="flex-1 flex flex-col items-center justify-center gap-1 py-3 border-r border-noir-800/30 last:border-r-0 transition-all duration-300"
+      [class]="currentRound() === r.round ? 'bg-crimson-600/30 text-white border-b-2 border-b-crimson-500' : currentRound() > r.round ? 'bg-emerald-900/10 text-emerald-500' : 'text-noir-500'">
+      <div class="flex items-center gap-2">
+        <span class="text-xl">{{ getRoundIcon(r.type) }}</span>
+        <span class="hidden md:inline text-[11px] font-black uppercase tracking-[0.2em]">{{ getRoundLabel(r.type) }}</span>
+      </div>
+      <span class="text-[9px] font-mono font-bold text-amber-300 tracking-widest bg-noir-950/50 px-2 py-0.5 rounded">L{{ r.bloomLevel || defaultBloomLevel(r.round) }}</span>
+    </div>
+  </div>
+
+  <!-- Round Content -->
+  <div class="flex-1 overflow-auto">
+
+    <!-- ═══════ ROUND 1: MCQ (ONE-BY-ONE FLASHCARDS) ═══════ -->
+    <div *ngIf="currentRoundData()?.type === 'MCQ'" class="max-w-2xl mx-auto p-6 space-y-8">
+      <div class="text-center">
+        <p class="text-mono-technical">ROUND {{ currentRound() }} // NEURAL_FLASH_QUIZ</p>
+        <div class="flex items-center justify-center gap-4 mt-4">
+          <div *ngFor="let q of currentRoundData()?.questions; let i = index" 
+            class="h-1 flex-1 transition-all duration-500"
+            [class]="i === activeMcqIndex() ? 'bg-crimson-500 shadow-[0_0_10px_#ef4444]' : i < activeMcqIndex() ? 'bg-emerald-500' : 'bg-noir-800'">
+          </div>
+        </div>
+        <p class="text-[10px] font-mono text-noir-500 uppercase tracking-widest mt-2">Question {{ activeMcqIndex() + 1 }} of {{ currentRoundData()?.questions?.length }}</p>
+      </div>
+
+      <!-- Active Question Card -->
+      <div *ngIf="!mcqSubmitted()" class="relative group">
+        <!-- Flashing Decorative Border -->
+        <div class="absolute -inset-0.5 bg-gradient-to-r from-crimson-600 to-noir-900 rounded-lg blur opacity-20 group-hover:opacity-40 transition duration-1000 group-hover:duration-200 animate-pulse"></div>
+        
+        <div class="relative noir-card p-10 space-y-8 min-h-[400px] flex flex-col justify-center animate-glitch-entry">
+          <p class="text-xl md:text-2xl text-white font-medium leading-relaxed text-center">
+            {{ currentRoundData()?.questions?.[activeMcqIndex()]?.question }}
+          </p>
+
+          <div class="grid grid-cols-1 gap-3">
+            <button *ngFor="let opt of currentRoundData()?.questions?.[activeMcqIndex()]?.options; let oi = index"
+              (click)="selectMcqAnswer(activeMcqIndex(), oi)"
+              class="text-left text-sm font-mono px-6 py-4 border transition-all duration-200 group/opt relative overflow-hidden"
+              [class]="mcqAnswers()[activeMcqIndex()] === oi
+                ? 'border-crimson-500 bg-crimson-600/20 text-white'
+                : 'border-noir-800 text-noir-400 hover:border-crimson-500/50 hover:text-white'">
+              <div class="flex items-center gap-4">
+                <span class="text-crimson-600 font-black group-hover/opt:text-crimson-400">{{ ['A','B','C','D'][oi] }}</span>
+                <span>{{ opt }}</span>
+              </div>
+              <!-- Hover effect background -->
+              <div class="absolute inset-0 bg-crimson-600/5 translate-x-[-100%] group-hover/opt:translate-x-0 transition-transform duration-300 pointer-events-none"></div>
+            </button>
+          </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="flex justify-between mt-6">
+          <button (click)="prevMcq()" 
+            [disabled]="activeMcqIndex() === 0"
+            class="text-[10px] font-mono uppercase tracking-widest text-noir-500 hover:text-white disabled:opacity-0 transition-all">
+            ← Previous
+          </button>
+          <div class="text-[9px] font-mono text-noir-600 uppercase">Input detected // {{ mcqAnswers()[activeMcqIndex()] !== -1 ? 'SELECTED' : 'AWAITING' }}</div>
+        </div>
+      </div>
+
+      <div *ngIf="mcqSubmitted()" class="noir-card p-20 flex flex-col items-center justify-center space-y-6 animate-reveal">
+        <div class="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+        <p class="text-emerald-400 text-sm font-mono tracking-[0.3em] uppercase animate-pulse">Neural Upload Complete // Waiting for opponent</p>
+      </div>
+    </div>
+
+    <!-- ═══════ ROUND 2: MEMORY ═══════ -->
+    <div *ngIf="currentRoundData()?.type === 'MEMORY'" class="max-w-3xl mx-auto p-6 space-y-6">
+      <div class="text-center mb-4">
+        <p class="text-mono-technical">ROUND {{ currentRound() }} // MEMORY</p>
+        <h2 class="text-2xl text-display mt-1">{{ currentRoundData()?.title }}</h2>
+        <p class="text-[10px] font-mono text-amber-300 uppercase tracking-widest mt-2">{{ getBloomChip(currentRoundData()) }}</p>
+        <p class="text-[10px] text-noir-500 mt-2 font-mono">Match the CS concepts with their properties. Pairs matched: {{ memoryMatchCount() }}/{{ currentRoundData()?.pairs?.length || 0 }}</p>
+      </div>
+
+      <div class="grid grid-cols-4 gap-2">
+        <button *ngFor="let card of memoryCards(); let ci = index"
+          (click)="flipMemoryCard(ci)"
+          [disabled]="memorySubmitted() || card.matched"
+          class="aspect-square flex items-center justify-center p-2 border text-center transition-all duration-300 cursor-pointer"
+          [class]="card.matched ? 'border-emerald-500 bg-emerald-900/20 text-emerald-400'
+            : card.flipped ? 'border-crimson-500 bg-crimson-600/20 text-white'
+            : 'border-noir-700 bg-noir-900 text-noir-400 hover:border-noir-500'">
+          <span *ngIf="card.flipped || card.matched" class="text-[10px] font-mono font-bold leading-tight">{{ card.text }}</span>
+          <span *ngIf="!card.flipped && !card.matched" class="text-lg">?</span>
+        </button>
+      </div>
+
+      <button *ngIf="!memorySubmitted()" (click)="submitMemory()"
+        class="w-full py-3 text-[10px] font-black uppercase tracking-[0.3em] border-2 border-crimson-500 text-crimson-500 hover:bg-crimson-600 hover:text-white transition-all">
+        SUBMIT ({{ memoryMatchCount() }} MATCHED)
+      </button>
+      <div *ngIf="memorySubmitted()" class="text-center text-emerald-400 text-sm font-mono animate-pulse">✓ MEMORY ROUND COMPLETE</div>
+    </div>
+
+    <!-- ═══════ ROUND 3: PUZZLE ═══════ -->
+    <div *ngIf="currentRoundData()?.type === 'PUZZLE'" class="max-w-3xl mx-auto p-6 space-y-6">
+      <div class="text-center mb-4">
+        <p class="text-mono-technical">ROUND {{ currentRound() }} // PUZZLE</p>
+        <h2 class="text-2xl text-display mt-1">{{ currentRoundData()?.title }}</h2>
+        <p class="text-[10px] font-mono text-amber-300 uppercase tracking-widest mt-2">{{ getBloomChip(currentRoundData()) }}</p>
+      </div>
+
+      <div class="noir-card p-6">
+        <div class="prose prose-invert prose-sm max-w-none text-noir-100 leading-relaxed" [innerHTML]="currentRoundData()?.puzzleHtml || ''"></div>
+      </div>
+
+      <div *ngIf="currentRoundData()?.hints?.length" class="space-y-1">
+        <p class="text-[8px] font-mono text-noir-600 uppercase tracking-widest">HINTS</p>
+        <p *ngFor="let hint of currentRoundData()?.hints" class="text-[11px] text-noir-500 italic">💡 {{ hint }}</p>
+      </div>
+
+      <div class="flex gap-2">
+        <input [value]="textAnswer()" (input)="textAnswer.set($any($event.target).value)"
+          [disabled]="textSubmitted()" type="text" spellcheck="false" placeholder="Your answer..."
+          class="flex-1 bg-black border border-noir-800 text-white font-mono text-sm px-4 py-3 focus:outline-none focus:border-crimson-500 placeholder:text-noir-600">
+        <button *ngIf="!textSubmitted()" (click)="submitTextAnswer()"
+          class="px-6 py-3 text-[10px] font-black uppercase tracking-[0.3em] border-2 border-crimson-500 text-crimson-500 hover:bg-crimson-600 hover:text-white transition-all">
+          SUBMIT
+        </button>
+      </div>
+      <div *ngIf="textSubmitted()" class="text-center text-emerald-400 text-sm font-mono animate-pulse">✓ ANSWER SUBMITTED</div>
+    </div>
+
+    <!-- ═══════ ROUND 4: PROBLEM SOLVING ═══════ -->
+    <div *ngIf="currentRoundData()?.type === 'PROBLEM_SOLVING'" class="max-w-3xl mx-auto p-6 space-y-6">
+      <div class="text-center mb-4">
+        <p class="text-mono-technical">ROUND {{ currentRound() }} // PROBLEM SOLVING</p>
+        <h2 class="text-2xl text-display mt-1">{{ currentRoundData()?.title }}</h2>
+        <p class="text-[10px] font-mono text-amber-300 uppercase tracking-widest mt-2">{{ getBloomChip(currentRoundData()) }}</p>
+      </div>
+
+      <div class="noir-card p-6">
+        <div class="prose prose-invert prose-sm max-w-none text-noir-100 leading-relaxed" [innerHTML]="currentRoundData()?.problemHtml || ''"></div>
+      </div>
+
+      <div class="flex gap-2">
+        <input [value]="textAnswer()" (input)="textAnswer.set($any($event.target).value)"
+          [disabled]="textSubmitted()" type="text" spellcheck="false" placeholder="Your answer..."
+          class="flex-1 bg-black border border-noir-800 text-white font-mono text-sm px-4 py-3 focus:outline-none focus:border-crimson-500 placeholder:text-noir-600">
+        <button *ngIf="!textSubmitted()" (click)="submitTextAnswer()"
+          class="px-6 py-3 text-[10px] font-black uppercase tracking-[0.3em] border-2 border-crimson-500 text-crimson-500 hover:bg-crimson-600 hover:text-white transition-all">
+          SUBMIT
+        </button>
+      </div>
+      <div *ngIf="textSubmitted()" class="text-center text-emerald-400 text-sm font-mono animate-pulse">✓ ANSWER SUBMITTED</div>
+    </div>
+
+    <!-- ═══════ ROUND 5: CODING ═══════ -->
+    <div *ngIf="currentRoundData()?.type === 'CODING'" class="h-full flex flex-col">
+      <!-- Lang + Run bar -->
+      <div class="flex items-center gap-2 px-4 py-1.5 border-b border-noir-800/50 bg-noir-900/30">
+        <span class="text-[8px] font-mono text-noir-600 uppercase tracking-widest mr-2">LANG:</span>
+        <button *ngFor="let lang of ['java', 'python', 'cpp', 'javascript']"
+          (click)="selectLanguage(lang)"
+          class="text-[9px] font-black uppercase tracking-widest px-3 py-1 border transition-all"
+          [class]="selectedLanguage() === lang ? 'bg-crimson-600 border-crimson-600 text-white' : 'border-noir-800 text-noir-500 hover:text-white hover:border-noir-600'">
+          {{ lang }}
+        </button>
+        <div class="ml-auto flex items-center gap-2">
+          <button (click)="runCode()" [disabled]="isExecuting()"
+            class="flex items-center gap-1.5 px-4 py-1 text-[9px] font-black uppercase tracking-[0.2em] border transition-all"
+            [class]="isExecuting() ? 'border-noir-700 text-noir-500 cursor-wait' : 'border-emerald-500 text-emerald-400 hover:bg-emerald-600 hover:text-white'">
+            <lucide-icon *ngIf="!isExecuting()" name="Play" class="w-3 h-3"></lucide-icon>
+            <lucide-icon *ngIf="isExecuting()" name="Loader2" class="w-3 h-3 animate-spin"></lucide-icon>
+            {{ isExecuting() ? 'RUNNING' : 'RUN' }}
+          </button>
+          <button *ngIf="!codingSubmitted()" (click)="submitCoding()"
+            class="px-4 py-1 text-[9px] font-black uppercase tracking-[0.2em] border border-crimson-500 text-crimson-500 hover:bg-crimson-600 hover:text-white transition-all">
+            SUBMIT
+          </button>
+        </div>
+      </div>
+
+      <!-- 3-Column Layout for Coding Round -->
+      <div class="flex-1 grid grid-cols-4 overflow-hidden">
+        <!-- Left: Your Editor + Terminal -->
+        <div class="col-span-1 flex flex-col border-r border-noir-800 min-w-0">
+          <div class="flex items-center gap-2 px-3 py-1.5 border-b border-noir-800 bg-noir-900/50">
+            <div class="w-1.5 h-1.5 bg-emerald-400 rounded-full"></div>
+            <span class="text-[8px] font-mono text-noir-400 uppercase tracking-widest">YOUR CODE</span>
+          </div>
+          <ngx-monaco-editor class="flex-1 w-full min-h-0" [options]="myEditorOptions" [ngModel]="myCode()" (ngModelChange)="onMyCodeChange($event)"></ngx-monaco-editor>
+          <div class="border-t border-noir-800 max-h-[30%] flex flex-col">
+            <div class="flex items-center gap-2 px-3 py-1 border-b border-noir-800/50 bg-black/40">
+              <lucide-icon name="Terminal" class="w-3 h-3 text-noir-600"></lucide-icon>
+              <span class="text-[7px] font-mono text-noir-600 uppercase tracking-widest">TERMINAL</span>
+            </div>
+            <div class="flex-1 overflow-auto p-3 bg-black/60 font-mono text-[11px]">
+              <div *ngIf="!myResult() && !isExecuting()" class="text-noir-600">// Awaiting execution...</div>
+              <div *ngIf="isExecuting()" class="text-amber-400 animate-pulse">▶ EXECUTING...</div>
+              <pre *ngIf="myResult()?.success" class="text-emerald-300 whitespace-pre-wrap break-words">{{ myResult()?.output }}</pre>
+              <pre *ngIf="myResult() && !myResult()?.success" class="text-crimson-400 whitespace-pre-wrap break-words">{{ myResult()?.error }}</pre>
+            </div>
+          </div>
+        </div>
+
+        <!-- Center: Problem + Scoreboard -->
+        <div class="col-span-2 flex flex-col border-r border-noir-800 min-w-0">
+          <div class="flex items-center gap-2 px-4 py-1.5 border-b border-noir-800 bg-noir-900/30">
+            <lucide-icon name="FileText" class="w-3.5 h-3.5 text-noir-500"></lucide-icon>
+            <span class="text-[8px] font-mono text-noir-400 uppercase tracking-widest">PROBLEM // {{ currentRoundData()?.title }}</span>
+            <span class="ml-auto text-[8px] font-mono text-amber-300 uppercase tracking-widest">{{ getBloomChip(currentRoundData()) }}</span>
+          </div>
+          <div class="flex-1 overflow-y-auto p-5 puzzle-content-area">
+            <div class="prose prose-invert prose-sm max-w-none text-noir-100 leading-relaxed" [innerHTML]="currentRoundData()?.descriptionHtml || ''"></div>
+          </div>
+          <div class="border-t border-noir-800 px-4 py-2 bg-black/40">
+            <div class="grid grid-cols-2 gap-4">
+              <div class="flex items-center gap-2 p-2 border border-noir-800 bg-noir-900/30">
+                <div class="w-2 h-2 bg-emerald-400 rounded-full"></div>
+                <span class="text-[9px] font-mono text-emerald-400">{{ currentUser() }}: {{ myScore() }}</span>
+              </div>
+              <div class="flex items-center gap-2 p-2 border border-noir-800 bg-noir-900/30">
+                <div class="w-2 h-2 bg-crimson-500 rounded-full"></div>
+                <span class="text-[9px] font-mono text-crimson-400">{{ opponent() }}: {{ opponentScoreValue() }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Opponent Editor + Terminal -->
+        <div class="col-span-1 flex flex-col min-w-0">
+          <div class="flex items-center gap-2 px-3 py-1.5 border-b border-noir-800 bg-noir-900/50">
+            <div class="w-1.5 h-1.5 bg-crimson-500 rounded-full"></div>
+            <span class="text-[8px] font-mono text-noir-400 uppercase tracking-widest">{{ opponent() }}'s CODE</span>
+          </div>
+          <ngx-monaco-editor class="flex-1 w-full min-h-0" [options]="opponentEditorOptions" [ngModel]="opponentCode()"></ngx-monaco-editor>
+          <div class="border-t border-noir-800 max-h-[30%] flex flex-col">
+            <div class="flex items-center gap-2 px-3 py-1 border-b border-noir-800/50 bg-black/40">
+              <lucide-icon name="Terminal" class="w-3 h-3 text-noir-600"></lucide-icon>
+              <span class="text-[7px] font-mono text-noir-600 uppercase tracking-widest">OPPONENT</span>
+            </div>
+            <div class="flex-1 overflow-auto p-3 bg-black/60 font-mono text-[10px] text-noir-600">
+              // Opponent's output hidden
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div *ngIf="codingSubmitted()" class="text-center py-2 text-emerald-400 text-sm font-mono animate-pulse bg-black/40 border-t border-noir-800">
+        ✓ CODE SUBMITTED
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- FINISHED PHASE -->
+<div *ngIf="phase() === 'finished'" class="min-h-full flex flex-col items-center justify-center bg-noir-950 p-6">
+  <div class="text-center max-w-lg space-y-8 animate-reveal">
+    <p class="text-mono-technical">DUEL COMPLETE</p>
+
+    <h1 *ngIf="winner() !== 'DRAW'" class="text-4xl md:text-6xl text-display">
+      <span [class]="winner() === currentUserMatchmakingId() ? 'text-emerald-400' : 'text-crimson-500'">
+        {{ winner() === currentUserMatchmakingId() ? 'VICTORY' : 'DEFEAT' }}
+      </span>
+    </h1>
+    <h1 *ngIf="winner() === 'DRAW'" class="text-4xl md:text-6xl text-display text-amber-400">DRAW</h1>
+
+    <div class="flex items-center justify-center gap-8 text-lg font-mono">
+      <div class="text-center">
+        <p class="text-emerald-400 font-black text-3xl">{{ myScore() }}</p>
+        <p class="text-[9px] text-noir-500 uppercase tracking-widest mt-1">{{ currentUser() }}</p>
+      </div>
+      <span class="text-noir-600 text-2xl">—</span>
+      <div class="text-center">
+        <p class="text-crimson-500 font-black text-3xl">{{ opponentScoreValue() }}</p>
+        <p class="text-[9px] text-noir-500 uppercase tracking-widest mt-1">{{ opponent() }}</p>
+      </div>
+    </div>
+
+    <div class="flex gap-4 justify-center">
+      <button (click)="askCornerMan()"
+        class="flex items-center gap-2 px-8 py-3 text-[10px] font-black uppercase tracking-[0.3em] bg-noir-800 border border-amber-500/50 text-amber-400 hover:bg-amber-600/10 hover:border-amber-400 transition-all">
+        <lucide-icon name="Brain" class="w-4 h-4"></lucide-icon>
+        CORNER MAN ANALYSIS
+      </button>
+
+      <button (click)="returnToLobby()"
+        class="px-8 py-3 text-[10px] font-black uppercase tracking-[0.3em] border-2 border-crimson-500 text-crimson-500 hover:bg-crimson-600 hover:text-white transition-all">
+        RETURN TO LOBBY
+      </button>
+    </div>
+  </div>
+</div>

@@ -22,7 +22,8 @@ export const routes: Routes = [
       },
       {
         path: 'skills',
-        loadComponent: () => import('./skills/skill-grid.component').then(m => m.SkillGridComponent)
+        redirectTo: 'duel-arena',
+        pathMatch: 'full'
       },
       {
         path: 'advisor',
@@ -37,8 +38,29 @@ export const routes: Routes = [
         loadComponent: () => import('./arsenal/arsenal.component').then(m => m.ArsenalComponent)
       },
       {
+        path: 'proving-grounds',
+        loadComponent: () => import('./proving-grounds/proving-grounds.component').then(m => m.ProvingGroundsComponent)
+      },
+      {
+        path: 'duel-arena',
+        loadComponent: () => import('./duel-arena/duel-arena.component').then(m => m.DuelArenaComponent)
+      },
+      {
+        path: 'cognitive-sprint',
+        loadComponent: () => import('./cognitive-sprint/cognitive-sprint.component').then(m => m.CognitiveSprintComponent)
+      },
+      {
         path: 'compiler',
-        loadComponent: () => import('./arsenal/code-editor.component').then(m => m.CodeEditorComponent)
+        loadComponent: () => import('./battle-station/battle-station.component').then(m => m.BattleStationComponent)
+      },
+      {
+        path: 'settings',
+        loadComponent: () => import('./settings/settings.component').then(m => m.SettingsComponent)
+      },
+      {
+        path: 'battle-station',
+        redirectTo: 'compiler',
+        pathMatch: 'full'
       },
       {
         path: '',

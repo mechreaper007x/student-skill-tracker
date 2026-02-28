@@ -56,15 +56,23 @@ public class Student {
     @Column(name = "github_access_token")
     private String githubAccessToken;
 
+    @Column(name = "leetcode_session_enc", length = 4096)
+    @ToString.Exclude
+    private String leetcodeSessionEncrypted;
+
+    @Column(name = "leetcode_csrf_enc", length = 4096)
+    @ToString.Exclude
+    private String leetcodeCsrfTokenEncrypted;
+
     @Column(name = "ai_provider")
     private String aiProvider;
 
     @Column(name = "ai_model")
     private String aiModel;
 
-    @Column(name = "ai_api_key", length = 2048)
+    @Column(name = "ai_api_key_enc", length = 2048)
     @ToString.Exclude
-    private String aiApiKey;
+    private String aiApiKeyEncrypted;
 
     @Lob
     @Column(name = "rishi_memory_json")
@@ -102,8 +110,78 @@ public class Student {
     @Builder.Default
     private Integer xp = 0;
 
+    // --- Cognitive Telemetry & Humanistic Tracking ---
+
+    @Column(name = "total_compilations")
+    @Builder.Default
+    private Integer totalCompilations = 0;
+
+    @Column(name = "successful_compilations")
+    @Builder.Default
+    private Integer successfulCompilations = 0;
+
+    @Column(name = "total_submissions")
+    @Builder.Default
+    private Integer totalSubmissions = 0;
+
+    @Column(name = "accepted_submissions")
+    @Builder.Default
+    private Integer acceptedSubmissions = 0;
+
+    @Column(name = "first_attempt_success_count")
+    @Builder.Default
+    private Integer firstAttemptSuccessCount = 0;
+
+    @Column(name = "avg_recovery_velocity_ms")
+    @Builder.Default
+    private Long avgRecoveryVelocityMs = 0L;
+
+    @Column(name = "avg_planning_time_ms")
+    @Builder.Default
+    private Long avgPlanningTimeMs = 0L;
+
+    @Column(name = "last_failure_timestamp")
+    private LocalDateTime lastFailureTimestamp;
+
+    @Column(name = "last_selected_question_slug")
+    private String lastSelectedQuestionSlug;
+
+    @Column(name = "question_selection_timestamp")
+    private LocalDateTime questionSelectionTimestamp;
+
+    @Column(name = "thinking_style")
+    private String thinkingStyle;
+
+    @Column(name = "highest_bloom_level")
+    @Builder.Default
+    private Integer highestBloomLevel = 1;
+
+    @Column(name = "duel_wins")
+    @Builder.Default
+    private Integer duelWins = 0;
+
+    @Column(name = "duel_losses")
+    @Builder.Default
+    private Integer duelLosses = 0;
+
+    @Column(name = "last_duel_at")
+    private LocalDateTime lastDuelAt;
+
+    @Column(name = "last_emotion_after_failure")
+    private String lastEmotionAfterFailure;
+
+    @Lob
+    @Column(name = "emotion_log_json")
+    @ToString.Exclude
+    private String emotionLogJson;
+
     public void levelUp() {
         this.level++;
         this.xp = 0;
+    }
+
+    public boolean hasLeetCodeSubmitAuth() {
+        return leetcodeSessionEncrypted != null && !leetcodeSessionEncrypted.isBlank()
+                && leetcodeCsrfTokenEncrypted != null && !leetcodeCsrfTokenEncrypted.isBlank();
     }
 }

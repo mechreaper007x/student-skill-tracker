@@ -42,8 +42,11 @@ export class AuthService {
               email: response.email,
               name: response.name || '',
               leetcodeUsername: response.leetcodeUsername || '',
-              level: 0,
-              xp: 0,
+              leetcodeSubmitConnected: response.leetcodeSubmitConnected === true,
+              level: response.level || 1,
+              xp: response.xp || 0,
+              duelWins: response.duelWins || 0,
+              highestBloomLevel: response.highestBloomLevel || 1,
               roles: 'USER',
               skillData: undefined
             });
@@ -92,8 +95,11 @@ export class AuthService {
           email: response.email,
           name: response.name,
           leetcodeUsername: response.leetcodeUsername,
-          level: 0,
-          xp: 0,
+          leetcodeSubmitConnected: response.leetcodeSubmitConnected === true,
+          level: response.level || 1,
+          xp: response.xp || 0,
+          duelWins: response.duelWins || 0,
+          highestBloomLevel: response.highestBloomLevel || 1,
           roles: 'USER',
           skillData: undefined
         };

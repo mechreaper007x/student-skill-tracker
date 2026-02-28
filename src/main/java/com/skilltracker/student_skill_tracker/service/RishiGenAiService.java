@@ -18,33 +18,33 @@ public class RishiGenAiService {
     private static final String MISTRAL_CHAT_URL = "https://api.mistral.ai/v1/chat/completions";
     private static final String DEFAULT_MODEL = "open-mixtral-8x7b";
 
-    private static final String SYSTEM_PROMPT = """
-            You are Rishi, a pragmatic mentor for students.
-            Teach clearly with concrete examples and crisp structure.
-            For each response:
-            1) Explain the concept in simple terms.
-            2) Show a practical example.
-            3) Give a short exercise for practice.
-            4) Give next-step resources.
-            Keep tone direct and helpful.
-            """;
-
     private final RestTemplate restTemplate;
 
     public RishiGenAiService(RestTemplate restTemplate) {
         this.restTemplate = restTemplate;
     }
 
-    public String generateLearningResponse(String apiKey, String model, String userMessage) {
-        return generateLearningResponse(apiKey, model, userMessage, List.of());
-    }
-
     public String generateLearningResponse(String apiKey, String model, String userMessage,
-            List<Map<String, String>> memoryContext) {
+            List<Map<String, String>> memoryContext, String studentContextStr) {
         validate(apiKey, userMessage);
 
+        String systemPrompt = """
+            You are Rishi, a 10x Senior Developer, guide, and mentor. 
+            Student profile:
+            %s
+            
+            Your core directives:
+            1. THE SENIOR DEV REVIEW: When the user provides code, do NOT just say "good job". Perform a strict code review. Point out algorithmic inefficiencies (Big-O), poor naming conventions, or unidiomatic constructs (e.g., using a raw for-loop instead of Streams in modern Java). Teach them industry standards.
+            2. THE POLYGLOT GUIDE: If the user asks to translate code from one language to another, DO NOT just give the final code. Explain the structural and idiomatic differences first (e.g., "In Python you used a dictionary, but in Java, we need a HashMap, and here is how memory references differ").
+            3. LIVE MOCK INTERVIEW MODE: If the user requests a Mock Interview, act strictly as a FAANG interviewer. Give a medium/hard algorithmic problem. DO NOT give them any code. Force them to explain their approach, data structures, and Big-O complexity BEFORE they write any code. Push back on suboptimal approaches.
+            4. CORNER MAN ANALYSIS (DUEL ARENA): If the user provides a match result from the Arena, act as a brutally honest boxing coach. If they won, point out inefficiencies to keep them grounded. If they lost, analyze why, compare their code to the opponent's, and explain what mental model they missed.
+            5. VISUALIZATION (THE WHITEBOARD): Provide clear, vivid analogies and step-by-step visual explanations. Whenever explaining a data structure (like a Linked List, Tree, or Graph), an algorithm flowchart, or a system architecture, you MUST use Mermaid.js syntax inside a ```mermaid code block. This acts as your whiteboard to help the student "see" the concept.
+            
+            Never just give the answer. Guide them to it.
+            """.formatted(studentContextStr == null || studentContextStr.isBlank() ? "No profile data available." : studentContextStr);
+
         List<Map<String, String>> messages = new ArrayList<>();
-        messages.add(Map.of("role", "system", "content", SYSTEM_PROMPT));
+        messages.add(Map.of("role", "system", "content", systemPrompt));
 
         if (memoryContext != null) {
             for (Map<String, String> m : memoryContext) {
@@ -94,7 +94,7 @@ public class RishiGenAiService {
                 Keep it practical and specific.
                 """.formatted(safeDuration, topic.trim(), safeGoals, safeSkillSnapshot, safeDuration);
 
-        return generateLearningResponse(apiKey, model, prompt, memoryContext);
+        return generateLearningResponse(apiKey, model, prompt, memoryContext, safeSkillSnapshot);
     }
 
     @SuppressWarnings("unchecked")

@@ -1,0 +1,155 @@
+<div class="p-6 md:p-10 space-y-8 animate-reveal">
+
+  <!-- Header -->
+  <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+    <div>
+      <p class="text-mono-technical mb-2">SECTOR_05 // THE PROVING GROUNDS</p>
+      <h1 class="text-3xl md:text-5xl text-display">
+        THE PROVING<br><span class="text-crimson-500">GROUNDS</span>
+      </h1>
+      <p class="text-noir-400 text-sm mt-2 max-w-md font-light">
+        "What does not kill you makes you stronger." — Forge your will through code.
+      </p>
+    </div>
+
+    <!-- Stats Bar -->
+    <div class="flex gap-4">
+      <div class="noir-card p-4 text-center min-w-[80px]">
+        <p class="text-2xl font-black text-emerald-400">{{ easyCount() }}</p>
+        <p class="text-[8px] font-mono text-noir-500 uppercase tracking-widest mt-1">Easy</p>
+      </div>
+      <div class="noir-card p-4 text-center min-w-[80px]">
+        <p class="text-2xl font-black text-amber-400">{{ mediumCount() }}</p>
+        <p class="text-[8px] font-mono text-noir-500 uppercase tracking-widest mt-1">Medium</p>
+      </div>
+      <div class="noir-card p-4 text-center min-w-[80px]">
+        <p class="text-2xl font-black text-crimson-500">{{ hardCount() }}</p>
+        <p class="text-[8px] font-mono text-noir-500 uppercase tracking-widest mt-1">Hard</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Daily Challenge -->
+  <div *ngIf="dailyChallenge()" class="noir-card p-6 border-l-4 border-l-crimson-500 relative group">
+    <div class="scanline opacity-0 group-hover:opacity-5"></div>
+    <div class="flex items-center gap-3 mb-3">
+      <lucide-icon name="Flame" class="w-5 h-5 text-crimson-500"></lucide-icon>
+      <span class="text-[9px] font-mono text-crimson-500 uppercase tracking-[0.3em] font-bold">Daily Combat // {{ dailyChallenge()?.difficulty }}</span>
+    </div>
+    <h3 class="text-lg font-black text-white uppercase">{{ dailyChallenge()?.title }}</h3>
+    <div class="flex items-center gap-2 mt-3 flex-wrap">
+      <span *ngFor="let tag of dailyChallenge()?.tags?.slice(0, 3)"
+        class="text-[8px] font-mono text-noir-400 border border-noir-700 px-2 py-0.5 uppercase">{{ tag }}</span>
+      <button (click)="openQuestionInCompiler($any(dailyChallenge()))"
+        class="ml-auto text-[10px] font-black uppercase tracking-widest text-crimson-500 border border-crimson-500/30 px-4 py-2 hover:bg-crimson-600 hover:text-white transition-all">
+        ENGAGE COMPILER →
+      </button>
+    </div>
+  </div>
+
+  <!-- Filters Row -->
+  <div class="flex flex-col md:flex-row gap-4">
+    <!-- Category Tabs -->
+    <div class="flex gap-1">
+      <button *ngFor="let cat of [
+        {id: 'all', label: 'ALL'},
+        {id: 'common', label: 'CRUCIBLE'},
+        {id: 'top-tier', label: 'APEX'},
+        {id: 'trending', label: 'VANGUARD'}
+      ]"
+        (click)="loadCategory($any(cat.id))"
+        class="text-[9px] font-black uppercase tracking-widest px-4 py-3 border transition-all"
+        [class]="activeCategory() === cat.id
+          ? 'bg-crimson-600 border-crimson-600 text-white'
+          : 'border-noir-800 text-noir-400 hover:text-white hover:border-noir-600'">
+        {{ cat.label }}
+      </button>
+    </div>
+
+    <!-- Difficulty Filter -->
+    <div class="flex gap-1">
+      <button *ngFor="let diff of ['all', 'easy', 'medium', 'hard']"
+        (click)="setDifficulty(diff)"
+        class="text-[9px] font-black uppercase tracking-widest px-3 py-3 border transition-all"
+        [class]="activeDifficulty() === diff
+          ? 'bg-noir-800 border-noir-600 text-white'
+          : 'border-noir-800 text-noir-500 hover:text-white'">
+        {{ diff }}
+      </button>
+    </div>
+
+    <!-- Search -->
+    <div class="flex-1 relative">
+      <lucide-icon name="Search" class="w-4 h-4 text-noir-500 absolute left-3 top-1/2 -translate-y-1/2"></lucide-icon>
+      <input
+        type="text"
+        (input)="onSearch($event)"
+        placeholder="Search by title or tag..."
+        class="w-full bg-black border border-noir-800 text-sm text-white pl-10 pr-4 py-3 font-mono focus:outline-none focus:border-crimson-500 transition-colors placeholder:text-noir-600"
+      >
+    </div>
+  </div>
+
+  <!-- Questions Table -->
+  <div class="noir-card">
+    <!-- Header Row -->
+    <div class="grid grid-cols-12 gap-2 px-6 py-3 border-b border-noir-800 text-[8px] font-mono text-noir-500 uppercase tracking-widest">
+      <div class="col-span-1">#</div>
+      <div class="col-span-5">Title</div>
+      <div class="col-span-2">Difficulty</div>
+      <div class="col-span-3">Tags</div>
+      <div class="col-span-1 text-right">Action</div>
+    </div>
+
+    <!-- Loading Skeleton -->
+    <div *ngIf="isLoading()" class="p-6 text-center text-noir-500 font-mono text-sm animate-pulse">
+      LOADING COMBAT_DATA...
+    </div>
+
+    <!-- Empty State -->
+    <div *ngIf="!isLoading() && filteredQuestions().length === 0" class="p-12 text-center">
+      <lucide-icon name="SearchX" class="w-10 h-10 text-noir-600 mx-auto mb-4"></lucide-icon>
+      <p class="text-noir-500 font-mono text-sm">NO_RESULTS_FOUND</p>
+    </div>
+
+    <!-- Question Rows -->
+    <div *ngFor="let q of paginatedQuestions(); let i = index"
+      class="grid grid-cols-12 gap-2 px-6 py-4 border-b border-noir-800/50 hover:bg-noir-900/50 transition-all group items-center">
+      <div class="col-span-1 text-noir-600 font-mono text-xs">{{ (currentPage() - 1) * pageSize + i + 1 }}</div>
+      <div class="col-span-5 text-sm font-bold text-noir-200 group-hover:text-white transition-colors truncate">{{ q.title }}</div>
+      <div class="col-span-2">
+        <span class="text-[9px] font-black uppercase border px-2 py-0.5" [ngClass]="getDifficultyClass(q.difficulty)">
+          {{ q.difficulty }}
+        </span>
+      </div>
+      <div class="col-span-3 flex gap-1 flex-wrap">
+        <span *ngFor="let tag of q.tags.slice(0, 2)"
+          class="text-[7px] font-mono text-noir-500 border border-noir-800 px-1.5 py-0.5 truncate max-w-[80px]">
+          {{ tag }}
+        </span>
+      </div>
+      <div class="col-span-1 text-right">
+        <button (click)="openQuestionInCompiler(q)" class="text-[9px] font-black uppercase tracking-widest text-crimson-400 border border-crimson-500/30 px-2 py-1 hover:bg-crimson-600 hover:text-white transition-all opacity-0 group-hover:opacity-100">
+          SOLVE
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pagination -->
+  <div *ngIf="totalPages() > 1" class="flex items-center justify-between">
+    <p class="text-[9px] font-mono text-noir-500 uppercase tracking-widest">
+      PAGE {{ currentPage() }} OF {{ totalPages() }} // {{ filteredQuestions().length }} TARGETS
+    </p>
+    <div class="flex gap-1">
+      <button (click)="prevPage()" [disabled]="currentPage() <= 1"
+        class="text-[10px] font-black px-4 py-2 border border-noir-800 text-noir-400 hover:text-white hover:border-crimson-500 disabled:opacity-30 disabled:cursor-not-allowed transition-all">
+        ← PREV
+      </button>
+      <button (click)="nextPage()" [disabled]="currentPage() >= totalPages()"
+        class="text-[10px] font-black px-4 py-2 border border-noir-800 text-noir-400 hover:text-white hover:border-crimson-500 disabled:opacity-30 disabled:cursor-not-allowed transition-all">
+        NEXT →
+      </button>
+    </div>
+  </div>
+</div>

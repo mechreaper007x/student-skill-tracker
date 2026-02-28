@@ -8,7 +8,8 @@ interface Gladiator {
   id: string;
   rank: number;
   name: string;
-
+  level: number;
+  bloomLevel: number;
   xp: number;
   avatar: string;
   isCurrentUser: boolean;
@@ -26,7 +27,7 @@ interface Gladiator {
            <lucide-icon name="Trophy" class="text-crimson-600 w-10 h-10"></lucide-icon>
            The Arena
         </h1>
-        <p class="text-noir-400 font-mono text-sm mt-2">Prove your will against the strongest seekers.</p>
+        <p class="text-noir-400 font-mono text-sm mt-2">Internal Rankings: Prove your will against the strongest seekers.</p>
       </div>
 
       @if (loading()) {
@@ -49,6 +50,7 @@ interface Gladiator {
                </div>
                <div class="w-24 h-32 bg-noir-900 rounded-t-2xl border-x border-t border-noir-800 flex flex-col items-center justify-start py-6 shadow-[0_-10px_20px_rgba(0,0,0,0.4)]">
                  <span class="text-2xl font-bold text-noir-500">2</span>
+                 <span class="text-[10px] text-noir-400 font-bold">LVL {{ gladiators()[1].level }}</span>
                  <lucide-icon name="Medal" class="w-6 h-6 text-noir-400 mt-2"></lucide-icon>
                </div>
             </div>
@@ -68,7 +70,8 @@ interface Gladiator {
                <div class="w-32 h-48 bg-gradient-to-b from-crimson-950/20 to-noir-900 rounded-t-2xl border-x border-t border-crimson-500/30 flex flex-col items-center justify-start py-8 relative overflow-hidden shadow-[0_-15px_30px_rgba(0,0,0,0.6)]">
                  <div class="absolute inset-x-0 top-0 h-1 bg-crimson-600"></div>
                  <span class="text-5xl font-bold text-white tracking-tighter">1</span>
-                 <span class="text-xs text-crimson-400 mt-2 font-mono font-bold tracking-widest uppercase">{{ gladiators()[0].xp | number }} XP</span>
+                 <span class="text-xs text-crimson-400 mt-2 font-mono font-bold tracking-widest uppercase">LVL {{ gladiators()[0].level }}</span>
+                 <span class="text-[10px] text-noir-400 font-mono mt-1 italic">Bloom L{{ gladiators()[0].bloomLevel }}</span>
                </div>
             </div>
           }
@@ -81,6 +84,7 @@ interface Gladiator {
                </div>
                <div class="w-20 h-24 bg-noir-900 rounded-t-2xl border-x border-t border-noir-800 flex flex-col items-center justify-start py-6 shadow-[0_-10px_20px_rgba(0,0,0,0.4)]">
                  <span class="text-2xl font-bold text-noir-600">3</span>
+                 <span class="text-[10px] text-noir-500 font-bold">LVL {{ gladiators()[2].level }}</span>
                  <lucide-icon name="Medal" class="w-6 h-6 text-noir-600 mt-2"></lucide-icon>
                </div>
             </div>
@@ -96,7 +100,8 @@ interface Gladiator {
                 <tr>
                   <th class="px-8 py-5">Rank</th>
                   <th class="px-8 py-5">Seeker</th>
-
+                  <th class="px-8 py-5">Level</th>
+                  <th class="px-8 py-5">Cognition</th>
                   <th class="px-8 py-5 text-right">Potency (XP)</th>
                 </tr>
               </thead>
@@ -120,8 +125,13 @@ interface Gladiator {
                         {{ user.name }}
                         @if (user.isCurrentUser) { <span class="text-[9px] bg-crimson-600/10 text-crimson-500 px-2 py-0.5 rounded-full ml-3 border border-crimson-600/20 font-bold tracking-widest uppercase">YOU</span> }
                     </td>
-
-                    <td class="px-8 py-5 text-right font-mono text-crimson-600 font-bold group-hover:text-crimson-400 transition-colors">{{ user.xp | number }} Potency</td>
+                    <td class="px-8 py-5">
+                      <span class="text-noir-300 font-bold">LVL {{ user.level }}</span>
+                    </td>
+                    <td class="px-8 py-5">
+                      <span class="text-[10px] px-2 py-1 bg-noir-800 rounded border border-noir-700 font-mono">Bloom L{{ user.bloomLevel }}</span>
+                    </td>
+                    <td class="px-8 py-5 text-right font-mono text-crimson-600 font-bold group-hover:text-crimson-400 transition-colors">{{ user.xp | number }} XP</td>
                   </tr>
                 }
               </tbody>
@@ -164,10 +174,10 @@ export class LeaderboardComponent implements OnInit {
           rank: entry.ranking || (index + 1),
           name: entry.name || entry.leetcodeUsername,
           avatar: this.generateAvatar(entry.name || entry.leetcodeUsername),
-
-          xp: Math.round(entry.totalScore || 0),
-          isCurrentUser: entry.email === currentUserEmail || 
-                         entry.leetcodeUsername === this.authService.currentUser()?.leetcodeUsername
+          level: entry.level || 1,
+          bloomLevel: entry.bloomLevel || 1,
+          xp: entry.xp || 0,
+          isCurrentUser: entry.email === currentUserEmail
         }));
         
         this.gladiators.set(gladiators);

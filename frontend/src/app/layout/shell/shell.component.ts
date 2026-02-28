@@ -20,11 +20,14 @@ export class ShellComponent {
   
   navItems = [
     { label: 'Command Center', icon: 'LayoutDashboard', route: '/dashboard' },
-    { label: 'Will to Power', icon: 'Zap', route: '/skills' },
+    { label: 'Will to Power', icon: 'Zap', route: '/duel-arena' },
     { label: 'The Arena', icon: 'Trophy', route: '/leaderboard' },
     { label: 'The Rishi', icon: 'Brain', route: '/advisor' },
     { label: 'Arsenal', icon: 'Package', route: '/arsenal' },
-    { label: 'Code Compiler', icon: 'Code2', route: '/compiler' },
+    { label: 'Proving Grounds', icon: 'Swords', route: '/proving-grounds' },
+    { label: 'Compiler', icon: 'Terminal', route: '/compiler' },
+    { label: 'Cognitive Sprint', icon: 'Brain', route: '/cognitive-sprint' },
+    { label: 'Settings', icon: 'Settings', route: '/settings' },
   ];
 
   toggleSidebar() {
