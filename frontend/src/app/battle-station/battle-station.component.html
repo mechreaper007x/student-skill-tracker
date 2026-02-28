@@ -294,9 +294,17 @@
             SOURCE // {{ selectedLanguage() | uppercase }}
           </span>
         </div>
-        <span class="text-[8px] font-mono text-noir-600">
-          TIMEOUT: {{ timeoutSeconds() }}s
-        </span>
+        <div class="text-right leading-tight">
+          <span class="block text-[8px] font-mono text-noir-600">
+            TIMEOUT: {{ timeoutSeconds() }}s
+          </span>
+          <span class="block text-[8px] font-mono text-noir-500">
+            RISHI TIMER: {{ formatRishiDuration(rishiSessionElapsedMs()) }}
+          </span>
+          <span class="block text-[8px] font-mono text-noir-500">
+            ACTIVE: {{ formatRishiDuration(rishiSessionActiveMs()) }}
+          </span>
+        </div>
       </div>
 
       <ngx-monaco-editor
@@ -304,6 +312,7 @@
         [options]="editorOptions"
         [ngModel]="sourceCode()"
         (ngModelChange)="onCodeChange($event)"
+        (onInit)="onEditorInit($event)"
       ></ngx-monaco-editor>
 
       <div class="border-t border-noir-800">

@@ -82,6 +82,61 @@ export interface CognitiveSprintResultResponse {
   thinkingStyle: string;
 }
 
+export interface RishiSessionStartRequest {
+  language?: string;
+  problemSlug?: string;
+}
+
+export interface RishiSessionStartResponse {
+  sessionId: number;
+  startedAt: string;
+}
+
+export interface RishiCodeChangeEvent {
+  timestamp: string;
+  editorVersion: number;
+  rangeOffset: number;
+  rangeLength: number;
+  insertedChars: number;
+  deletedChars: number;
+  resultingCodeLength: number;
+}
+
+export interface RishiCodeChangeBatchRequest {
+  events: RishiCodeChangeEvent[];
+}
+
+export interface RishiCompileAttemptRequest {
+  success: boolean;
+  executionTimeMs?: number;
+  language?: string;
+  problemSlug?: string;
+}
+
+export interface RishiSessionEndRequest {
+  reason?: string;
+  activeDurationMs?: number;
+}
+
+export interface RishiGrowthMetrics {
+  sessions: number;
+  totalCodingMinutes: number;
+  compileAttempts: number;
+  compileSuccessRate: number;
+  averageFirstSuccessSeconds: number;
+  averageEditsPerSession: number;
+}
+
+export interface RishiGrowthSummaryResponse {
+  days: number;
+  current: RishiGrowthMetrics;
+  previous: RishiGrowthMetrics;
+  codingMinutesGrowthPct: number;
+  successRateGrowthPct: number;
+  firstSuccessSpeedGrowthPct: number;
+  consistencyGrowthPct: number;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -89,6 +144,7 @@ export class CompilerService {
   private http = inject(HttpClient);
   private apiUrl = '/api/compiler';
   private cognitiveApiUrl = '/api/cognitive';
+  private rishiCodingApiUrl = '/api/rishi/coding';
 
   executeCode(request: CodeExecutionRequest): Observable<CompilationResult> {
     return this.http.post<CompilationResult>(`${this.apiUrl}/execute`, request);
@@ -142,5 +198,25 @@ export class CompilerService {
 
   recordFailureEmotion(emotion: 'frustrated' | 'neutral' | 'motivated'): Observable<{ status: string }> {
     return this.http.post<{ status: string }>(`${this.cognitiveApiUrl}/emotion`, { emotion });
+  }
+
+  startRishiCodingSession(request: RishiSessionStartRequest): Observable<RishiSessionStartResponse> {
+    return this.http.post<RishiSessionStartResponse>(`${this.rishiCodingApiUrl}/sessions/start`, request);
+  }
+
+  recordRishiCodeChanges(sessionId: number, request: RishiCodeChangeBatchRequest): Observable<{ acceptedEvents: number }> {
+    return this.http.post<{ acceptedEvents: number }>(`${this.rishiCodingApiUrl}/sessions/${sessionId}/events`, request);
+  }
+
+  recordRishiCompileAttempt(sessionId: number, request: RishiCompileAttemptRequest): Observable<{ status: string }> {
+    return this.http.post<{ status: string }>(`${this.rishiCodingApiUrl}/sessions/${sessionId}/compile`, request);
+  }
+
+  endRishiCodingSession(sessionId: number, request: RishiSessionEndRequest): Observable<{ status: string }> {
+    return this.http.post<{ status: string }>(`${this.rishiCodingApiUrl}/sessions/${sessionId}/end`, request);
+  }
+
+  getRishiGrowthSummary(days = 14): Observable<RishiGrowthSummaryResponse> {
+    return this.http.get<RishiGrowthSummaryResponse>(`${this.rishiCodingApiUrl}/growth-summary?days=${days}`);
   }
 }

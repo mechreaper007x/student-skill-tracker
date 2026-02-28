@@ -77,27 +77,47 @@ import { AuthService } from '../../core/auth/auth.service';
               <div class="grid grid-cols-2 gap-4">
                 <div class="space-y-2">
                   <label class="text-[10px] font-bold uppercase tracking-[0.2em] text-noir-500 ml-1">Password</label>
-                  <input 
-                    type="password" 
-                    name="password"
-                    [ngModel]="student().password" 
-                    (ngModelChange)="updateField('password', $event)"
-                    required
-                    placeholder="••••"
-                    class="w-full bg-noir-900 border border-noir-800 rounded-xl py-2.5 px-4 text-noir-100 placeholder:text-noir-600 focus:outline-none focus:border-zinc-500/50 focus:ring-1 focus:ring-zinc-500/50 transition-all font-mono text-sm"
-                  >
+                  <div class="relative">
+                    <input 
+                      [type]="showPassword() ? 'text' : 'password'" 
+                      name="password"
+                      [ngModel]="student().password" 
+                      (ngModelChange)="updateField('password', $event)"
+                      required
+                      placeholder="••••"
+                      class="w-full bg-noir-900 border border-noir-800 rounded-xl py-2.5 pl-4 pr-16 text-noir-100 placeholder:text-noir-600 focus:outline-none focus:border-zinc-500/50 focus:ring-1 focus:ring-zinc-500/50 transition-all font-mono text-sm"
+                    >
+                    <button
+                      type="button"
+                      (click)="showPassword.set(!showPassword())"
+                      class="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] font-bold uppercase tracking-wider text-noir-400 hover:text-noir-200"
+                      [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'"
+                    >
+                      {{ showPassword() ? 'Hide' : 'Show' }}
+                    </button>
+                  </div>
                 </div>
                 <div class="space-y-2">
                   <label class="text-[10px] font-bold uppercase tracking-[0.2em] text-noir-500 ml-1">Confirm</label>
-                  <input 
-                    type="password" 
-                    name="confirmPassword"
-                    [ngModel]="student().confirmPassword" 
-                    (ngModelChange)="updateField('confirmPassword', $event)"
-                    required
-                    placeholder="••••"
-                    class="w-full bg-noir-900 border border-noir-800 rounded-xl py-2.5 px-4 text-noir-100 placeholder:text-noir-600 focus:outline-none focus:border-zinc-500/50 focus:ring-1 focus:ring-zinc-500/50 transition-all font-mono text-sm"
-                  >
+                  <div class="relative">
+                    <input 
+                      [type]="showConfirmPassword() ? 'text' : 'password'" 
+                      name="confirmPassword"
+                      [ngModel]="student().confirmPassword" 
+                      (ngModelChange)="updateField('confirmPassword', $event)"
+                      required
+                      placeholder="••••"
+                      class="w-full bg-noir-900 border border-noir-800 rounded-xl py-2.5 pl-4 pr-16 text-noir-100 placeholder:text-noir-600 focus:outline-none focus:border-zinc-500/50 focus:ring-1 focus:ring-zinc-500/50 transition-all font-mono text-sm"
+                    >
+                    <button
+                      type="button"
+                      (click)="showConfirmPassword.set(!showConfirmPassword())"
+                      class="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] font-bold uppercase tracking-wider text-noir-400 hover:text-noir-200"
+                      [attr.aria-label]="showConfirmPassword() ? 'Hide confirm password' : 'Show confirm password'"
+                    >
+                      {{ showConfirmPassword() ? 'Hide' : 'Show' }}
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -180,6 +200,8 @@ export class RegisterComponent {
 
   loading = signal(false);
   error = signal<string | null>(null);
+  showPassword = signal(false);
+  showConfirmPassword = signal(false);
 
   passwordStrength = computed(() => {
     const p = this.student().password;

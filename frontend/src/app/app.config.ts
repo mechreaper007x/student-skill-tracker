@@ -1,7 +1,7 @@
 import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
 import { ApplicationConfig, importProvidersFrom, provideBrowserGlobalErrorListeners } from '@angular/core';
 import { provideRouter } from '@angular/router';
-import { Activity, ArrowUp, Award, Bot, Brain, Building2, ChevronDown, ChevronRight, ChevronUp, Circle, Code, Code2, Coffee, Cpu, Crown, ExternalLink, Eye, FileCode, FileJson, Flame, Folder, GitFork, HelpCircle, Info, Languages, Layout, LayoutDashboard, Lightbulb, Loader2, Lock, LogOut, LucideAngularModule, Mail, Medal, Menu, MessageSquare, Mic, Moon, Network, Package, Play, Plus, Puzzle, Radar, RotateCcw, Save, Search, SearchX, Send, Settings, Share2, Shield, ShieldCheck, Skull, Sparkles, Star, Sword, Swords, Target, Terminal, TerminalSquare, Trash2, Trophy, User, X, Zap } from 'lucide-angular';
+import { Activity, ArrowUp, Award, Bot, Brain, Building2, CheckCircle2, ChevronDown, ChevronRight, ChevronUp, Circle, Code, Code2, Coffee, Cpu, Crown, ExternalLink, Eye, FileCode, FileJson, Flame, Folder, GitFork, HelpCircle, Info, Languages, Layout, LayoutDashboard, Lightbulb, Loader2, Lock, LogOut, LucideAngularModule, Mail, Medal, Menu, MessageSquare, Mic, Moon, Network, Package, Play, Plus, Puzzle, Radar, RotateCcw, Save, Search, SearchX, Send, Settings, Share2, Shield, ShieldCheck, Skull, Sparkles, Star, Sword, Swords, Target, Terminal, TerminalSquare, Trash2, Trophy, User, X, Zap } from 'lucide-angular';
 import { MonacoEditorModule, NgxMonacoEditorConfig } from 'ngx-monaco-editor-v2';
 
 import { provideClientHydration, withEventReplay } from '@angular/platform-browser';
@@ -31,7 +31,7 @@ export const appConfig: ApplicationConfig = {
         Sword, Flame, Shield, Languages, Skull, Building2, Crown, Target, Moon,
         Swords, Activity, Share2, Code, Code2, Network, Folder, FileCode, FileJson, ExternalLink, Info,
         Play, RotateCcw, Search, SearchX, Radar, MessageSquare, ArrowUp, ShieldCheck, Cpu, Plus, Trash2,
-        Puzzle, Lightbulb, TerminalSquare, HelpCircle, Circle
+        Puzzle, Lightbulb, TerminalSquare, HelpCircle, Circle, CheckCircle2
       })
     ),
     importProvidersFrom(MonacoEditorModule.forRoot(monacoConfig))

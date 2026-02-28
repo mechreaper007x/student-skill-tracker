@@ -15,14 +15,20 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
         token = token.substring(1, token.length - 1);
       }
 
-      console.log('AuthInterceptor: Attaching token:', token.substring(0, 15) + '...');
-      const cloned = req.clone({
-        setHeaders: {
-          Authorization: `Bearer ${token}`
-        },
-        withCredentials: true
-      });
-      return next(cloned);
+      if (token) {
+        const cloned = req.clone({
+          setHeaders: {
+            Authorization: `Bearer ${token}`
+          },
+          withCredentials: true
+        });
+        return next(cloned);
+      }
+    }
+
+    // Keep credentials enabled for API requests so auth/fingerprint cookies flow correctly.
+    if (req.url.startsWith('/api/') || req.url.includes('/api/')) {
+      return next(req.clone({ withCredentials: true }));
     }
   }
   

@@ -44,6 +44,11 @@ skilltrackerdb.lock.db
 # Secrets and sensitive configs
 src/main/resources/application.properties
 src/main/resources/application-prod.properties
+src/main/resources/application-production.properties
+.env
+.env.*
+frontend/.env
+frontend/.env.*
 
 # AI Agent directory
 .agent/

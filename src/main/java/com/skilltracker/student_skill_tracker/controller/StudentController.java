@@ -78,35 +78,74 @@ public class StudentController {
     }
 
     @PostMapping("/register")
+    @Transactional
     public ResponseEntity<?> register(@RequestBody Student student) {
-        if (!student.getPassword().equals(student.getConfirmPassword())) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Passwords do not match!"));
+        try {
+            if (student == null || student.getName() == null || student.getName().isBlank()
+                    || student.getEmail() == null || student.getEmail().isBlank()
+                    || student.getLeetcodeUsername() == null || student.getLeetcodeUsername().isBlank()
+                    || student.getPassword() == null || student.getPassword().isBlank()
+                    || student.getConfirmPassword() == null || student.getConfirmPassword().isBlank()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(Map.of("error", "All required fields must be provided."));
+            }
+
+            student.setName(student.getName().trim());
+            student.setEmail(student.getEmail().trim().toLowerCase());
+            student.setLeetcodeUsername(student.getLeetcodeUsername().trim());
+
+            if (!student.getPassword().equals(student.getConfirmPassword())) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Passwords do not match!"));
+            }
+
+            // Layer 1: Strict Password Rules
+            if (!SecurityUtils.isValidPassword(student.getPassword())) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", 
+                    "Password must be at least 8 characters long, contain at least one uppercase letter, " +
+                    "one lowercase letter, one digit, and one special character."));
+            }
+
+            if (studentRepository.findByEmail(student.getEmail()).isPresent()) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", "Email already exists!"));
+            }
+
+            if (studentRepository.findByLeetcodeUsername(student.getLeetcodeUsername()).isPresent()) {
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(Map.of("error", "LeetCode username already registered!"));
+            }
+
+            student.setPassword(passwordEncoder.encode(student.getPassword()));
+            student.setRoles("ROLE_USER");
+            
+            // Explicitly set default values before saving
+            student.setLevel(1);
+            student.setXp(0);
+            student.setTotalCompilations(0);
+            student.setSuccessfulCompilations(0);
+            student.setTotalSubmissions(0);
+            student.setAcceptedSubmissions(0);
+            student.setFirstAttemptSuccessCount(0);
+            student.setAvgRecoveryVelocityMs(0L);
+            student.setAvgPlanningTimeMs(0L);
+            student.setHighestBloomLevel(1);
+            student.setDuelWins(0);
+            student.setDuelLosses(0);
+
+            Student savedStudent = studentRepository.save(student);
+            
+            // Trigger asynchronous updates using the saved object
+            skillService.updateSkillData(savedStudent);
+            skillService.updateLanguageSkills(savedStudent);
+
+            return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
+                "message", "Registration successful",
+                "email", savedStudent.getEmail()
+            ));
+        } catch (Exception e) {
+            logger.error("Registration error: " + e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", "Registration failed. Please try again."));
         }
-
-        // Layer 1: Strict Password Rules
-        if (!SecurityUtils.isValidPassword(student.getPassword())) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", 
-                "Password must be at least 8 characters long, contain at least one uppercase letter, " +
-                "one lowercase letter, one digit, and one special character."));
-        }
-
-        if (studentRepository.findByEmail(student.getEmail()).isPresent()) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", "Email already exists!"));
-        }
-
-        if (studentRepository.findByLeetcodeUsername(student.getLeetcodeUsername()).isPresent()) {
-            return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(Map.of("error", "LeetCode username already registered!"));
-        }
-
-        student.setPassword(passwordEncoder.encode(student.getPassword()));
-        student.setRoles("ROLE_USER");
-        Student savedStudent = studentRepository.save(student);
-        // Call both methods separately to avoid self-invocation issues
-        skillService.updateSkillData(savedStudent);
-        skillService.updateLanguageSkills(savedStudent);
-
-        return ResponseEntity.status(HttpStatus.CREATED).body(savedStudent);
     }
 
     private boolean isOwner(Long studentId) {

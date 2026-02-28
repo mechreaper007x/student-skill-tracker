@@ -2,11 +2,16 @@ package com.skilltracker.student_skill_tracker.controller;
 
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -28,19 +33,26 @@ import jakarta.servlet.http.HttpServletResponse;
 @RequestMapping("/api/auth")
 public class AuthController {
 
+        private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
+        private static final String SECURE_FGP_COOKIE_NAME = "__Secure-Fgp";
+        private static final String DEV_FGP_COOKIE_NAME = "Fgp";
+
         private final AuthenticationManager authenticationManager;
         private final JwtUtils jwtUtils;
         private final StudentRepository studentRepository;
         private final LoginAttemptService loginAttemptService;
+        private final boolean forceSecureFingerprintCookie;
 
         public AuthController(AuthenticationManager authenticationManager,
                         JwtUtils jwtUtils,
                         StudentRepository studentRepository,
-                        LoginAttemptService loginAttemptService) {
+                        LoginAttemptService loginAttemptService,
+                        @Value("${app.security.cookie-secure:false}") boolean forceSecureFingerprintCookie) {
                 this.authenticationManager = authenticationManager;
                 this.jwtUtils = jwtUtils;
                 this.studentRepository = studentRepository;
                 this.loginAttemptService = loginAttemptService;
+                this.forceSecureFingerprintCookie = forceSecureFingerprintCookie;
         }
 
         /**
@@ -74,16 +86,21 @@ public class AuthController {
 
         @PostMapping("/login")
         public ResponseEntity<?> login(@RequestBody Map<String, String> credentials, HttpServletRequest request, HttpServletResponse response) {
-                String email = credentials.get("email");
+                String email = credentials.getOrDefault("email", "").trim();
                 String password = credentials.get("password");
-                String ip = request.getRemoteAddr();
+                String ip = extractClientIp(request);
 
-                if (loginAttemptService.isBlocked(ip)) {
-                    return ResponseEntity.status(org.springframework.http.HttpStatus.TOO_MANY_REQUESTS)
-                            .body(Map.of("error", "Too many login attempts. Please try again in 15 minutes."));
+                if (email.isBlank() || password == null || password.isBlank()) {
+                        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                                        .body(Map.of("error", "Email and password are required."));
                 }
 
-                System.out.println("DEBUG: Login attempt for email: " + email);
+                if (loginAttemptService.isBlocked(ip)) {
+                        return ResponseEntity.status(org.springframework.http.HttpStatus.TOO_MANY_REQUESTS)
+                                        .body(Map.of("error", "Too many login attempts. Please try again in 15 minutes."));
+                }
+
+                logger.debug("Login attempt for email {} from {}", email, ip);
 
                 try {
                         Authentication authentication = authenticationManager.authenticate(
@@ -100,10 +117,13 @@ public class AuthController {
                         
                         String token = jwtUtils.generateToken(userDetails, cookieFgp, userAgent);
 
-                        // Set HttpOnly Secure Cookie for the FGP
-                        ResponseCookie springCookie = ResponseCookie.from("__Secure-Fgp", cookieFgp)
+                        // Keep secure cookies in production; allow local HTTP dev environments.
+                        boolean useSecureCookie = forceSecureFingerprintCookie || request.isSecure();
+                        String cookieName = useSecureCookie ? SECURE_FGP_COOKIE_NAME : DEV_FGP_COOKIE_NAME;
+
+                        ResponseCookie springCookie = ResponseCookie.from(cookieName, cookieFgp)
                             .httpOnly(true)
-                            .secure(true) // Requires HTTPS in prod
+                            .secure(useSecureCookie)
                             .path("/")
                             .sameSite("Strict")
                             .maxAge(86400) // 24 hours
@@ -114,7 +134,7 @@ public class AuthController {
                         Student student = studentRepository.findByEmail(email)
                                         .orElseThrow(() -> new RuntimeException("Student not found"));
 
-                        System.out.println("DEBUG: Login successful for: " + email);
+                        logger.debug("Login succeeded for {}", email);
 
                         return ResponseEntity.ok(LoginResponse.builder()
                                         .token(token)
@@ -128,10 +148,24 @@ public class AuthController {
                                         .duelWins(student.getDuelWins() != null ? student.getDuelWins() : 0)
                                         .highestBloomLevel(student.getHighestBloomLevel() != null ? student.getHighestBloomLevel() : 1)
                                         .build());
-                } catch (Exception e) {
-                        System.out.println("DEBUG: Login failed for: " + email + " Error: " + e.getMessage());
+                } catch (AuthenticationException authException) {
+                        logger.warn("Login failed for {} from {}", email, ip);
                         loginAttemptService.loginFailed(ip);
-                        throw e;
+                        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                                        .body(Map.of("error", "Invalid email or password."));
+                } catch (Exception e) {
+                        logger.error("Unexpected login error for {} from {}", email, ip, e);
+                        loginAttemptService.loginFailed(ip);
+                        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                                        .body(Map.of("error", "Login failed. Please try again."));
                 }
+        }
+
+        private String extractClientIp(HttpServletRequest request) {
+                String forwarded = request.getHeader("X-Forwarded-For");
+                if (forwarded != null && !forwarded.isBlank()) {
+                        return forwarded.split(",")[0].trim();
+                }
+                return request.getRemoteAddr();
         }
 }

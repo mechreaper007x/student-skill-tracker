@@ -13,8 +13,8 @@ public class SecurityUtils {
         "java.net", "java.lang.reflect", "ClassLoader"
     );
 
-    private static final Pattern PASSWORD_PATTERN = 
-        Pattern.compile("^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%^&+=!])(?=\S+$).{8,}$");
+    private static final Pattern PASSWORD_PATTERN =
+        Pattern.compile("^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%^&+=!])(?=\\S+$).{8,}$");
 
     public static boolean containsMaliciousKeywords(String code) {
         if (code == null) return false;
