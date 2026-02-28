@@ -1,5 +1,9 @@
 package com.skilltracker.student_skill_tracker.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 import org.slf4j.Logger;
@@ -22,12 +26,14 @@ public class DashboardService {
     private final StudentRepository studentRepository;
     private final SkillDataRepository skillDataRepository;
     private final SkillService skillService;
+    private final ObjectMapper objectMapper;
 
     public DashboardService(StudentRepository studentRepository, SkillDataRepository skillDataRepository,
             SkillService skillService) {
         this.studentRepository = studentRepository;
         this.skillDataRepository = skillDataRepository;
         this.skillService = skillService;
+        this.objectMapper = new ObjectMapper();
     }
 
     public Optional<DashboardResponseDTO> getDashboardData(Long studentId) {
@@ -56,6 +62,8 @@ public class DashboardService {
     }
 
     private StudentDTO mapToStudentDTO(Student student) {
+        Map<String, Integer> emotionDist = calculateEmotionDistribution(student.getEmotionLogJson());
+
         return StudentDTO.builder()
                 .id(student.getId())
                 .name(student.getName())
@@ -65,8 +73,37 @@ public class DashboardService {
                 .xp(student.getXp())
                 .thinkingStyle(student.getThinkingStyle())
                 .highestBloomLevel(student.getHighestBloomLevel())
+                .duelWins(student.getDuelWins())
                 .lastEmotionAfterFailure(student.getLastEmotionAfterFailure())
+                .emotionDistribution(emotionDist)
                 .build();
+    }
+
+    private Map<String, Integer> calculateEmotionDistribution(String emotionLogJson) {
+        Map<String, Integer> dist = new HashMap<>();
+        dist.put("frustrated", 0);
+        dist.put("neutral", 0);
+        dist.put("motivated", 0);
+
+        if (emotionLogJson == null || emotionLogJson.isBlank()) {
+            return dist;
+        }
+
+        try {
+            JsonNode root = objectMapper.readTree(emotionLogJson);
+            if (root.isArray()) {
+                for (JsonNode node : root) {
+                    String emotion = node.path("emotion").asText();
+                    if (!emotion.isBlank()) {
+                        dist.put(emotion, dist.getOrDefault(emotion, 0) + 1);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to parse emotion log for distribution: {}", e.getMessage());
+        }
+
+        return dist;
     }
 
     private SkillDataDTO mapToSkillDataDTO(SkillData skillData) {

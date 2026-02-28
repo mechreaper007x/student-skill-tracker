@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, effect, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { MonacoEditorModule } from 'ngx-monaco-editor-v2';
 import { Subject } from 'rxjs';
@@ -28,6 +29,7 @@ export class DuelArenaComponent implements OnInit, OnDestroy {
   private wsService = inject(WebSocketService);
   private compilerService = inject(CompilerService);
   private authService = inject(AuthService);
+  private router = inject(Router);
   private destroy$ = new Subject<void>();
   private typingSubject = new Subject<string>();
 
@@ -73,6 +75,7 @@ export class DuelArenaComponent implements OnInit, OnDestroy {
   });
 
   // MCQ state
+  activeMcqIndex = signal(0);
   mcqAnswers = signal<number[]>([]);
   mcqSubmitted = signal(false);
 
@@ -246,6 +249,7 @@ export class DuelArenaComponent implements OnInit, OnDestroy {
     if (!round) return;
 
     // Reset round-specific state
+    this.activeMcqIndex.set(0);
     this.mcqAnswers.set(round.questions ? new Array(round.questions.length).fill(-1) : []);
     this.mcqSubmitted.set(false);
     this.textAnswer.set('');
@@ -335,6 +339,20 @@ export class DuelArenaComponent implements OnInit, OnDestroy {
       copy[questionIndex] = optionIndex;
       return copy;
     });
+
+    // Auto-advance to next question after short delay
+    const totalQuestions = this.currentRoundData()?.questions?.length || 0;
+    setTimeout(() => {
+      if (this.activeMcqIndex() < totalQuestions - 1) {
+        this.activeMcqIndex.update(idx => idx + 1);
+      } else {
+        this.submitMcq();
+      }
+    }, 300);
+  }
+
+  prevMcq() {
+    this.activeMcqIndex.update(i => i > 0 ? i - 1 : i);
   }
 
   submitMcq() {
@@ -480,6 +498,33 @@ export class DuelArenaComponent implements OnInit, OnDestroy {
     this.winner.set('');
     this.clearRealtimeSignals();
     this.phase.set('lobby');
+  }
+
+  askCornerMan() {
+    const rounds = this.allRounds();
+    const myMatchId = this.currentUserMatchmakingId();
+    const isWinner = this.winner() === myMatchId;
+    
+    let contextStr = `I just finished a coding duel in the Arena. I ${isWinner ? 'won' : 'lost'} against ${this.opponent()}.\n`;
+    contextStr += `Final Score: Me (${this.myScore()}) - Opponent (${this.opponentScoreValue()})\n\n`;
+
+    const codingRound = rounds.find((r: any) => r.type === 'CODING');
+    if (codingRound) {
+      contextStr += `During the Coding round, I wrote this code in ${this.selectedLanguage()}:\n\`\`\`${this.selectedLanguage()}\n${this.myCode()}\n\`\`\`\n`;
+      if (this.opponentCode()) {
+        contextStr += `\nMy opponent wrote this code:\n\`\`\`\n${this.opponentCode()}\n\`\`\`\n`;
+      }
+    }
+
+    contextStr += '\nAct as my post-match Corner Man (Boxing Coach/Senior Mentor). Review the match tape. ';
+    if (isWinner) {
+      contextStr += 'Tell me what I did well, but don\'t let me get arrogant. Point out inefficiencies where my opponent might have beaten me in time/space complexity if they were faster.';
+    } else {
+      contextStr += 'Tell me why I lost. Compare my code to my opponent\'s code if available. Be brutally honest but encouraging. What mental model or data structure should I have used to win?';
+    }
+
+    sessionStorage.setItem('rishi_pending_context', contextStr);
+    this.router.navigate(['/advisor']);
   }
 
   private clearRealtimeSignals() {
@@ -698,24 +743,24 @@ export class DuelArenaComponent implements OnInit, OnDestroy {
     return `Bloom L${level}: ${name}`;
   }
 
-  private defaultBloomLevel(roundNumber: number): number {
+  public defaultBloomLevel(roundNumber: number): number {
     switch (roundNumber) {
-      case 1: return 2;
-      case 2: return 3;
-      case 3: return 4;
-      case 4: return 5;
-      case 5: return 6;
+      case 1: return 1;
+      case 2: return 2;
+      case 3: return 3;
+      case 4: return 4;
+      case 5: return 5;
       default: return 1;
     }
   }
 
   private defaultBloomLevelName(roundNumber: number): string {
     switch (roundNumber) {
-      case 1: return 'Remember & Understand';
-      case 2: return 'Understand & Apply';
-      case 3: return 'Analyze';
-      case 4: return 'Evaluate';
-      case 5: return 'Apply & Create';
+      case 1: return 'Remember';
+      case 2: return 'Understand';
+      case 3: return 'Apply';
+      case 4: return 'Analyze';
+      case 5: return 'Evaluate';
       default: return 'Remember';
     }
   }

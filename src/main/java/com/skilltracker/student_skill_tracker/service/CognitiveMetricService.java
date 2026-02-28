@@ -233,6 +233,21 @@ public class CognitiveMetricService {
         studentRepository.save(student);
     }
 
+    private final List<SprintQuestionPair> advancedFallbackBank = List.of(
+            new SprintQuestionPair(
+                    new SprintQuestion("Which algorithm is most optimal for finding strongly connected components?",
+                            List.of("Tarjan's", "Kruskal's", "Bellman-Ford", "Prim's"), 0),
+                    new SprintQuestion("What is the time complexity of Tarjan's algorithm?",
+                            List.of("O(V + E)", "O(V^2)", "O(E log V)", "O(V^3)"), 0)
+            ),
+            new SprintQuestionPair(
+                    new SprintQuestion("In a Red-Black tree, what is the max height?",
+                            List.of("2 log(n+1)", "log n", "1.44 log n", "n"), 0),
+                    new SprintQuestion("Which operation is faster in a Fibonacci heap compared to a Binary heap?",
+                            List.of("Decrease Key", "Extract Min", "Insert", "Delete"), 0)
+            )
+    );
+
     private SprintQuestionPair generateSprintQuestionsWithFallback(Student student) {
         try {
             JsonNode root = callGeminiForJson(buildSprintPrompt());
@@ -241,8 +256,14 @@ public class CognitiveMetricService {
             return new SprintQuestionPair(roundA, roundB);
         } catch (Exception ex) {
             logger.warn("Falling back to static sprint question set: {}", ex.getMessage());
-            int index = Math.floorMod((student.getId() == null ? 0 : student.getId().intValue()) + LocalDateTime.now().getSecond(),
-                    sprintFallbackBank.size());
+            int index = Math.floorMod((student.getId() == null ? 0 : student.getId().intValue()) + LocalDateTime.now().getSecond(), 
+                sprintFallbackBank.size());
+            
+            // Fix (5.6): Stratify fallback questions based on student level
+            if (student.getLevel() != null && student.getLevel() >= 5) {
+                index = Math.floorMod(index, advancedFallbackBank.size());
+                return advancedFallbackBank.get(index);
+            }
             return sprintFallbackBank.get(index);
         }
     }

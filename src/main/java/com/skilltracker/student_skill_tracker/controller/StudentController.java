@@ -449,43 +449,46 @@ public class StudentController {
 
         List<Map<String, Object>> leaderboard = students.stream()
                 .map(student -> {
-                    SkillData latest = skillDataRepository.findTopByStudentOrderByCreatedAtDesc(student)
-                            .orElse(null);
-                    if (latest == null)
-                        return null;
-
-                    double totalScore = latest.getProblemSolvingScore()
-                            + latest.getAlgorithmsScore()
-                            + latest.getDataStructuresScore();
+                    // Internal potency = level * 1000 + current_xp
+                    double totalScore = (student.getLevel() == null ? 1 : student.getLevel()) * 1000
+                            + (student.getXp() == null ? 0 : student.getXp());
 
                     Map<String, Object> entry = new HashMap<>();
                     entry.put("name", student.getName());
+                    entry.put("email", student.getEmail());
                     entry.put("leetcodeUsername", student.getLeetcodeUsername());
                     entry.put("totalScore", totalScore);
-                    entry.put("ranking", latest.getRanking());
+                    entry.put("level", student.getLevel());
+                    entry.put("xp", student.getXp());
+                    entry.put("duelWins", student.getDuelWins());
+                    entry.put("bloomLevel", student.getHighestBloomLevel());
                     entry.put("title", getTitleForScore(totalScore));
                     return entry;
                 })
-                .filter(Objects::nonNull)
                 .sorted((a, b) -> Double.compare((double) b.get("totalScore"), (double) a.get("totalScore")))
-                .limit(10)
+                .limit(50)
                 .collect(Collectors.toList());
+
+        // Add ranking index
+        for (int i = 0; i < leaderboard.size(); i++) {
+            leaderboard.get(i).put("ranking", i + 1);
+        }
 
         return ResponseEntity.ok(leaderboard);
     }
 
     private String getTitleForScore(double score) {
-        if (score >= 12000)
-            return "The Architect";
+        if (score >= 20000)
+            return "Grandmaster Duelist";
+        if (score >= 15000)
+            return "Elite Striver";
         if (score >= 10000)
-            return "Shadow Walker";
-        if (score >= 8000)
-            return "Algo Hunter";
+            return "Adept Combatant";
         if (score >= 5000)
-            return "Logic Master";
-        if (score >= 2500)
-            return "Code Warrior";
-        return "Novice Seeker";
+            return "Skilled Seeker";
+        if (score >= 2000)
+            return "Arena Novice";
+        return "New Blood";
     }
 
     private Optional<Student> getCurrentStudentFromContext() {

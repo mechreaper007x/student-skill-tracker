@@ -50,7 +50,8 @@ public class SkillService {
         logger.info("Asynchronously fetching LeetCode data for user: {}", student.getLeetcodeUsername());
         Map<String, Object> data = leetCodeService.fetchStats(student.getLeetcodeUsername());
 
-        SkillData skillData = skillDataRepository.findByStudent(student).orElse(new SkillData());
+        // FIX (5.8): Always create a new SkillData record to maintain a longitudinal history of skills
+        SkillData skillData = new SkillData();
         skillData.setStudent(student);
 
         if (data.isEmpty()) {
@@ -68,11 +69,12 @@ public class SkillService {
             return;
         }
 
-        int total = (int) data.getOrDefault("totalSolved", 0);
-        int easy = (int) data.getOrDefault("easySolved", 0);
-        int medium = (int) data.getOrDefault("mediumSolved", 0);
-        int hard = (int) data.getOrDefault("hardSolved", 0);
-        int rank = (int) data.getOrDefault("ranking", 0);
+        // FIX (5.3): Null-safe casting using Number to prevent ClassCastException for Longs returned by GraphQL
+        int total = ((Number) data.getOrDefault("totalSolved", 0)).intValue();
+        int easy = ((Number) data.getOrDefault("easySolved", 0)).intValue();
+        int medium = ((Number) data.getOrDefault("mediumSolved", 0)).intValue();
+        int hard = ((Number) data.getOrDefault("hardSolved", 0)).intValue();
+        int rank = ((Number) data.getOrDefault("ranking", 0)).intValue();
 
         double ps = skillCalculator.calculateProblemSolvingScore(total);
         double algo = skillCalculator.calculateAlgorithmsScore(medium, hard);

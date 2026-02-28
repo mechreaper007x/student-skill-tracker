@@ -17,16 +17,16 @@
     </div>
 
     <!-- Round Preview -->
-    <div class="flex justify-center gap-2 flex-wrap">
+    <div class="flex justify-center gap-3 flex-wrap">
       <div *ngFor="let r of [
         {icon: '❓', label: 'QUIZ'},
         {icon: '🧠', label: 'MEMORY'},
         {icon: '🧩', label: 'PUZZLE'},
         {icon: '💡', label: 'LOGIC'},
         {icon: '💻', label: 'CODE'}
-      ]" class="flex flex-col items-center gap-1 p-2 border border-noir-800 min-w-[60px]">
-        <span class="text-lg">{{ r.icon }}</span>
-        <span class="text-[7px] font-mono text-noir-500 uppercase tracking-widest">{{ r.label }}</span>
+      ]" class="flex flex-col items-center gap-2 p-4 border border-noir-800 bg-noir-900/50 min-w-[100px] hover:border-crimson-500/50 transition-colors">
+        <span class="text-3xl">{{ r.icon }}</span>
+        <span class="text-[10px] font-black font-mono text-noir-400 uppercase tracking-widest">{{ r.label }}</span>
       </div>
     </div>
 
@@ -92,49 +92,76 @@
   </div>
 
   <!-- Round Progress Bar -->
-  <div class="flex border-b border-noir-800/50">
+  <div class="flex border-b border-noir-800/50 bg-noir-900/20">
     <div *ngFor="let r of allRounds(); let i = index"
-      class="flex-1 flex items-center justify-center gap-1 py-1.5 text-[7px] font-mono uppercase tracking-widest border-r border-noir-800/30 last:border-r-0"
-      [class]="currentRound() === r.round ? 'bg-crimson-600/20 text-crimson-400' : currentRound() > r.round ? 'bg-emerald-900/10 text-emerald-500' : 'text-noir-600'">
-      <span>{{ getRoundIcon(r.type) }}</span>
-      <span class="hidden md:inline">{{ getRoundLabel(r.type) }}</span>
-      <span class="hidden lg:inline text-amber-300/80">L{{ r.bloomLevel || '?' }}</span>
+      class="flex-1 flex flex-col items-center justify-center gap-1 py-3 border-r border-noir-800/30 last:border-r-0 transition-all duration-300"
+      [class]="currentRound() === r.round ? 'bg-crimson-600/30 text-white border-b-2 border-b-crimson-500' : currentRound() > r.round ? 'bg-emerald-900/10 text-emerald-500' : 'text-noir-500'">
+      <div class="flex items-center gap-2">
+        <span class="text-xl">{{ getRoundIcon(r.type) }}</span>
+        <span class="hidden md:inline text-[11px] font-black uppercase tracking-[0.2em]">{{ getRoundLabel(r.type) }}</span>
+      </div>
+      <span class="text-[9px] font-mono font-bold text-amber-300 tracking-widest bg-noir-950/50 px-2 py-0.5 rounded">L{{ r.bloomLevel || defaultBloomLevel(r.round) }}</span>
     </div>
   </div>
 
   <!-- Round Content -->
   <div class="flex-1 overflow-auto">
 
-    <!-- ═══════ ROUND 1: MCQ ═══════ -->
-    <div *ngIf="currentRoundData()?.type === 'MCQ'" class="max-w-3xl mx-auto p-6 space-y-6">
-      <div class="text-center mb-4">
-        <p class="text-mono-technical">ROUND {{ currentRound() }} // QUIZ</p>
-        <h2 class="text-2xl text-display mt-1">{{ currentRoundData()?.title }}</h2>
-        <p class="text-[10px] font-mono text-amber-300 uppercase tracking-widest mt-2">{{ getBloomChip(currentRoundData()) }}</p>
+    <!-- ═══════ ROUND 1: MCQ (ONE-BY-ONE FLASHCARDS) ═══════ -->
+    <div *ngIf="currentRoundData()?.type === 'MCQ'" class="max-w-2xl mx-auto p-6 space-y-8">
+      <div class="text-center">
+        <p class="text-mono-technical">ROUND {{ currentRound() }} // NEURAL_FLASH_QUIZ</p>
+        <div class="flex items-center justify-center gap-4 mt-4">
+          <div *ngFor="let q of currentRoundData()?.questions; let i = index" 
+            class="h-1 flex-1 transition-all duration-500"
+            [class]="i === activeMcqIndex() ? 'bg-crimson-500 shadow-[0_0_10px_#ef4444]' : i < activeMcqIndex() ? 'bg-emerald-500' : 'bg-noir-800'">
+          </div>
+        </div>
+        <p class="text-[10px] font-mono text-noir-500 uppercase tracking-widest mt-2">Question {{ activeMcqIndex() + 1 }} of {{ currentRoundData()?.questions?.length }}</p>
       </div>
 
-      <div *ngFor="let q of currentRoundData()?.questions; let qi = index" class="noir-card p-5 space-y-3">
-        <p class="text-sm text-noir-200 font-medium">
-          <span class="text-crimson-500 font-black mr-2">Q{{ qi + 1 }}.</span>{{ q.question }}
-        </p>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-          <button *ngFor="let opt of q.options; let oi = index"
-            (click)="selectMcqAnswer(qi, oi)"
-            [disabled]="mcqSubmitted()"
-            class="text-left text-[11px] font-mono px-4 py-3 border transition-all"
-            [class]="mcqAnswers()[qi] === oi
-              ? 'border-crimson-500 bg-crimson-600/20 text-white'
-              : 'border-noir-800 text-noir-400 hover:border-noir-600 hover:text-white'">
-            <span class="text-noir-600 mr-2">{{ ['A','B','C','D'][oi] }}.</span>{{ opt }}
+      <!-- Active Question Card -->
+      <div *ngIf="!mcqSubmitted()" class="relative group">
+        <!-- Flashing Decorative Border -->
+        <div class="absolute -inset-0.5 bg-gradient-to-r from-crimson-600 to-noir-900 rounded-lg blur opacity-20 group-hover:opacity-40 transition duration-1000 group-hover:duration-200 animate-pulse"></div>
+        
+        <div class="relative noir-card p-10 space-y-8 min-h-[400px] flex flex-col justify-center animate-glitch-entry">
+          <p class="text-xl md:text-2xl text-white font-medium leading-relaxed text-center">
+            {{ currentRoundData()?.questions?.[activeMcqIndex()]?.question }}
+          </p>
+
+          <div class="grid grid-cols-1 gap-3">
+            <button *ngFor="let opt of currentRoundData()?.questions?.[activeMcqIndex()]?.options; let oi = index"
+              (click)="selectMcqAnswer(activeMcqIndex(), oi)"
+              class="text-left text-sm font-mono px-6 py-4 border transition-all duration-200 group/opt relative overflow-hidden"
+              [class]="mcqAnswers()[activeMcqIndex()] === oi
+                ? 'border-crimson-500 bg-crimson-600/20 text-white'
+                : 'border-noir-800 text-noir-400 hover:border-crimson-500/50 hover:text-white'">
+              <div class="flex items-center gap-4">
+                <span class="text-crimson-600 font-black group-hover/opt:text-crimson-400">{{ ['A','B','C','D'][oi] }}</span>
+                <span>{{ opt }}</span>
+              </div>
+              <!-- Hover effect background -->
+              <div class="absolute inset-0 bg-crimson-600/5 translate-x-[-100%] group-hover/opt:translate-x-0 transition-transform duration-300 pointer-events-none"></div>
+            </button>
+          </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="flex justify-between mt-6">
+          <button (click)="prevMcq()" 
+            [disabled]="activeMcqIndex() === 0"
+            class="text-[10px] font-mono uppercase tracking-widest text-noir-500 hover:text-white disabled:opacity-0 transition-all">
+            ← Previous
           </button>
+          <div class="text-[9px] font-mono text-noir-600 uppercase">Input detected // {{ mcqAnswers()[activeMcqIndex()] !== -1 ? 'SELECTED' : 'AWAITING' }}</div>
         </div>
       </div>
 
-      <button *ngIf="!mcqSubmitted()" (click)="submitMcq()"
-        class="w-full py-3 text-[10px] font-black uppercase tracking-[0.3em] border-2 border-crimson-500 text-crimson-500 hover:bg-crimson-600 hover:text-white transition-all">
-        SUBMIT ANSWERS
-      </button>
-      <div *ngIf="mcqSubmitted()" class="text-center text-emerald-400 text-sm font-mono animate-pulse">✓ ANSWERS SUBMITTED - WAITING...</div>
+      <div *ngIf="mcqSubmitted()" class="noir-card p-20 flex flex-col items-center justify-center space-y-6 animate-reveal">
+        <div class="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+        <p class="text-emerald-400 text-sm font-mono tracking-[0.3em] uppercase animate-pulse">Neural Upload Complete // Waiting for opponent</p>
+      </div>
     </div>
 
     <!-- ═══════ ROUND 2: MEMORY ═══════ -->
@@ -343,9 +370,17 @@
       </div>
     </div>
 
-    <button (click)="returnToLobby()"
-      class="px-8 py-3 text-[10px] font-black uppercase tracking-[0.3em] border-2 border-crimson-500 text-crimson-500 hover:bg-crimson-600 hover:text-white transition-all">
-      RETURN TO LOBBY
-    </button>
+    <div class="flex gap-4 justify-center">
+      <button (click)="askCornerMan()"
+        class="flex items-center gap-2 px-8 py-3 text-[10px] font-black uppercase tracking-[0.3em] bg-noir-800 border border-amber-500/50 text-amber-400 hover:bg-amber-600/10 hover:border-amber-400 transition-all">
+        <lucide-icon name="Brain" class="w-4 h-4"></lucide-icon>
+        CORNER MAN ANALYSIS
+      </button>
+
+      <button (click)="returnToLobby()"
+        class="px-8 py-3 text-[10px] font-black uppercase tracking-[0.3em] border-2 border-crimson-500 text-crimson-500 hover:bg-crimson-600 hover:text-white transition-all">
+        RETURN TO LOBBY
+      </button>
+    </div>
   </div>
 </div>

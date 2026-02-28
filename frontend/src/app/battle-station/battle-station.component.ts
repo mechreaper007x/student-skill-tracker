@@ -136,6 +136,47 @@ export class BattleStationComponent implements OnInit, OnDestroy {
     return '';
   });
 
+  askRishiForReview() {
+    const code = this.sourceCode().trim();
+    if (!code) return;
+
+    const question = this.selectedQuestion()?.title || 'Unknown Problem';
+    const lang = this.selectedLanguage();
+    
+    let contextStr = `I am working on the problem: "${question}" in ${lang}.\n\nHere is my current code:\n\`\`\`${lang}\n${code}\n\`\`\``;
+
+    const currResult = this.result();
+    if (currResult && currResult.output) {
+      contextStr += `\n\nWhen I ran it locally, the output was:\n\`\`\`\n${currResult.output}\n\`\`\``;
+    }
+    if (currResult && currResult.error) {
+      contextStr += `\n\nI got this error:\n\`\`\`\n${currResult.error}\n\`\`\``;
+    }
+
+    const subResponse = this.submissionResponse();
+    if (subResponse) {
+      contextStr += `\n\nWhen I submitted it to LeetCode, the result was: ${subResponse.status || 'Unknown'}`;
+      
+      const judge = subResponse.judgeResult as any;
+      if (judge) {
+        if (judge.status_msg) {
+          contextStr += ` (${judge.status_msg})`;
+        }
+        if (judge.compile_error) {
+          contextStr += `\n\nCompile Error:\n\`\`\`\n${judge.compile_error}\n\`\`\``;
+        }
+        if (judge.runtime_error) {
+          contextStr += `\n\nRuntime Error:\n\`\`\`\n${judge.runtime_error}\n\`\`\``;
+        }
+      }
+    }
+
+    contextStr += '\n\nPlease act as a Senior Developer. Review my code. Point out any algorithmic inefficiencies, edge cases I missed, or how I can make it more idiomatic. Do not just write the solution for me; guide me.';
+
+    sessionStorage.setItem('rishi_pending_context', contextStr);
+    this.router.navigate(['/advisor']);
+  }
+
   // Boilerplate templates
   private boilerplates: Record<string, string> = {
     java: `class Solution {

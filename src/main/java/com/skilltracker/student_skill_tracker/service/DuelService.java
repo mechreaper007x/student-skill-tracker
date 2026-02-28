@@ -298,6 +298,7 @@ public class DuelService {
             session.setWinnerUsername(winner);
             duelRepository.save(session);
             persistHighestBloomLevels(session);
+            updateStudentDuelStats(session, winner);
 
             Map<String, Object> endPayload = Map.of(
                     "status", "FINISHED",
@@ -345,11 +346,11 @@ public class DuelService {
         }
 
         return switch (roundNumber) {
-            case 1 -> 2; // Remember + Understand
-            case 2 -> 3; // Understand + Apply
-            case 3 -> 4; // Analyze
-            case 4 -> 5; // Evaluate
-            case 5 -> 6; // Apply + Create
+            case 1 -> 1; // Remember
+            case 2 -> 2; // Understand
+            case 3 -> 3; // Apply
+            case 4 -> 4; // Analyze
+            case 5 -> 5; // Evaluate
             default -> 1;
         };
     }
@@ -377,6 +378,37 @@ public class DuelService {
             student.setHighestBloomLevel(updatedHighest);
             studentRepository.save(student);
         }
+    }
+
+    private void updateStudentDuelStats(DuelSession session, String winner) {
+        updateStatsForUser(session.getPlayer1Username(), winner.equals(session.getPlayer1Username()), "DRAW".equals(winner));
+        updateStatsForUser(session.getPlayer2Username(), winner.equals(session.getPlayer2Username()), "DRAW".equals(winner));
+    }
+
+    private void updateStatsForUser(String username, boolean isWinner, boolean isDraw) {
+        studentRepository.findByEmailIgnoreCase(username).ifPresent(student -> {
+            int xpGained = isDraw ? 250 : (isWinner ? 500 : 100);
+            student.setXp((student.getXp() == null ? 0 : student.getXp()) + xpGained);
+
+            if (!isDraw) {
+                if (isWinner) {
+                    student.setDuelWins((student.getDuelWins() == null ? 0 : student.getDuelWins()) + 1);
+                } else {
+                    student.setDuelLosses((student.getDuelLosses() == null ? 0 : student.getDuelLosses()) + 1);
+                }
+            }
+
+            student.setLastDuelAt(LocalDateTime.now());
+
+            // Simple Level up logic (1000 XP per level)
+            while (student.getXp() >= 1000) {
+                student.setXp(student.getXp() - 1000);
+                student.setLevel((student.getLevel() == null ? 1 : student.getLevel()) + 1);
+            }
+
+            studentRepository.save(student);
+            log.info("Updated stats for {}: +{} XP, New Level: {}", username, xpGained, student.getLevel());
+        });
     }
 
     private JsonNode findRound(JsonNode rounds, int roundNumber) {

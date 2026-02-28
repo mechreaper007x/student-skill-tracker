@@ -249,6 +249,18 @@
         </button>
 
         <button
+          (click)="askRishiForReview()"
+          [disabled]="!sourceCode().trim()"
+          class="flex items-center gap-2 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest border border-noir-800 transition-all ml-auto"
+          [class]="sourceCode().trim() 
+            ? 'text-amber-400 hover:bg-amber-600/10 hover:text-amber-300 hover:border-amber-500/50' 
+            : 'text-noir-500 cursor-not-allowed bg-noir-900'"
+        >
+          <lucide-icon name="Brain" class="w-3.5 h-3.5"></lucide-icon>
+          ASK RISHI
+        </button>
+
+        <button
           (click)="resetCode()"
           class="flex items-center gap-2 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest border border-noir-800 text-noir-500 hover:text-white hover:border-noir-600 transition-all"
         >

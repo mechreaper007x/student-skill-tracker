@@ -14,5 +14,7 @@ public class StudentDTO {
     private Integer xp;
     private String thinkingStyle;
     private Integer highestBloomLevel;
+    private Integer duelWins;
     private String lastEmotionAfterFailure;
+    private java.util.Map<String, Integer> emotionDistribution;
 }

@@ -19,6 +19,8 @@ export interface User {
   leetcodeSubmitConnected?: boolean;
   level: number;
   xp: number;
+  duelWins: number;
+  highestBloomLevel: number;
   roles: string;
   skillData?: SkillData; // Optional: populated when fetching dashboard data
 }

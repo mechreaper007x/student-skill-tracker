@@ -70,9 +70,9 @@ public class Student {
     @Column(name = "ai_model")
     private String aiModel;
 
-    @Column(name = "ai_api_key", length = 2048)
+    @Column(name = "ai_api_key_enc", length = 2048)
     @ToString.Exclude
-    private String aiApiKey;
+    private String aiApiKeyEncrypted;
 
     @Lob
     @Column(name = "rishi_memory_json")
@@ -155,6 +155,17 @@ public class Student {
     @Column(name = "highest_bloom_level")
     @Builder.Default
     private Integer highestBloomLevel = 1;
+
+    @Column(name = "duel_wins")
+    @Builder.Default
+    private Integer duelWins = 0;
+
+    @Column(name = "duel_losses")
+    @Builder.Default
+    private Integer duelLosses = 0;
+
+    @Column(name = "last_duel_at")
+    private LocalDateTime lastDuelAt;
 
     @Column(name = "last_emotion_after_failure")
     private String lastEmotionAfterFailure;
