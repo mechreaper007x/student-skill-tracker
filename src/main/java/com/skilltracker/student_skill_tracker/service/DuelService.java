@@ -106,7 +106,7 @@ public class DuelService {
         }
     }
 
-    private void startDuel(String player1, String player2) {
+    public void startDuel(String player1, String player2) {
         Optional<DojoPuzzle> puzzleOpt = puzzleRepository.findFirstUsableByUsageCountOrderByCreatedAtAsc(0);
 
         DojoPuzzle puzzle;

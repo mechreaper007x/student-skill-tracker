@@ -2,6 +2,8 @@ package com.skilltracker.student_skill_tracker.controller;
 
 import java.util.Map;
 
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -17,6 +19,9 @@ import com.skilltracker.student_skill_tracker.dto.LoginResponse;
 import com.skilltracker.student_skill_tracker.model.Student;
 import com.skilltracker.student_skill_tracker.repository.StudentRepository;
 import com.skilltracker.student_skill_tracker.security.JwtUtils;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -39,7 +44,7 @@ public class AuthController {
          * Returns user info if authenticated, 401 if not.
          */
         @GetMapping("/me")
-        public ResponseEntity<?> getCurrentUser(org.springframework.security.core.Authentication authentication) {
+        public ResponseEntity<?> getCurrentUser(Authentication authentication) {
                 if (authentication == null || !authentication.isAuthenticated()
                                 || "anonymousUser".equals(authentication.getPrincipal())) {
                         return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED)
@@ -64,7 +69,7 @@ public class AuthController {
         }
 
         @PostMapping("/login")
-        public ResponseEntity<?> login(@RequestBody Map<String, String> credentials) {
+        public ResponseEntity<?> login(@RequestBody Map<String, String> credentials, HttpServletRequest request, HttpServletResponse response) {
                 String email = credentials.get("email");
                 String password = credentials.get("password");
                 System.out.println("DEBUG: Login attempt for email: " + email);
@@ -74,7 +79,22 @@ public class AuthController {
                                         new UsernamePasswordAuthenticationToken(email, password));
 
                         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-                        String token = jwtUtils.generateToken(userDetails);
+                        
+                        // Multi-Fingerprinting: Cookie + UserAgent
+                        String cookieFgp = jwtUtils.generateSecureFingerprint();
+                        String userAgent = request.getHeader("User-Agent");
+                        
+                        String token = jwtUtils.generateToken(userDetails, cookieFgp, userAgent);
+
+                        // Set HttpOnly Secure Cookie for the FGP
+                        ResponseCookie springCookie = ResponseCookie.from("__Secure-Fgp", cookieFgp)
+                            .httpOnly(true)
+                            .secure(true) // Requires HTTPS in prod
+                            .path("/")
+                            .sameSite("Strict")
+                            .maxAge(86400) // 24 hours
+                            .build();
+                        response.addHeader(HttpHeaders.SET_COOKIE, springCookie.toString());
 
                         // Fetch student to get additional info
                         Student student = studentRepository.findByEmail(email)

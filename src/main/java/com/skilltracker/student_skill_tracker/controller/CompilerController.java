@@ -107,17 +107,19 @@ public class CompilerController {
             studentOpt.ifPresent(student -> {
                 cognitiveMetricService.recordCompilation(student, result.isSuccess());
                 
-                String topicSlug = request.getProblemSlug() != null ? request.getProblemSlug() : "general-coding";
-                forgettingVelocityService.recordEventAndUpdateMastery(
-                    student, 
-                    topicSlug, 
-                    "COMPILER_RUN", 
-                    elapsed, 
-                    result.isSuccess() ? 0 : 1, 
-                    result.isSuccess(), 
-                    false, 
-                    "{}"
-                );
+                if (result.isSuccess()) {
+                    String topicSlug = request.getProblemSlug() != null ? request.getProblemSlug() : "general-coding";
+                    forgettingVelocityService.recordEventAndUpdateMastery(
+                        student, 
+                        topicSlug, 
+                        "COMPILER_RUN", 
+                        elapsed, 
+                        0, // Zero errors on success
+                        true, 
+                        false, 
+                        "{}"
+                    );
+                }
             });
 
             return ResponseEntity.ok(result);

@@ -18,6 +18,7 @@ import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -80,7 +81,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
                 System.out.println("DEBUG: Loaded UserDetails for: " + userDetails.getUsername());
                 
-                boolean isValid = jwtUtils.validateToken(jwtFinal, userDetails);
+                // Multi-fingerprint extraction
+                String cookieFgp = null;
+                if (request.getCookies() != null) {
+                    for (Cookie cookie : request.getCookies()) {
+                        if ("__Secure-Fgp".equals(cookie.getName())) {
+                            cookieFgp = cookie.getValue();
+                            break;
+                        }
+                    }
+                }
+                String userAgent = request.getHeader("User-Agent");
+
+                boolean isValid = jwtUtils.validateToken(jwtFinal, userDetails, cookieFgp, userAgent);
                 System.out.println("DEBUG: isValid: " + isValid);
 
                 if (isValid) {
@@ -92,7 +105,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     SecurityContextHolder.getContext().setAuthentication(authToken);
                     System.out.println("DEBUG: Authentication successful, context set.");
                 } else {
-                    System.out.println("DEBUG: Validation failed in JwtUtils.");
+                    System.out.println("DEBUG: Validation failed in JwtUtils (possibly missing/mismatching fingerprint).");
                 }
             } else {
                 System.out.println("DEBUG: userEmail is null after extraction.");
