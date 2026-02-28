@@ -1,10 +1,36 @@
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { Component, OnInit, PLATFORM_ID, Pipe, PipeTransform, inject, signal, computed, effect } from '@angular/core';
+import { Component, OnDestroy, OnInit, PLATFORM_ID, Pipe, PipeTransform, inject, signal, computed, effect } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { LucideAngularModule } from 'lucide-angular';
 import mermaid from 'mermaid';
+
+declare global {
+  interface Window {
+    SpeechRecognition?: new () => SpeechRecognition;
+    webkitSpeechRecognition?: new () => SpeechRecognition;
+  }
+}
+
+interface SpeechRecognition extends EventTarget {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onresult: ((event: AppSpeechRecognitionEvent) => void) | null;
+  onerror: ((event: AppSpeechRecognitionErrorEvent) => void) | null;
+  onend: (() => void) | null;
+  start(): void;
+  stop(): void;
+}
+
+interface AppSpeechRecognitionEvent {
+  results: SpeechRecognitionResultList;
+}
+
+interface AppSpeechRecognitionErrorEvent {
+  error: string;
+}
 
 @Pipe({
   name: 'markdown',
@@ -172,6 +198,20 @@ interface StudyPlanResponse {
               <lucide-icon name="Mic" class="w-3.5 h-3.5"></lucide-icon>
               MOCK INTERVIEW
             </button>
+            <button
+              (click)="toggleVoiceInterview()"
+              class="flex items-center gap-2 px-4 py-2 text-[10px] font-black uppercase tracking-widest border transition-all rounded-xl disabled:opacity-40"
+              [class.border-cyan-500/50]="voiceInterviewMode()"
+              [class.text-cyan-300]="voiceInterviewMode()"
+              [class.bg-cyan-600/10]="voiceInterviewMode()"
+              [class.border-noir-700]="!voiceInterviewMode()"
+              [class.text-noir-300]="!voiceInterviewMode()"
+              [disabled]="!voiceSupported()"
+              title="Enable sound-based interview interaction"
+            >
+              <lucide-icon [name]="voiceInterviewMode() ? 'Volume2' : 'VolumeX'" class="w-3.5 h-3.5"></lucide-icon>
+              {{ voiceInterviewMode() ? 'VOICE ON' : 'VOICE OFF' }}
+            </button>
 
             <div class="relative group">
               <select 
@@ -287,6 +327,22 @@ interface StudyPlanResponse {
                 class="p-3 rounded-2xl text-noir-500 hover:text-crimson-500 hover:bg-crimson-500/5 transition-all">
                 <lucide-icon name="Sparkles" class="w-6 h-6"></lucide-icon>
               </button>
+              @if (voiceInterviewMode()) {
+                <button
+                  (click)="toggleListening()"
+                  class="p-3 rounded-2xl transition-all border"
+                  [class.border-emerald-500/50]="!isListening()"
+                  [class.text-emerald-400]="!isListening()"
+                  [class.hover:bg-emerald-600/10]="!isListening()"
+                  [class.border-red-500/50]="isListening()"
+                  [class.text-red-400]="isListening()"
+                  [class.bg-red-600/10]="isListening()"
+                  [disabled]="!voiceSupported()"
+                  title="Toggle microphone"
+                >
+                  <lucide-icon [name]="isListening() ? 'MicOff' : 'Mic'" class="w-6 h-6"></lucide-icon>
+                </button>
+              }
 
               <textarea
                 [(ngModel)]="currentInput"
@@ -328,7 +384,7 @@ interface StudyPlanResponse {
     textarea { max-height: 200px; }
   `]
 })
-export class AdvisorComponent implements OnInit {
+export class AdvisorComponent implements OnInit, OnDestroy {
   private http = inject(HttpClient);
   private platformId = inject(PLATFORM_ID);
 
@@ -380,6 +436,13 @@ export class AdvisorComponent implements OnInit {
   hasStudyPlan = signal(false);
   isPlanExpanded = signal(false);
   showSettings = signal(false);
+  voiceInterviewMode = signal(false);
+  voiceSupported = signal(false);
+  isListening = signal(false);
+  isSpeaking = signal(false);
+
+  private recognition: SpeechRecognition | null = null;
+  private restartListeningAfterSpeech = false;
 
   constructor() {
     this.resetMessages();
@@ -412,6 +475,7 @@ export class AdvisorComponent implements OnInit {
       return;
     }
 
+    this.setupVoiceRecognition();
     this.loadConfig();
     this.loadThreads();
     this.startNewThread(); // Always start with a blank new thread when opening
@@ -429,6 +493,11 @@ export class AdvisorComponent implements OnInit {
     }, 500);
   }
 
+  ngOnDestroy(): void {
+    this.stopListening();
+    this.stopSpeaking();
+  }
+
   startNewThread() {
     this.activeThreadId.set(null);
     this.resetMessages();
@@ -437,8 +506,14 @@ export class AdvisorComponent implements OnInit {
 
   startMockInterview() {
     this.startNewThread();
+    if (this.voiceSupported()) {
+      this.voiceInterviewMode.set(true);
+    }
     const prompt = `Let's do a FAANG-style Live Mock Interview. Give me a medium-to-hard algorithmic problem. DO NOT give me any code or hints. I will first explain my approach and data structure choice. You must critique my approach, ask about edge cases, and ask about Big-O complexity BEFORE allowing me to write any code. Act exactly like a strict Senior Engineer interviewer.`;
-    this.addUserMessage('Start a Live Mock Interview.', 'text');
+    const kickoff = this.voiceInterviewMode()
+      ? 'Start a sound-based Live Mock Interview. Speak as interviewer and wait for my spoken answer each turn.'
+      : 'Start a Live Mock Interview.';
+    this.addUserMessage(kickoff, 'text');
     this.askRishi(prompt, 'text');
   }
 
@@ -546,6 +621,7 @@ export class AdvisorComponent implements OnInit {
     const text = this.currentInput.trim();
     if (!text || this.isGenerating()) return;
 
+    this.stopListening();
     this.addUserMessage(text, 'text');
     this.currentInput = '';
     this.scrollToBottom();
@@ -588,6 +664,9 @@ export class AdvisorComponent implements OnInit {
     this.http.post<LearnResponse>('/api/advice/me/learn', payload).subscribe({
       next: (resp) => {
         this.addAssistantMessage(resp.reply || 'Interface timeout.', responseType);
+        if (this.voiceInterviewMode() && responseType === 'text') {
+          this.speakAssistantReply(resp.reply || 'Interface timeout.');
+        }
         
         if (resp.threadId) {
           this.activeThreadId.set(resp.threadId);
@@ -601,6 +680,9 @@ export class AdvisorComponent implements OnInit {
         this.addAssistantMessage(this.extractError(err, 'Neural link failure. Retrying...'), 'text');
         this.isGenerating.set(false);
         this.scrollToBottom();
+        if (this.voiceInterviewMode()) {
+          this.startListening();
+        }
       }
     });
   }
@@ -663,6 +745,134 @@ export class AdvisorComponent implements OnInit {
     if (type === 'strategy') return 'strategy';
     if (type === 'init') return 'init';
     return 'text';
+  }
+
+  toggleVoiceInterview() {
+    if (!this.voiceSupported()) {
+      this.addAssistantMessage('Voice mode is not supported in this browser. Use Chrome/Edge latest.', 'text');
+      return;
+    }
+    const next = !this.voiceInterviewMode();
+    this.voiceInterviewMode.set(next);
+    if (!next) {
+      this.stopListening();
+      this.stopSpeaking();
+    }
+  }
+
+  toggleListening() {
+    if (this.isListening()) {
+      this.stopListening();
+      return;
+    }
+    this.startListening();
+  }
+
+  private setupVoiceRecognition() {
+    const RecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
+    this.voiceSupported.set(!!RecognitionCtor && !!window.speechSynthesis);
+    if (!RecognitionCtor) {
+      return;
+    }
+    const rec = new RecognitionCtor();
+    rec.continuous = false;
+    rec.interimResults = false;
+    rec.lang = 'en-US';
+    rec.onresult = (event: AppSpeechRecognitionEvent) => {
+      const firstResult = event.results?.[0];
+      const transcript = firstResult?.[0]?.transcript?.trim() || '';
+      if (!transcript) {
+        return;
+      }
+      this.currentInput = transcript;
+      this.sendMessage();
+    };
+    rec.onerror = () => {
+      this.isListening.set(false);
+    };
+    rec.onend = () => {
+      this.isListening.set(false);
+    };
+    this.recognition = rec;
+  }
+
+  private startListening() {
+    if (!this.voiceInterviewMode() || !this.recognition || this.isGenerating() || this.isSpeaking()) {
+      return;
+    }
+    try {
+      this.recognition.start();
+      this.isListening.set(true);
+    } catch {
+      this.isListening.set(false);
+    }
+  }
+
+  private stopListening() {
+    if (!this.recognition) {
+      return;
+    }
+    try {
+      this.recognition.stop();
+    } catch {
+      // no-op
+    } finally {
+      this.isListening.set(false);
+    }
+  }
+
+  private stopSpeaking() {
+    if (!isPlatformBrowser(this.platformId) || !window.speechSynthesis) {
+      return;
+    }
+    window.speechSynthesis.cancel();
+    this.isSpeaking.set(false);
+    this.restartListeningAfterSpeech = false;
+  }
+
+  private speakAssistantReply(rawText: string) {
+    if (!this.voiceInterviewMode() || !isPlatformBrowser(this.platformId) || !window.speechSynthesis) {
+      return;
+    }
+    const stripped = this.stripForSpeech(rawText);
+    if (!stripped) {
+      this.startListening();
+      return;
+    }
+    this.stopListening();
+    this.stopSpeaking();
+    this.isSpeaking.set(true);
+    this.restartListeningAfterSpeech = true;
+    const utterance = new SpeechSynthesisUtterance(stripped);
+    utterance.rate = 1;
+    utterance.pitch = 1;
+    utterance.lang = 'en-US';
+    utterance.onend = () => {
+      this.isSpeaking.set(false);
+      if (this.restartListeningAfterSpeech) {
+        this.startListening();
+      }
+    };
+    utterance.onerror = () => {
+      this.isSpeaking.set(false);
+      if (this.restartListeningAfterSpeech) {
+        this.startListening();
+      }
+    };
+    window.speechSynthesis.speak(utterance);
+  }
+
+  private stripForSpeech(input: string): string {
+    if (!input) {
+      return '';
+    }
+    return input
+      .replace(/```[\s\S]*?```/g, ' ')
+      .replace(/`([^`]+)`/g, '$1')
+      .replace(/\[(.*?)\]\((.*?)\)/g, '$1')
+      .replace(/[#>*_\-\|]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
   }
 
   toggleSettingsPanel() { this.showSettings.set(!this.showSettings()); }
