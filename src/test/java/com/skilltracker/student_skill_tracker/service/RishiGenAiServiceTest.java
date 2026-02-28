@@ -55,8 +55,9 @@ class RishiGenAiServiceTest {
                 .andExpect(jsonPath("$.messages[1].role").value("user"))
                 .andExpect(jsonPath("$.messages[2].role").value("assistant"))
                 .andExpect(jsonPath("$.messages[3].role").value("user"))
-                .andExpect(content().string(containsString("LIVE CONTEXT PACKET (injected per request):")))
-                .andExpect(content().string(containsString("What is your time complexity here?")))
+                .andExpect(jsonPath("$.max_tokens").value(1400))
+                .andExpect(content().string(containsString("STEP 0 — SILENT INTERNAL ANALYSIS")))
+                .andExpect(content().string(containsString("STEP 1 — MODE AUTO-DETECTION")))
                 .andRespond(withSuccess(apiResponse, MediaType.APPLICATION_JSON));
 
         List<Map<String, String>> memory = List.of(
@@ -91,7 +92,7 @@ class RishiGenAiServiceTest {
 
         mockServer.expect(requestTo("https://api.mistral.ai/v1/chat/completions"))
                 .andExpect(method(HttpMethod.POST))
-                .andExpect(jsonPath("$.max_tokens").value(1400))
+                .andExpect(jsonPath("$.max_tokens").value(2200))
                 .andExpect(content().string(containsString("Activate Mode 1: STUDY PLAN ARCHITECT.")))
                 .andRespond(withSuccess(apiResponse, MediaType.APPLICATION_JSON));
 

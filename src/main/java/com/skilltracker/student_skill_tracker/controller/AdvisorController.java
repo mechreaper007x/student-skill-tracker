@@ -250,7 +250,7 @@ public class AdvisorController {
 
         List<RishiMemoryService.MemoryMessage> memory = rishiMemoryService.getMemory(student);
         List<Map<String, String>> context = rishiMemoryService.toModelContext(memory, MAX_CONTEXT_MESSAGES);
-        String liveContextPacket = buildLiveContextPacket(student, null);
+        String liveContextPacket = buildSkillSnapshot(student, null);
 
         try {
             String plan = rishiGenAiService.generateStudyPlan(apiKey, model, topic, goals, durationDays, liveContextPacket, context);
@@ -332,7 +332,7 @@ public class AdvisorController {
         }
 
         List<Map<String, String>> context = rishiMemoryService.toModelContext(memory, MAX_CONTEXT_MESSAGES);
-        String studentContext = buildLiveContextPacket(student, threadId);
+        String studentContext = buildSkillSnapshot(student, threadId);
 
         try {
             String reply = rishiGenAiService.generateLearningResponse(apiKey, model, message, context, studentContext);
@@ -376,7 +376,7 @@ public class AdvisorController {
         return result;
     }
 
-    private String buildLiveContextPacket(Student student, String currentThreadId) {
+    private String buildSkillSnapshot(Student student, String currentThreadId) {
         SkillData latest = skillRepo.findTopByStudentOrderByCreatedAtDesc(student).orElse(null);
         List<RishiMemoryService.ChatThread> threads = rishiMemoryService.getAllThreads(student);
         List<String> recentTopics = threads.stream()
@@ -385,14 +385,30 @@ public class AdvisorController {
                 .limit(5)
                 .toList();
 
-        Map<String, Integer> emotionDistribution = calculateEmotionDistribution(student.getEmotionLogJson());
+        Map<String, Integer> emotionDistribution = parseEmotionDistribution(student.getEmotionLogJson());
         int totalSolved = latest == null || latest.getTotalProblemsSolved() == null ? 0 : latest.getTotalProblemsSolved();
         int easy = latest == null || latest.getEasyProblems() == null ? 0 : latest.getEasyProblems();
         int medium = latest == null || latest.getMediumProblems() == null ? 0 : latest.getMediumProblems();
         int hard = latest == null || latest.getHardProblems() == null ? 0 : latest.getHardProblems();
+        int totalSubmissions = safeInt(student.getTotalSubmissions());
+        int acceptedSubmissions = safeInt(student.getAcceptedSubmissions());
+        int totalCompilations = safeInt(student.getTotalCompilations());
+        int successfulCompilations = safeInt(student.getSuccessfulCompilations());
+        double acceptanceRatio = totalSubmissions <= 0 ? 0.0 : (acceptedSubmissions * 100.0) / totalSubmissions;
+        double compilationRatio = totalCompilations <= 0 ? 0.0 : (successfulCompilations * 100.0) / totalCompilations;
+        int weakScore = (int) Math.round(Math.min(
+                safe(latest == null ? null : latest.getProblemSolvingScore()),
+                Math.min(
+                        safe(latest == null ? null : latest.getAlgorithmsScore()),
+                        safe(latest == null ? null : latest.getDataStructuresScore()))));
+        long daysSincePractice = student.getLastDuelAt() == null ? -1
+                : java.time.Duration.between(student.getLastDuelAt(), LocalDateTime.now()).toDays();
+        String sm2Severity = daysSincePractice < 0 ? "Overdue"
+                : daysSincePractice >= 14 ? "Critical"
+                        : daysSincePractice >= 7 ? "Warning" : "Stable";
 
         Map<String, Object> packet = new LinkedHashMap<>();
-        packet.put("student", Map.of(
+        packet.put("studentProfile", Map.of(
                 "email", safeString(student.getEmail()),
                 "level", safeInt(student.getLevel()),
                 "xp", safeInt(student.getXp()),
@@ -400,30 +416,36 @@ public class AdvisorController {
                 "highestBloomLevel", safeInt(student.getHighestBloomLevel()),
                 "duelWins", safeInt(student.getDuelWins())));
 
-        packet.put("skills", Map.of(
-                "problemSolvingScore", safe(latest == null ? null : latest.getProblemSolvingScore()),
-                "algorithmsScore", safe(latest == null ? null : latest.getAlgorithmsScore()),
-                "dataStructuresScore", safe(latest == null ? null : latest.getDataStructuresScore()),
-                "totalProblemsSolved", totalSolved,
-                "easyProblems", easy,
-                "mediumProblems", medium,
-                "hardProblems", hard));
+        packet.put("skills", Map.ofEntries(
+                Map.entry("problemSolvingScore", safe(latest == null ? null : latest.getProblemSolvingScore())),
+                Map.entry("algorithmsScore", safe(latest == null ? null : latest.getAlgorithmsScore())),
+                Map.entry("dataStructuresScore", safe(latest == null ? null : latest.getDataStructuresScore())),
+                Map.entry("reasoningScore", safe(latest == null ? null : latest.getReasoningScore())),
+                Map.entry("criticalThinkingScore", safe(latest == null ? null : latest.getCriticalThinkingScore())),
+                Map.entry("eqScore", safe(latest == null ? null : latest.getEqScore())),
+                Map.entry("weakScore", weakScore),
+                Map.entry("totalProblemsSolved", totalSolved),
+                Map.entry("easyProblems", easy),
+                Map.entry("mediumProblems", medium),
+                Map.entry("hardProblems", hard)));
 
-        packet.put("cognitive", Map.of(
-                "reasoningScore", safe(latest == null ? null : latest.getReasoningScore()),
-                "criticalThinkingScore", safe(latest == null ? null : latest.getCriticalThinkingScore()),
-                "eqScore", safe(latest == null ? null : latest.getEqScore()),
+        packet.put("cognitiveTelemetry", Map.of(
                 "avgPlanningTimeMs", safeLong(student.getAvgPlanningTimeMs()),
                 "avgRecoveryVelocityMs", safeLong(student.getAvgRecoveryVelocityMs()),
                 "lastEmotionAfterFailure", safeString(student.getLastEmotionAfterFailure()),
-                "emotionDistribution", emotionDistribution));
+                "totalSubmissions", totalSubmissions,
+                "acceptedSubmissions", acceptedSubmissions,
+                "acceptanceRatioPct", Math.round(acceptanceRatio * 10.0) / 10.0,
+                "totalCompilations", totalCompilations,
+                "successfulCompilations", successfulCompilations,
+                "compilationSuccessRatioPct", Math.round(compilationRatio * 10.0) / 10.0));
 
-        packet.put("recentActivity", Map.of(
-                "totalSubmissions", safeInt(student.getTotalSubmissions()),
-                "acceptedSubmissions", safeInt(student.getAcceptedSubmissions()),
-                "successfulCompilations", safeInt(student.getSuccessfulCompilations()),
-                "totalCompilations", safeInt(student.getTotalCompilations()),
-                "thinkingStyle", safeString(student.getThinkingStyle())));
+        packet.put("emotionDistribution", emotionDistribution);
+        packet.put("emotionDistributionLine", buildEmotionDistributionLine(emotionDistribution));
+        packet.put("sm2Decay", Map.of(
+                "daysSinceLastPractice", daysSincePractice,
+                "severity", sm2Severity,
+                "tierMeaning", "Critical >=14d, Warning >=7d, Stable <7d, Overdue when no data"));
 
         packet.put("studyPlan", Map.of(
                 "hasPlan", !isBlank(student.getRishiStudyPlan()),
@@ -431,10 +453,19 @@ public class AdvisorController {
                 "durationDays", safeInt(student.getRishiStudyDays()),
                 "generatedAt", student.getRishiStudyGeneratedAt() == null ? "" : student.getRishiStudyGeneratedAt().toString()));
 
-        packet.put("chatHistory", Map.of(
+        packet.put("chatThreadStats", Map.of(
                 "totalThreads", threads.size(),
                 "currentThreadId", safeString(currentThreadId),
                 "recentTopics", recentTopics));
+
+        packet.put("memory", Map.of(
+                "recentThreadMessageCount",
+                safeInt(threads.isEmpty() || threads.get(0) == null || threads.get(0).messages == null
+                        ? 0
+                        : threads.get(0).messages.size()),
+                "recentTopicsCount", recentTopics.size(),
+                "longTermMemorySlot",
+                "/* reserved: add long-term memory field when persistent memory service is available */"));
 
         try {
             return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(packet);
@@ -444,7 +475,14 @@ public class AdvisorController {
         }
     }
 
-    private Map<String, Integer> calculateEmotionDistribution(String emotionLogJson) {
+    private String buildEmotionDistributionLine(Map<String, Integer> emotionDistribution) {
+        int frustrated = emotionDistribution.getOrDefault("frustrated", 0);
+        int neutral = emotionDistribution.getOrDefault("neutral", 0);
+        int motivated = emotionDistribution.getOrDefault("motivated", 0);
+        return "frustrated=" + frustrated + ", neutral=" + neutral + ", motivated=" + motivated;
+    }
+
+    private Map<String, Integer> parseEmotionDistribution(String emotionLogJson) {
         Map<String, Integer> dist = new HashMap<>();
         dist.put("frustrated", 0);
         dist.put("neutral", 0);
