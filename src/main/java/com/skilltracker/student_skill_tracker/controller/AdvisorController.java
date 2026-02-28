@@ -2,6 +2,7 @@ package com.skilltracker.student_skill_tracker.controller;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -19,6 +20,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.skilltracker.student_skill_tracker.dto.AdvisorResult;
 import com.skilltracker.student_skill_tracker.model.SkillData;
 import com.skilltracker.student_skill_tracker.model.Student;
@@ -47,6 +50,7 @@ public class AdvisorController {
     private final RishiGenAiService rishiGenAiService;
     private final RishiMemoryService rishiMemoryService;
     private final TokenCryptoService tokenCryptoService;
+    private final ObjectMapper objectMapper;
 
     @GetMapping("/me")
     public ResponseEntity<AdvisorResult> myAdvice(Authentication auth) {
@@ -246,10 +250,10 @@ public class AdvisorController {
 
         List<RishiMemoryService.MemoryMessage> memory = rishiMemoryService.getMemory(student);
         List<Map<String, String>> context = rishiMemoryService.toModelContext(memory, MAX_CONTEXT_MESSAGES);
-        String skillSnapshot = buildSkillSnapshot(student);
+        String liveContextPacket = buildLiveContextPacket(student, null);
 
         try {
-            String plan = rishiGenAiService.generateStudyPlan(apiKey, model, topic, goals, durationDays, skillSnapshot, context);
+            String plan = rishiGenAiService.generateStudyPlan(apiKey, model, topic, goals, durationDays, liveContextPacket, context);
             student.setRishiStudyPlan(plan);
             student.setRishiStudyTopic(topic.trim());
             student.setRishiStudyDays(durationDays);
@@ -328,7 +332,7 @@ public class AdvisorController {
         }
 
         List<Map<String, String>> context = rishiMemoryService.toModelContext(memory, MAX_CONTEXT_MESSAGES);
-        String studentContext = buildSkillSnapshot(student);
+        String studentContext = buildLiveContextPacket(student, threadId);
 
         try {
             String reply = rishiGenAiService.generateLearningResponse(apiKey, model, message, context, studentContext);
@@ -372,22 +376,99 @@ public class AdvisorController {
         return result;
     }
 
-    private String buildSkillSnapshot(Student student) {
+    private String buildLiveContextPacket(Student student, String currentThreadId) {
         SkillData latest = skillRepo.findTopByStudentOrderByCreatedAtDesc(student).orElse(null);
-        if (latest == null) {
-            return "No tracked scores yet.";
+        List<RishiMemoryService.ChatThread> threads = rishiMemoryService.getAllThreads(student);
+        List<String> recentTopics = threads.stream()
+                .map(t -> t == null ? "" : asString(t.title).trim())
+                .filter(t -> !t.isBlank())
+                .limit(5)
+                .toList();
+
+        Map<String, Integer> emotionDistribution = calculateEmotionDistribution(student.getEmotionLogJson());
+        int totalSolved = latest == null || latest.getTotalProblemsSolved() == null ? 0 : latest.getTotalProblemsSolved();
+        int easy = latest == null || latest.getEasyProblems() == null ? 0 : latest.getEasyProblems();
+        int medium = latest == null || latest.getMediumProblems() == null ? 0 : latest.getMediumProblems();
+        int hard = latest == null || latest.getHardProblems() == null ? 0 : latest.getHardProblems();
+
+        Map<String, Object> packet = new LinkedHashMap<>();
+        packet.put("student", Map.of(
+                "email", safeString(student.getEmail()),
+                "level", safeInt(student.getLevel()),
+                "xp", safeInt(student.getXp()),
+                "thinkingStyle", safeString(student.getThinkingStyle()),
+                "highestBloomLevel", safeInt(student.getHighestBloomLevel()),
+                "duelWins", safeInt(student.getDuelWins())));
+
+        packet.put("skills", Map.of(
+                "problemSolvingScore", safe(latest == null ? null : latest.getProblemSolvingScore()),
+                "algorithmsScore", safe(latest == null ? null : latest.getAlgorithmsScore()),
+                "dataStructuresScore", safe(latest == null ? null : latest.getDataStructuresScore()),
+                "totalProblemsSolved", totalSolved,
+                "easyProblems", easy,
+                "mediumProblems", medium,
+                "hardProblems", hard));
+
+        packet.put("cognitive", Map.of(
+                "reasoningScore", safe(latest == null ? null : latest.getReasoningScore()),
+                "criticalThinkingScore", safe(latest == null ? null : latest.getCriticalThinkingScore()),
+                "eqScore", safe(latest == null ? null : latest.getEqScore()),
+                "avgPlanningTimeMs", safeLong(student.getAvgPlanningTimeMs()),
+                "avgRecoveryVelocityMs", safeLong(student.getAvgRecoveryVelocityMs()),
+                "lastEmotionAfterFailure", safeString(student.getLastEmotionAfterFailure()),
+                "emotionDistribution", emotionDistribution));
+
+        packet.put("recentActivity", Map.of(
+                "totalSubmissions", safeInt(student.getTotalSubmissions()),
+                "acceptedSubmissions", safeInt(student.getAcceptedSubmissions()),
+                "successfulCompilations", safeInt(student.getSuccessfulCompilations()),
+                "totalCompilations", safeInt(student.getTotalCompilations()),
+                "thinkingStyle", safeString(student.getThinkingStyle())));
+
+        packet.put("studyPlan", Map.of(
+                "hasPlan", !isBlank(student.getRishiStudyPlan()),
+                "currentTopic", safeString(student.getRishiStudyTopic()),
+                "durationDays", safeInt(student.getRishiStudyDays()),
+                "generatedAt", student.getRishiStudyGeneratedAt() == null ? "" : student.getRishiStudyGeneratedAt().toString()));
+
+        packet.put("chatHistory", Map.of(
+                "totalThreads", threads.size(),
+                "currentThreadId", safeString(currentThreadId),
+                "recentTopics", recentTopics));
+
+        try {
+            return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(packet);
+        } catch (Exception ex) {
+            logger.warn("Failed to serialize Rishi live context packet for {}: {}", student.getEmail(), ex.getMessage());
+            return "{\"error\":\"context_packet_serialization_failed\"}";
+        }
+    }
+
+    private Map<String, Integer> calculateEmotionDistribution(String emotionLogJson) {
+        Map<String, Integer> dist = new HashMap<>();
+        dist.put("frustrated", 0);
+        dist.put("neutral", 0);
+        dist.put("motivated", 0);
+
+        if (isBlank(emotionLogJson)) {
+            return dist;
         }
 
-        int totalSolved = latest.getTotalProblemsSolved() == null ? 0 : latest.getTotalProblemsSolved();
-        return String.format(
-                "ProblemSolving=%.1f, Algorithms=%.1f, DataStructures=%.1f, TotalSolved=%d, Easy=%d, Medium=%d, Hard=%d",
-                safe(latest.getProblemSolvingScore()),
-                safe(latest.getAlgorithmsScore()),
-                safe(latest.getDataStructuresScore()),
-                totalSolved,
-                latest.getEasyProblems() == null ? 0 : latest.getEasyProblems(),
-                latest.getMediumProblems() == null ? 0 : latest.getMediumProblems(),
-                latest.getHardProblems() == null ? 0 : latest.getHardProblems());
+        try {
+            JsonNode root = objectMapper.readTree(emotionLogJson);
+            if (root.isArray()) {
+                for (JsonNode node : root) {
+                    String emotion = safeString(node.path("emotion").asText());
+                    if (!emotion.isBlank()) {
+                        dist.put(emotion, dist.getOrDefault(emotion, 0) + 1);
+                    }
+                }
+            }
+        } catch (Exception ex) {
+            logger.warn("Failed to parse emotion log for distribution: {}", ex.getMessage());
+        }
+
+        return dist;
     }
 
     private Integer parseDurationDays(Object value) {
@@ -418,6 +499,18 @@ public class AdvisorController {
 
     private double safe(Double value) {
         return value == null ? 0.0 : value;
+    }
+
+    private int safeInt(Integer value) {
+        return value == null ? 0 : value;
+    }
+
+    private long safeLong(Long value) {
+        return value == null ? 0L : value;
+    }
+
+    private String safeString(String value) {
+        return value == null ? "" : value;
     }
 
     private boolean isBlank(String value) {

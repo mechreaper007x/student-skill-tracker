@@ -54,7 +54,7 @@ interface ExecutionResult {
                 class="w-full h-80 bg-noir-900 border border-noir-800 rounded-lg px-4 py-3 text-noir-100 font-mono text-sm focus:outline-none focus:border-crimson-500 transition-colors resize-none"
               ></textarea>
               <div class="text-[10px] text-noir-600 mt-2 font-mono">
-                Lines: {{ (sourceCode.match(/\n/g) || []).length + 1 }} | Characters: {{ sourceCode.length }}
+                Lines: {{ sourceCode.split('\n').length }} | Characters: {{ sourceCode.length }}
               </div>
             </div>
 
