@@ -19,6 +19,7 @@ import com.skilltracker.student_skill_tracker.dto.LoginResponse;
 import com.skilltracker.student_skill_tracker.model.Student;
 import com.skilltracker.student_skill_tracker.repository.StudentRepository;
 import com.skilltracker.student_skill_tracker.security.JwtUtils;
+import com.skilltracker.student_skill_tracker.service.LoginAttemptService;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -30,13 +31,16 @@ public class AuthController {
         private final AuthenticationManager authenticationManager;
         private final JwtUtils jwtUtils;
         private final StudentRepository studentRepository;
+        private final LoginAttemptService loginAttemptService;
 
         public AuthController(AuthenticationManager authenticationManager,
                         JwtUtils jwtUtils,
-                        StudentRepository studentRepository) {
+                        StudentRepository studentRepository,
+                        LoginAttemptService loginAttemptService) {
                 this.authenticationManager = authenticationManager;
                 this.jwtUtils = jwtUtils;
                 this.studentRepository = studentRepository;
+                this.loginAttemptService = loginAttemptService;
         }
 
         /**
@@ -72,6 +76,13 @@ public class AuthController {
         public ResponseEntity<?> login(@RequestBody Map<String, String> credentials, HttpServletRequest request, HttpServletResponse response) {
                 String email = credentials.get("email");
                 String password = credentials.get("password");
+                String ip = request.getRemoteAddr();
+
+                if (loginAttemptService.isBlocked(ip)) {
+                    return ResponseEntity.status(org.springframework.http.HttpStatus.TOO_MANY_REQUESTS)
+                            .body(Map.of("error", "Too many login attempts. Please try again in 15 minutes."));
+                }
+
                 System.out.println("DEBUG: Login attempt for email: " + email);
 
                 try {
@@ -79,6 +90,9 @@ public class AuthController {
                                         new UsernamePasswordAuthenticationToken(email, password));
 
                         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+                        
+                        // Brute-Force: Reset on success
+                        loginAttemptService.loginSucceeded(ip);
                         
                         // Multi-Fingerprinting: Cookie + UserAgent
                         String cookieFgp = jwtUtils.generateSecureFingerprint();
@@ -116,6 +130,7 @@ public class AuthController {
                                         .build());
                 } catch (Exception e) {
                         System.out.println("DEBUG: Login failed for: " + email + " Error: " + e.getMessage());
+                        loginAttemptService.loginFailed(ip);
                         throw e;
                 }
         }

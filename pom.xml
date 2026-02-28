@@ -5,13 +5,12 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>3.4.11</version>
+		<version>3.4.3</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.skilltracker</groupId>
 	<artifactId>student-skill-tracker</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<!-- Trivial change to trigger dependency refresh -->
 	<name>student-skill-tracker</name>
 	<description>A Spring Boot web application for students to track their coding skills by fetching data from their LeetCode profiles.</description>
 	<url>https://github.com/your-username/student-skill-tracker</url>
@@ -109,7 +108,7 @@
         <dependency>
             <groupId>org.bouncycastle</groupId>
             <artifactId>bcprov-jdk18on</artifactId>
-            <version>1.78.1</version>
+            <version>1.80</version>
         </dependency>
     </dependencies>
 

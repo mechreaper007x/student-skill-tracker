@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,6 +36,7 @@ import com.skilltracker.student_skill_tracker.service.DashboardService;
 import com.skilltracker.student_skill_tracker.service.GitHubService;
 import com.skilltracker.student_skill_tracker.service.LeetCodeService;
 import com.skilltracker.student_skill_tracker.service.SkillService;
+import com.skilltracker.student_skill_tracker.util.SecurityUtils;
 
 @RestController
 @RequestMapping("/api/students")
@@ -81,6 +83,13 @@ public class StudentController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Passwords do not match!"));
         }
 
+        // Layer 1: Strict Password Rules
+        if (!SecurityUtils.isValidPassword(student.getPassword())) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", 
+                "Password must be at least 8 characters long, contain at least one uppercase letter, " +
+                "one lowercase letter, one digit, and one special character."));
+        }
+
         if (studentRepository.findByEmail(student.getEmail()).isPresent()) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", "Email already exists!"));
         }
@@ -108,6 +117,7 @@ public class StudentController {
     }
 
     @GetMapping("/dashboard/{id}")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> showDashboard(@PathVariable Long id) {
         if (!isOwner(id)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
@@ -294,6 +304,7 @@ public class StudentController {
     }
 
     @GetMapping("/{id}/common-questions")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> getCommonQuestions(@PathVariable Long id) {
         if (!isOwner(id)) {
             Map<String, Object> resp = new HashMap<>();
@@ -329,6 +340,7 @@ public class StudentController {
     }
 
     @GetMapping("/{id}/trending-questions")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> getTrendingQuestions(@PathVariable Long id) {
         if (!isOwner(id)) {
             Map<String, Object> resp = new HashMap<>();
@@ -349,6 +361,7 @@ public class StudentController {
     }
 
     @GetMapping("/refresh/{id}")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> refreshSkills(@PathVariable Long id) {
         if (!isOwner(id)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
@@ -384,6 +397,7 @@ public class StudentController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> updateStudent(@PathVariable Long id, @RequestBody Student studentDetails) {
         if (!isOwner(id)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
@@ -404,6 +418,7 @@ public class StudentController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> deleteStudent(@PathVariable Long id) {
         if (!isOwner(id)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)

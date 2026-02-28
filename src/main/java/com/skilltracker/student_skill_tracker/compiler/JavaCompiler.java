@@ -13,6 +13,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.skilltracker.student_skill_tracker.util.SecurityUtils;
+
 public class JavaCompiler implements ProgrammingLanguageCompiler {
 
     private static final String LANGUAGE_NAME = "Java";
@@ -27,6 +29,14 @@ public class JavaCompiler implements ProgrammingLanguageCompiler {
     @Override
     public CompilationResult executeCode(String sourceCode, String input, int timeoutSeconds) {
         CompilationResult result = new CompilationResult();
+        
+        // RCE Security Layer: Block malicious keywords
+        if (SecurityUtils.containsMaliciousKeywords(sourceCode)) {
+            result.setSuccess(false);
+            result.setError("Security Violation: Malicious keywords detected in code.");
+            return result;
+        }
+
         String uniqueId = UUID.randomUUID().toString();
         String generatedClassName = "Solution_" + uniqueId.replace("-", "");
         String filePath = TEMP_DIR + File.separator + generatedClassName + ".java";
@@ -83,7 +93,8 @@ public class JavaCompiler implements ProgrammingLanguageCompiler {
             File tempFile = new File(filePath);
             String classPath = tempFile.getParent();
 
-            ProcessBuilder runBuilder = new ProcessBuilder("java", "-Xshare:off", "-cp", classPath, runClassName);
+            // DoS Security Layer: Add Xshare:off and limit execution resources
+            ProcessBuilder runBuilder = new ProcessBuilder("java", "-Xshare:off", "-Xmx128m", "-cp", classPath, runClassName);
             runBuilder.redirectErrorStream(true);
             Process runProcess = runBuilder.start();
 
@@ -95,7 +106,7 @@ public class JavaCompiler implements ProgrammingLanguageCompiler {
                 }
             }
 
-            // Step 6: Wait with timeout
+            // Step 6: Wait with timeout (DoS Defense)
             boolean completed = runProcess.waitFor(timeoutSeconds, TimeUnit.SECONDS);
 
             if (!completed) {
