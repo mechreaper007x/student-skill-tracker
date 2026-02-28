@@ -716,12 +716,12 @@ export class DuelArenaComponent implements OnInit, OnDestroy {
   // --- Helpers ---
   getRoundIcon(type: string): string {
     switch (type) {
-      case 'MCQ': return '❓';
-      case 'MEMORY': return '🧠';
-      case 'PUZZLE': return '🧩';
-      case 'PROBLEM_SOLVING': return '💡';
-      case 'CODING': return '💻';
-      default: return '⚡';
+      case 'MCQ': return 'HelpCircle';
+      case 'MEMORY': return 'Brain';
+      case 'PUZZLE': return 'Puzzle';
+      case 'PROBLEM_SOLVING': return 'Lightbulb';
+      case 'CODING': return 'TerminalSquare';
+      default: return 'Circle';
     }
   }
 

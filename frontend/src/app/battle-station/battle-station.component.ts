@@ -631,17 +631,17 @@ public:
   getLanguageIcon(command: string): string {
     switch (command) {
       case 'java':
-        return '☕';
+        return 'Coffee';
       case 'python':
-        return '🐍';
+        return 'Code2';
       case 'cpp':
       case 'c++':
-        return '⚡';
+        return 'Zap';
       case 'javascript':
       case 'js':
-        return '📜';
+        return 'FileJson';
       default:
-        return '📝';
+        return 'FileCode';
     }
   }
 

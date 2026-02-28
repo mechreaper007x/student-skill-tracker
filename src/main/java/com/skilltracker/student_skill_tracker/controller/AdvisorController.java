@@ -22,14 +22,17 @@ import org.springframework.web.bind.annotation.RestController;
 import com.skilltracker.student_skill_tracker.dto.AdvisorResult;
 import com.skilltracker.student_skill_tracker.model.SkillData;
 import com.skilltracker.student_skill_tracker.model.Student;
+import com.skilltracker.student_skill_tracker.model.TopicMastery;
 import com.skilltracker.student_skill_tracker.repository.SkillDataRepository;
 import com.skilltracker.student_skill_tracker.repository.StudentRepository;
+import com.skilltracker.student_skill_tracker.repository.TopicMasteryRepository;
 import com.skilltracker.student_skill_tracker.service.AiAdvisorService;
 import com.skilltracker.student_skill_tracker.service.RishiGenAiService;
 import com.skilltracker.student_skill_tracker.service.RishiMemoryService;
 import com.skilltracker.student_skill_tracker.service.TokenCryptoService;
 
 import lombok.RequiredArgsConstructor;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/advice")
@@ -47,6 +50,7 @@ public class AdvisorController {
     private final RishiGenAiService rishiGenAiService;
     private final RishiMemoryService rishiMemoryService;
     private final TokenCryptoService tokenCryptoService;
+    private final TopicMasteryRepository topicMasteryRepository;
 
     @GetMapping("/me")
     public ResponseEntity<AdvisorResult> myAdvice(Authentication auth) {
@@ -374,20 +378,43 @@ public class AdvisorController {
 
     private String buildSkillSnapshot(Student student) {
         SkillData latest = skillRepo.findTopByStudentOrderByCreatedAtDesc(student).orElse(null);
-        if (latest == null) {
-            return "No tracked scores yet.";
+        String snapshot = "No tracked scores yet.";
+        
+        if (latest != null) {
+            int totalSolved = latest.getTotalProblemsSolved() == null ? 0 : latest.getTotalProblemsSolved();
+            snapshot = String.format(
+                    "ProblemSolving=%.1f, Algorithms=%.1f, DataStructures=%.1f, TotalSolved=%d, Easy=%d, Medium=%d, Hard=%d",
+                    safe(latest.getProblemSolvingScore()),
+                    safe(latest.getAlgorithmsScore()),
+                    safe(latest.getDataStructuresScore()),
+                    totalSolved,
+                    latest.getEasyProblems() == null ? 0 : latest.getEasyProblems(),
+                    latest.getMediumProblems() == null ? 0 : latest.getMediumProblems(),
+                    latest.getHardProblems() == null ? 0 : latest.getHardProblems());
         }
 
-        int totalSolved = latest.getTotalProblemsSolved() == null ? 0 : latest.getTotalProblemsSolved();
-        return String.format(
-                "ProblemSolving=%.1f, Algorithms=%.1f, DataStructures=%.1f, TotalSolved=%d, Easy=%d, Medium=%d, Hard=%d",
-                safe(latest.getProblemSolvingScore()),
-                safe(latest.getAlgorithmsScore()),
-                safe(latest.getDataStructuresScore()),
-                totalSolved,
-                latest.getEasyProblems() == null ? 0 : latest.getEasyProblems(),
-                latest.getMediumProblems() == null ? 0 : latest.getMediumProblems(),
-                latest.getHardProblems() == null ? 0 : latest.getHardProblems());
+        List<TopicMastery> masteries = topicMasteryRepository.findByStudent(student);
+        if (masteries != null && !masteries.isEmpty()) {
+            String decayingTopics = masteries.stream()
+                .filter(m -> m.getCurrentDecayRate() > 0.3)
+                .map(m -> m.getTopicSlug() + " (Decay: " + String.format("%.2f", m.getCurrentDecayRate()) + ")")
+                .collect(Collectors.joining(", "));
+            
+            if (!decayingTopics.isBlank()) {
+                snapshot += "\n[CRITICAL SM-2 DECAY - Must Review]: " + decayingTopics;
+            }
+            
+            String stableTopics = masteries.stream()
+                .filter(m -> m.getCurrentDecayRate() <= 0.1)
+                .map(TopicMastery::getTopicSlug)
+                .collect(Collectors.joining(", "));
+            
+            if (!stableTopics.isBlank()) {
+                snapshot += "\n[Stable Topics]: " + stableTopics;
+            }
+        }
+        
+        return snapshot;
     }
 
     private Integer parseDurationDays(Object value) {

@@ -217,7 +217,7 @@
               ? 'bg-crimson-600 border-crimson-600 text-white'
               : 'border-noir-800 text-noir-400 hover:text-white hover:border-noir-600'"
           >
-            <span>{{ getLanguageIcon(lang.command) }}</span>
+            <lucide-icon [name]="getLanguageIcon(lang.command)" class="w-3.5 h-3.5"></lucide-icon>
             {{ lang.languageName }}
           </button>
         </div>

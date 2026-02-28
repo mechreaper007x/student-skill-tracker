@@ -35,6 +35,7 @@ public class DuelService {
     private final SimpMessagingTemplate messagingTemplate;
     private final ObjectMapper objectMapper;
     private final JdbcTemplate jdbcTemplate;
+    private final ForgettingVelocityService forgettingVelocityService;
 
     private final Queue<String> waitingPlayers = new ConcurrentLinkedQueue<>();
 
@@ -43,13 +44,15 @@ public class DuelService {
             StudentRepository studentRepository,
             SimpMessagingTemplate messagingTemplate,
             ObjectMapper objectMapper,
-            JdbcTemplate jdbcTemplate) {
+            JdbcTemplate jdbcTemplate,
+            ForgettingVelocityService forgettingVelocityService) {
         this.puzzleRepository = puzzleRepository;
         this.duelRepository = duelRepository;
         this.studentRepository = studentRepository;
         this.messagingTemplate = messagingTemplate;
         this.objectMapper = objectMapper;
         this.jdbcTemplate = jdbcTemplate;
+        this.forgettingVelocityService = forgettingVelocityService;
     }
 
     @PostConstruct
@@ -274,6 +277,22 @@ public class DuelService {
 
         messagingTemplate.convertAndSend("/topic/duel/" + sessionId + "/answerResult", result);
         log.info("Round {} answer from {}: {} points (correct: {})", currentRound, username, pointsAwarded, isCorrect);
+
+        // Record Mastery Event for Forgetting Velocity
+        final String finalRoundType = roundType;
+        final boolean finalIsCorrect = isCorrect;
+        studentRepository.findByEmailIgnoreCase(username).ifPresent(student -> {
+            forgettingVelocityService.recordEventAndUpdateMastery(
+                student,
+                "duel-" + finalRoundType.toLowerCase(), // e.g., duel-mcq, duel-coding
+                "DUEL_ROUND",
+                60000, // Appx 60s for a duel round as a fallback
+                finalIsCorrect ? 0 : 1, // Error count is 0 if correct, 1 if wrong
+                finalIsCorrect,
+                true, // High Pressure is TRUE in Arena
+                "{\"round\":" + currentRound + "}"
+            );
+        });
     }
 
     /**
