@@ -39,16 +39,19 @@ public class CompilerController {
     private final StudentRepository studentRepository;
     private final TokenCryptoService tokenCryptoService;
     private final CognitiveMetricService cognitiveMetricService;
+    private final com.skilltracker.student_skill_tracker.service.ForgettingVelocityService forgettingVelocityService;
 
     public CompilerController(
             LeetCodeService leetCodeService,
             StudentRepository studentRepository,
             TokenCryptoService tokenCryptoService,
-            CognitiveMetricService cognitiveMetricService) {
+            CognitiveMetricService cognitiveMetricService,
+            com.skilltracker.student_skill_tracker.service.ForgettingVelocityService forgettingVelocityService) {
         this.leetCodeService = leetCodeService;
         this.studentRepository = studentRepository;
         this.tokenCryptoService = tokenCryptoService;
         this.cognitiveMetricService = cognitiveMetricService;
+        this.forgettingVelocityService = forgettingVelocityService;
     }
 
     /**
@@ -103,6 +106,20 @@ public class CompilerController {
 
             studentOpt.ifPresent(student -> {
                 cognitiveMetricService.recordCompilation(student, result.isSuccess());
+                
+                if (result.isSuccess()) {
+                    String topicSlug = request.getProblemSlug() != null ? request.getProblemSlug() : "general-coding";
+                    forgettingVelocityService.recordEventAndUpdateMastery(
+                        student, 
+                        topicSlug, 
+                        "COMPILER_RUN", 
+                        elapsed, 
+                        0, // Zero errors on success
+                        true, 
+                        false, 
+                        "{}"
+                    );
+                }
             });
 
             return ResponseEntity.ok(result);

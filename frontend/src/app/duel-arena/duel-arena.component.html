@@ -19,13 +19,13 @@
     <!-- Round Preview -->
     <div class="flex justify-center gap-3 flex-wrap">
       <div *ngFor="let r of [
-        {icon: '❓', label: 'QUIZ'},
-        {icon: '🧠', label: 'MEMORY'},
-        {icon: '🧩', label: 'PUZZLE'},
-        {icon: '💡', label: 'LOGIC'},
-        {icon: '💻', label: 'CODE'}
+        {icon: 'HelpCircle', label: 'QUIZ'},
+        {icon: 'Brain', label: 'MEMORY'},
+        {icon: 'Puzzle', label: 'PUZZLE'},
+        {icon: 'Lightbulb', label: 'LOGIC'},
+        {icon: 'TerminalSquare', label: 'CODE'}
       ]" class="flex flex-col items-center gap-2 p-4 border border-noir-800 bg-noir-900/50 min-w-[100px] hover:border-crimson-500/50 transition-colors">
-        <span class="text-3xl">{{ r.icon }}</span>
+        <lucide-icon [name]="r.icon" class="w-8 h-8 text-noir-400"></lucide-icon>
         <span class="text-[10px] font-black font-mono text-noir-400 uppercase tracking-widest">{{ r.label }}</span>
       </div>
     </div>
@@ -53,7 +53,7 @@
 <div *ngIf="phase() === 'round-transition'" class="min-h-full flex flex-col items-center justify-center bg-noir-950 p-6">
   <div class="text-center space-y-6 animate-reveal">
     <p class="text-[9px] font-mono text-noir-500 uppercase tracking-widest">ROUND {{ currentRound() }} OF 5</p>
-    <div class="text-6xl">{{ getRoundIcon(currentRoundData()?.type || '') }}</div>
+    <div class="flex justify-center"><lucide-icon [name]="getRoundIcon(currentRoundData()?.type || '')" class="w-16 h-16 text-crimson-500"></lucide-icon></div>
     <h2 class="text-3xl text-display">{{ getRoundLabel(currentRoundData()?.type || '') }}</h2>
     <p class="text-sm text-noir-400">{{ currentRoundData()?.title }}</p>
     <p class="text-[10px] font-mono text-amber-300 uppercase tracking-widest">{{ getBloomChip(currentRoundData()) }}</p>
@@ -77,7 +77,7 @@
     </div>
     <div class="flex items-center gap-3">
       <span class="text-[8px] font-mono text-noir-500 uppercase tracking-widest">R{{ currentRound() }}/5</span>
-      <span class="text-lg">{{ getRoundIcon(currentRoundData()?.type || '') }}</span>
+      <lucide-icon [name]="getRoundIcon(currentRoundData()?.type || '')" class="w-5 h-5 text-crimson-500"></lucide-icon>
       <span class="hidden md:inline text-[8px] font-mono text-amber-300 uppercase tracking-widest">
         {{ getBloomChip(currentRoundData()) }}
       </span>
@@ -97,7 +97,7 @@
       class="flex-1 flex flex-col items-center justify-center gap-1 py-3 border-r border-noir-800/30 last:border-r-0 transition-all duration-300"
       [class]="currentRound() === r.round ? 'bg-crimson-600/30 text-white border-b-2 border-b-crimson-500' : currentRound() > r.round ? 'bg-emerald-900/10 text-emerald-500' : 'text-noir-500'">
       <div class="flex items-center gap-2">
-        <span class="text-xl">{{ getRoundIcon(r.type) }}</span>
+        <lucide-icon [name]="getRoundIcon(r.type)" class="w-5 h-5"></lucide-icon>
         <span class="hidden md:inline text-[11px] font-black uppercase tracking-[0.2em]">{{ getRoundLabel(r.type) }}</span>
       </div>
       <span class="text-[9px] font-mono font-bold text-amber-300 tracking-widest bg-noir-950/50 px-2 py-0.5 rounded">L{{ r.bloomLevel || defaultBloomLevel(r.round) }}</span>

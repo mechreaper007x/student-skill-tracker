@@ -25,14 +25,17 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.skilltracker.student_skill_tracker.dto.AdvisorResult;
 import com.skilltracker.student_skill_tracker.model.SkillData;
 import com.skilltracker.student_skill_tracker.model.Student;
+import com.skilltracker.student_skill_tracker.model.TopicMastery;
 import com.skilltracker.student_skill_tracker.repository.SkillDataRepository;
 import com.skilltracker.student_skill_tracker.repository.StudentRepository;
+import com.skilltracker.student_skill_tracker.repository.TopicMasteryRepository;
 import com.skilltracker.student_skill_tracker.service.AiAdvisorService;
 import com.skilltracker.student_skill_tracker.service.RishiGenAiService;
 import com.skilltracker.student_skill_tracker.service.RishiMemoryService;
 import com.skilltracker.student_skill_tracker.service.TokenCryptoService;
 
 import lombok.RequiredArgsConstructor;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/advice")
@@ -51,6 +54,7 @@ public class AdvisorController {
     private final RishiMemoryService rishiMemoryService;
     private final TokenCryptoService tokenCryptoService;
     private final ObjectMapper objectMapper;
+    private final TopicMasteryRepository topicMasteryRepository;
 
     @GetMapping("/me")
     public ResponseEntity<AdvisorResult> myAdvice(Authentication auth) {
@@ -466,6 +470,20 @@ public class AdvisorController {
                 "recentTopicsCount", recentTopics.size(),
                 "longTermMemorySlot",
                 "/* reserved: add long-term memory field when persistent memory service is available */"));
+        List<TopicMastery> masteries = topicMasteryRepository.findByStudent(student);
+        if (masteries != null && !masteries.isEmpty()) {
+            String decayingTopics = masteries.stream()
+                    .filter(m -> m.getCurrentDecayRate() > 0.3)
+                    .map(m -> m.getTopicSlug() + " (Decay: " + String.format("%.2f", m.getCurrentDecayRate()) + ")")
+                    .collect(Collectors.joining(", "));
+            String stableTopics = masteries.stream()
+                    .filter(m -> m.getCurrentDecayRate() <= 0.1)
+                    .map(TopicMastery::getTopicSlug)
+                    .collect(Collectors.joining(", "));
+            packet.put("topicMastery", Map.of(
+                    "criticalDecayTopics", decayingTopics,
+                    "stableTopics", stableTopics));
+        }
 
         try {
             return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(packet);

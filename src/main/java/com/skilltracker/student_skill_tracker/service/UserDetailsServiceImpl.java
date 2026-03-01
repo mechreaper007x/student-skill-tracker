@@ -22,15 +22,14 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        System.out.println("DEBUG: UserDetailsServiceImpl loading user: " + email);
         log.debug("Attempting to load user by email: {}", email);
         Student s = studentRepository.findByEmailIgnoreCase(email)
                 .orElseThrow(() -> {
-                    System.out.println("DEBUG: User not found in DB: " + email);
-                    return new UsernameNotFoundException("User not found: " + email);
+                    log.debug("User not found for email {}", email);
+                    return new UsernameNotFoundException("User not found");
                 });
 
-        System.out.println("DEBUG: User found! Roles: " + s.getRoles());
+        log.debug("User found with roles {}", s.getRoles());
 
         String roles = (s.getRoles() == null || s.getRoles().isBlank()) ? "ROLE_USER" : s.getRoles();
 

@@ -96,6 +96,15 @@ interface LearnResponse {
   memoryCount?: number;
 }
 
+interface AgentExecuteResponse {
+  reply: string;
+  provider: string;
+  model: string;
+  mode: string;
+  threadId: string;
+  actions?: string[];
+}
+
 interface StudyPlanResponse {
   hasPlan: boolean;
   topic: string;
@@ -104,6 +113,54 @@ interface StudyPlanResponse {
   plan: string;
   provider?: string;
   model?: string;
+}
+
+interface IntegrationTask {
+  id: number;
+  sourceType: string;
+  title: string;
+  details: string;
+  topic: string;
+  priority: number;
+  status: string;
+  suggestedMinutes: number;
+  plannedStartAt: string;
+  plannedEndAt: string;
+  calendarEventLink: string;
+  updatedAt: string;
+}
+
+interface IntegrationStatusResponse {
+  mode: 'chat' | 'agent';
+  hasApiKey: boolean;
+  googleCalendarConnected: boolean;
+  googleCalendarId: string;
+  taskCount: number;
+  pendingTaskCount: number;
+  latestTasks: IntegrationTask[];
+}
+
+interface OAuthUrlResponse {
+  provider: string;
+  authUrl: string;
+  state: string;
+}
+
+interface OAuthCompleteResponse {
+  provider: string;
+  status: IntegrationStatusResponse;
+}
+
+interface CalendarScheduleResponse {
+  scheduledCount: number;
+  items: Array<{
+    taskId: number;
+    taskTitle: string;
+    startAt: string;
+    endAt: string;
+    eventId: string;
+    eventLink: string;
+  }>;
 }
 
 @Component({
@@ -194,6 +251,23 @@ interface StudyPlanResponse {
           </div>
 
           <div class="flex items-center gap-3">
+            <div class="flex items-center gap-1 p-1 border border-noir-800 rounded-xl bg-noir-900">
+              <button
+                (click)="setMode('chat')"
+                class="px-3 py-1.5 text-[9px] font-black uppercase tracking-widest rounded-lg transition-all"
+                [class]="mode() === 'chat' ? 'bg-crimson-600 text-white' : 'text-noir-400 hover:text-white'"
+              >
+                Chat Mode
+              </button>
+              <button
+                (click)="setMode('agent')"
+                class="px-3 py-1.5 text-[9px] font-black uppercase tracking-widest rounded-lg transition-all"
+                [class]="mode() === 'agent' ? 'bg-emerald-600 text-white' : 'text-noir-400 hover:text-white'"
+              >
+                Agent Mode
+              </button>
+            </div>
+
             <button (click)="startMockInterview()" class="flex items-center gap-2 px-4 py-2 text-[10px] font-black uppercase tracking-widest border border-emerald-500/50 text-emerald-400 bg-noir-900 hover:bg-emerald-600/10 hover:text-emerald-300 hover:border-emerald-400 transition-all rounded-xl">
               <lucide-icon name="Mic" class="w-3.5 h-3.5"></lucide-icon>
               MOCK INTERVIEW
@@ -253,6 +327,69 @@ interface StudyPlanResponse {
                 <div class="space-y-2">
                   <label class="text-[10px] font-bold text-noir-500 uppercase tracking-widest">Active Study Goal</label>
                   <input type="text" [(ngModel)]="planTopic" class="w-full bg-black border border-noir-800 rounded-xl px-4 py-2.5 text-xs font-mono text-white focus:border-crimson-500/50 outline-none">
+                </div>
+              </div>
+
+              <div class="border border-noir-800 rounded-xl p-4 space-y-4 bg-black/30">
+                <div class="flex items-center justify-between">
+                  <p class="text-[10px] font-bold text-noir-400 uppercase tracking-widest">Rishi Integrations</p>
+                  <span class="text-[9px] font-mono uppercase tracking-widest" [class]="mode() === 'agent' ? 'text-emerald-400' : 'text-noir-500'">
+                    {{ mode() | uppercase }}
+                  </span>
+                </div>
+
+                <div class="grid grid-cols-1 gap-3">
+                  <div class="border border-noir-800 rounded-lg p-3">
+                    <p class="text-[10px] font-semibold text-noir-300">Google Calendar</p>
+                    <p class="text-[9px] text-noir-500 mt-1">{{ googleCalendarConnected() ? 'Connected' : 'Not connected' }}</p>
+                    <div class="mt-3 flex gap-2 flex-wrap">
+                      <button
+                        *ngIf="!googleCalendarConnected()"
+                        (click)="openGoogleCalendarConnect()"
+                        [disabled]="isConnectingIntegration()"
+                        class="px-3 py-1.5 text-[9px] font-black uppercase tracking-widest border border-emerald-500/40 text-emerald-300 hover:bg-emerald-600/10 disabled:opacity-40"
+                      >
+                        Connect
+                      </button>
+                      <button
+                        *ngIf="googleCalendarConnected()"
+                        (click)="scheduleCalendarBlocks()"
+                        [disabled]="isSchedulingCalendar()"
+                        class="px-3 py-1.5 text-[9px] font-black uppercase tracking-widest border border-noir-700 text-noir-300 hover:text-white disabled:opacity-40"
+                      >
+                        {{ isSchedulingCalendar() ? 'Scheduling...' : 'Schedule Next Blocks' }}
+                      </button>
+                      <button
+                        *ngIf="googleCalendarConnected()"
+                        (click)="disconnectGoogleCalendar()"
+                        class="px-3 py-1.5 text-[9px] font-black uppercase tracking-widest border border-crimson-500/40 text-crimson-300 hover:bg-crimson-600/10"
+                      >
+                        Disconnect
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="border border-noir-800 rounded-lg p-3" *ngIf="integrationTasks().length > 0">
+                  <div class="flex items-center justify-between mb-2">
+                    <p class="text-[10px] font-semibold text-noir-300">Imported Practice Tasks</p>
+                    <span class="text-[9px] font-mono text-noir-500">{{ pendingTaskCount() }} pending</span>
+                  </div>
+                  <div class="space-y-2 max-h-44 overflow-y-auto custom-scrollbar pr-1">
+                    <div *ngFor="let task of integrationTasks()" class="flex items-start justify-between gap-2 border border-noir-800 rounded-md px-2.5 py-2">
+                      <div class="min-w-0">
+                        <p class="text-[10px] text-noir-200 truncate">{{ task.title }}</p>
+                        <p class="text-[9px] text-noir-500">{{ task.sourceType }} • {{ task.status }}</p>
+                      </div>
+                      <button
+                        *ngIf="task.status !== 'DONE'"
+                        (click)="markTaskDone(task.id)"
+                        class="px-2 py-1 text-[8px] font-black uppercase tracking-widest border border-emerald-500/40 text-emerald-300 hover:bg-emerald-600/10"
+                      >
+                        Done
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -348,7 +485,7 @@ interface StudyPlanResponse {
                 [(ngModel)]="currentInput"
                 (keydown.enter)="$event.preventDefault(); sendMessage()"
                 rows="1"
-                placeholder="Message Rishi..."
+                [placeholder]="mode() === 'agent' ? 'Ask Rishi Agent to plan/schedule...' : 'Message Rishi...'"
                 class="flex-1 bg-transparent border-none py-3 px-2 text-noir-100 placeholder:text-noir-600 focus:outline-none resize-none font-sans text-sm"
                 (input)="autoGrow($event)"
               ></textarea>
@@ -410,16 +547,23 @@ export class AdvisorComponent implements OnInit, OnDestroy {
   
   currentInput = '';
 
+  mode = signal<'chat' | 'agent'>('chat');
+
   provider = signal('mistral');
   model = signal('open-mixtral-8x7b');
   apiKeyInput = signal('');
   maskedApiKey = signal('');
   hasApiKey = signal(false);
+  googleCalendarConnected = signal(false);
+  pendingTaskCount = signal(0);
+  integrationTasks = signal<IntegrationTask[]>([]);
 
   isSavingConfig = signal(false);
   isGenerating = signal(false);
   isGeneratingPlan = signal(false);
   isClearingMemory = signal(false);
+  isSchedulingCalendar = signal(false);
+  isConnectingIntegration = signal(false);
 
   configStatus = signal<{ success: boolean; message: string } | null>(null);
   planStatus = signal<{ success: boolean; message: string } | null>(null);
@@ -476,7 +620,9 @@ export class AdvisorComponent implements OnInit, OnDestroy {
     }
 
     this.setupVoiceRecognition();
+    this.handleOAuthCallback();
     this.loadConfig();
+    this.loadIntegrationsStatus();
     this.loadThreads();
     this.startNewThread(); // Always start with a blank new thread when opening
     this.loadStudyPlan();
@@ -585,6 +731,144 @@ export class AdvisorComponent implements OnInit, OnDestroy {
     });
   }
 
+  loadIntegrationsStatus() {
+    this.http.get<IntegrationStatusResponse>('/api/rishi/integrations/status').subscribe({
+      next: (status) => {
+        this.mode.set(status.mode || 'chat');
+        this.googleCalendarConnected.set(!!status.googleCalendarConnected);
+        this.pendingTaskCount.set(status.pendingTaskCount || 0);
+        this.integrationTasks.set(status.latestTasks || []);
+      },
+      error: () => {
+        this.googleCalendarConnected.set(false);
+      }
+    });
+  }
+
+  setMode(mode: 'chat' | 'agent') {
+    if (this.mode() === mode) {
+      return;
+    }
+    this.mode.set(mode);
+    this.http.post<{ mode: 'chat' | 'agent' }>('/api/rishi/integrations/mode', { mode }).subscribe({
+      next: (resp) => this.mode.set(resp?.mode || mode),
+      error: () => this.mode.set(mode)
+    });
+  }
+
+  openGoogleCalendarConnect() {
+    this.startOAuthFlow('/api/rishi/integrations/google-calendar/auth-url');
+  }
+
+  disconnectGoogleCalendar() {
+    this.http.post('/api/rishi/integrations/google-calendar/disconnect', {}).subscribe({
+      next: () => this.loadIntegrationsStatus(),
+      error: () => {}
+    });
+  }
+
+  scheduleCalendarBlocks() {
+    if (this.isSchedulingCalendar()) {
+      return;
+    }
+    this.isSchedulingCalendar.set(true);
+    this.http.post<CalendarScheduleResponse>('/api/rishi/integrations/google-calendar/schedule', {
+      count: 2,
+      blockMinutes: 50
+    }).subscribe({
+      next: (resp) => {
+        this.isSchedulingCalendar.set(false);
+        this.planStatus.set({
+          success: true,
+          message: `Scheduled ${resp.scheduledCount} study block(s) in Google Calendar.`
+        });
+        this.loadIntegrationsStatus();
+      },
+      error: (err: HttpErrorResponse) => {
+        this.isSchedulingCalendar.set(false);
+        this.planStatus.set({ success: false, message: this.extractError(err, 'Calendar scheduling failed.') });
+      }
+    });
+  }
+
+  markTaskDone(taskId: number) {
+    this.http.post(`/api/rishi/integrations/tasks/${taskId}/done`, {}).subscribe({
+      next: () => this.loadIntegrationsStatus(),
+      error: () => {}
+    });
+  }
+
+  private handleOAuthCallback() {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('code');
+    const state = params.get('state');
+    const error = params.get('error');
+
+    if (error) {
+      this.planStatus.set({ success: false, message: `OAuth failed: ${error}` });
+      this.clearOAuthQueryParams();
+      return;
+    }
+
+    if (!code || !state) {
+      return;
+    }
+
+    const redirectUri = this.getCurrentPageWithoutQuery();
+    this.http.post<OAuthCompleteResponse>('/api/rishi/integrations/oauth/complete', {
+      code,
+      state,
+      redirectUri
+    }).subscribe({
+      next: () => {
+        this.planStatus.set({ success: true, message: 'Integration connected successfully.' });
+        this.loadIntegrationsStatus();
+        this.clearOAuthQueryParams();
+      },
+      error: (err: HttpErrorResponse) => {
+        this.planStatus.set({ success: false, message: this.extractError(err, 'OAuth completion failed.') });
+        this.clearOAuthQueryParams();
+      }
+    });
+  }
+
+  private startOAuthFlow(url: string) {
+    if (!isPlatformBrowser(this.platformId) || this.isConnectingIntegration()) {
+      return;
+    }
+    this.isConnectingIntegration.set(true);
+    const redirectUri = this.getCurrentPageWithoutQuery();
+    this.http.get<OAuthUrlResponse>(`${url}?redirectUri=${encodeURIComponent(redirectUri)}`).subscribe({
+      next: (resp) => {
+        this.isConnectingIntegration.set(false);
+        if (resp?.authUrl) {
+          window.location.href = resp.authUrl;
+        }
+      },
+      error: (err: HttpErrorResponse) => {
+        this.isConnectingIntegration.set(false);
+        this.planStatus.set({ success: false, message: this.extractError(err, 'Failed to start OAuth flow.') });
+      }
+    });
+  }
+
+  private getCurrentPageWithoutQuery(): string {
+    if (!isPlatformBrowser(this.platformId)) {
+      return '';
+    }
+    return `${window.location.origin}${window.location.pathname}`;
+  }
+
+  private clearOAuthQueryParams() {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+    window.history.replaceState({}, document.title, this.getCurrentPageWithoutQuery());
+  }
+
   loadStudyPlan() {
     this.http.get<StudyPlanResponse>('/api/advice/me/study-plan').subscribe({
       next: (resp) => this.applyStudyPlan(resp),
@@ -625,7 +909,11 @@ export class AdvisorComponent implements OnInit, OnDestroy {
     this.addUserMessage(text, 'text');
     this.currentInput = '';
     this.scrollToBottom();
-    this.askRishi(text, 'text');
+    if (this.mode() === 'agent') {
+      this.askAgent(text, 'text');
+    } else {
+      this.askRishi(text, 'text');
+    }
   }
 
   autoGrow(event: any) {
@@ -639,7 +927,11 @@ export class AdvisorComponent implements OnInit, OnDestroy {
     const prompt = 'Analyze my current Bloom Level and performance metrics. Create a short-term tactical optimization plan for my next study session.';
     this.addUserMessage('Rishi, synthesize a tactical optimization plan.', 'text');
     this.scrollToBottom();
-    this.askRishi(prompt, 'strategy');
+    if (this.mode() === 'agent') {
+      this.askAgent(prompt, 'strategy');
+    } else {
+      this.askRishi(prompt, 'strategy');
+    }
   }
 
   private askRishi(message: string, responseType: 'text' | 'strategy') {
@@ -683,6 +975,45 @@ export class AdvisorComponent implements OnInit, OnDestroy {
         if (this.voiceInterviewMode()) {
           this.startListening();
         }
+      }
+    });
+  }
+
+  private askAgent(message: string, responseType: 'text' | 'strategy') {
+    if (!this.hasApiKey() && !this.apiKeyInput().trim()) {
+      this.addAssistantMessage('Attach your neural access key (Mistral API Key) in settings to initialize the interface.', 'text');
+      this.scrollToBottom();
+      return;
+    }
+
+    this.isGenerating.set(true);
+    const payload: any = {
+      message,
+      model: this.model(),
+      threadId: this.activeThreadId(),
+      autoSchedule: message.toLowerCase().includes('schedule') || message.toLowerCase().includes('calendar')
+    };
+
+    this.http.post<AgentExecuteResponse>('/api/rishi/agent/execute', payload).subscribe({
+      next: (resp) => {
+        const actions = (resp.actions || []).map((item) => `- ${item}`).join('\n');
+        const content = actions ? `${resp.reply}\n\n**Agent Actions**\n${actions}` : resp.reply;
+        this.addAssistantMessage(content || 'Agent returned no response.', responseType);
+
+        if (resp.threadId) {
+          this.activeThreadId.set(resp.threadId);
+          this.loadThreads();
+        }
+
+        this.mode.set('agent');
+        this.loadIntegrationsStatus();
+        this.isGenerating.set(false);
+        this.scrollToBottom();
+      },
+      error: (err: HttpErrorResponse) => {
+        this.addAssistantMessage(this.extractError(err, 'Agent mode failed. Retry in chat mode.'), 'text');
+        this.isGenerating.set(false);
+        this.scrollToBottom();
       }
     });
   }

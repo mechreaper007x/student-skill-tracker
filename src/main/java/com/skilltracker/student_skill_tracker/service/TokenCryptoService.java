@@ -10,19 +10,43 @@ import javax.crypto.Cipher;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 
 @Service
 public class TokenCryptoService {
 
+    private static final Logger logger = LoggerFactory.getLogger(TokenCryptoService.class);
+    private static final String INSECURE_FALLBACK_SECRET = "development-only-crypto-secret-change-me";
+    private static final int MIN_SECRET_LENGTH = 32;
     private static final int GCM_IV_BYTES = 12;
     private static final int GCM_TAG_BITS = 128;
 
     private final SecretKeySpec secretKeySpec;
     private final SecureRandom secureRandom = new SecureRandom();
 
-    public TokenCryptoService(@Value("${app.crypto.secret:${jwt.secret:development-only-crypto-secret-change-me}}") String secret) {
+    public TokenCryptoService(
+            @Value("${app.crypto.secret:${jwt.secret:" + INSECURE_FALLBACK_SECRET + "}}") String secret,
+            Environment environment) {
+        if (secret == null || secret.isBlank()) {
+            throw new IllegalStateException("app.crypto.secret must be configured");
+        }
+        if (secret.length() < MIN_SECRET_LENGTH) {
+            throw new IllegalStateException("app.crypto.secret must be at least 32 characters long");
+        }
+
+        boolean prodProfileActive = Arrays.stream(environment.getActiveProfiles())
+                .anyMatch(profile -> "prod".equalsIgnoreCase(profile) || "production".equalsIgnoreCase(profile));
+        if (INSECURE_FALLBACK_SECRET.equals(secret) && prodProfileActive) {
+            throw new IllegalStateException("Insecure default app.crypto.secret is not allowed in production profiles");
+        }
+        if (INSECURE_FALLBACK_SECRET.equals(secret)) {
+            logger.warn("Using development fallback app.crypto.secret. Configure APP_CRYPTO_SECRET before production.");
+        }
+
         this.secretKeySpec = new SecretKeySpec(sha256(secret), "AES");
     }
 

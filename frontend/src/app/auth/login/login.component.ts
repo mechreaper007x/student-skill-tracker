@@ -47,14 +47,22 @@ import { AuthService } from '../../core/auth/auth.service';
               <div class="relative">
                 <lucide-icon name="Lock" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-noir-500"></lucide-icon>
                 <input 
-                  type="password" 
+                  [type]="showPassword() ? 'text' : 'password'" 
                   name="password"
                   [ngModel]="password()" 
                   (ngModelChange)="password.set($event)"
                   required
                   placeholder="••••••••"
-                  class="w-full bg-noir-900 border border-noir-800 rounded-xl py-3 pl-10 pr-4 text-noir-100 placeholder:text-noir-600 focus:outline-none focus:border-crimson-500/50 focus:ring-1 focus:ring-crimson-500/50 transition-all font-mono"
+                  class="w-full bg-noir-900 border border-noir-800 rounded-xl py-3 pl-10 pr-20 text-noir-100 placeholder:text-noir-600 focus:outline-none focus:border-crimson-500/50 focus:ring-1 focus:ring-crimson-500/50 transition-all font-mono"
                 >
+                <button
+                  type="button"
+                  (click)="showPassword.set(!showPassword())"
+                  class="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold uppercase tracking-wider text-noir-400 hover:text-noir-200"
+                  [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'"
+                >
+                  {{ showPassword() ? 'Hide' : 'Show' }}
+                </button>
               </div>
             </div>
 
@@ -94,6 +102,7 @@ export class LoginComponent {
 
   email = signal('');
   password = signal('');
+  showPassword = signal(false);
   loading = signal(false);
   error = signal<string | null>(null);
 

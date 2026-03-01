@@ -24,7 +24,7 @@ public class AdminController {
     }
 
     @GetMapping("/export/research-data")
-    // @PreAuthorize("hasRole('ADMIN')") // Note: Ensure method security is enabled in SecurityConfig for this to work
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<Map<String, Object>>> exportResearchData() {
         List<Student> students = studentRepository.findAll();
         

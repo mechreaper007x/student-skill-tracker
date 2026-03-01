@@ -35,6 +35,7 @@ export class DashboardComponent implements OnInit {
   // Dashboard data fetched from backend
   private dashboardData = signal<any>(null);
   globalRank = signal<number | null>(null);
+  masteryHeatmap = signal<any[]>([]);
 
   greeting = computed(() => {
     const hour = new Date().getHours();
@@ -118,6 +119,7 @@ export class DashboardComponent implements OnInit {
     if (isPlatformBrowser(this.platformId)) {
       this.fetchDashboardData();
       this.fetchGlobalRank();
+      this.fetchMasteryHeatmap();
     }
   }
 
@@ -140,6 +142,17 @@ export class DashboardComponent implements OnInit {
         if (entry) {
           this.globalRank.set(entry.ranking);
         }
+      }
+    });
+  }
+
+  private fetchMasteryHeatmap() {
+    this.http.get<any[]>('/api/mastery/heatmap').subscribe({
+      next: (data) => {
+        this.masteryHeatmap.set(data);
+      },
+      error: (err) => {
+        console.error('Failed to fetch mastery heatmap:', err);
       }
     });
   }

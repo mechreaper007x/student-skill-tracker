@@ -12,6 +12,8 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
+import com.skilltracker.student_skill_tracker.util.SecurityUtils;
+
 public class CppCompiler implements ProgrammingLanguageCompiler {
 
     private static final String LANGUAGE_NAME = "C++";
@@ -22,6 +24,14 @@ public class CppCompiler implements ProgrammingLanguageCompiler {
     @Override
     public CompilationResult executeCode(String sourceCode, String input, int timeoutSeconds) {
         CompilationResult result = new CompilationResult();
+        
+        // RCE Security Layer: Block malicious keywords
+        if (SecurityUtils.containsMaliciousKeywords(sourceCode)) {
+            result.setSuccess(false);
+            result.setError("Security Violation: Malicious keywords detected in code.");
+            return result;
+        }
+
         String uniqueId = UUID.randomUUID().toString();
         String sourceFile = "solution_" + uniqueId + ".cpp";
         String exePath = TEMP_DIR + File.separator + "solution_" + uniqueId + (IS_WINDOWS ? ".exe" : "");
@@ -84,7 +94,7 @@ public class CppCompiler implements ProgrammingLanguageCompiler {
                 return result;
             }
 
-            // Execute
+            // Execute (DoS Layer: Resource limits can be added here if OS supports)
             ProcessBuilder runBuilder = new ProcessBuilder(exePath);
             runBuilder.redirectErrorStream(true);
             Process runProcess = runBuilder.start();
@@ -97,7 +107,7 @@ public class CppCompiler implements ProgrammingLanguageCompiler {
                 }
             }
 
-            // Wait for completion
+            // Wait for completion (DoS Defense)
             boolean completed = runProcess.waitFor(timeoutSeconds, TimeUnit.SECONDS);
 
             if (!completed) {

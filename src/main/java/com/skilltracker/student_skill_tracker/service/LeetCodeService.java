@@ -52,12 +52,19 @@ public class LeetCodeService {
 
     public Map<String, Object> fetchStats(String username) {
         try {
-            String url = "https://leetcode-stats-api.herokuapp.com/" + username;
+            String safeUsername = sanitizeForUrl(username);
+            if (safeUsername.isBlank()) return Map.of();
+            String url = "https://leetcode-stats-api.herokuapp.com/" + safeUsername;
             return restTemplate.getForObject(url, Map.class);
         } catch (Exception e) {
             System.err.println("⚠️  Failed to fetch LeetCode data: " + e.getMessage());
             return Map.of();
         }
+    }
+
+    private String sanitizeForUrl(String input) {
+        if (input == null) return "";
+        return input.replaceAll("[^a-zA-Z0-9\\-_\\.]", "");
     }
 
     public Map<String, Object> fetchLanguageStats(String username) {

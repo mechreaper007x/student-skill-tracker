@@ -93,6 +93,31 @@ public class Student {
     @Column(name = "rishi_study_generated_at")
     private LocalDateTime rishiStudyGeneratedAt;
 
+    @Column(name = "rishi_mode")
+    @Builder.Default
+    private String rishiMode = "chat";
+
+    @Column(name = "rishi_google_oauth_state", length = 512)
+    @ToString.Exclude
+    private String rishiGoogleOauthState;
+
+    @Column(name = "rishi_google_access_token_enc", length = 8192)
+    @ToString.Exclude
+    private String rishiGoogleAccessTokenEncrypted;
+
+    @Column(name = "rishi_google_refresh_token_enc", length = 8192)
+    @ToString.Exclude
+    private String rishiGoogleRefreshTokenEncrypted;
+
+    @Column(name = "rishi_google_expires_at")
+    private LocalDateTime rishiGoogleTokenExpiresAt;
+
+    @Column(name = "rishi_google_account", length = 512)
+    private String rishiGoogleAccount;
+
+    @Column(name = "rishi_google_calendar_id", length = 512)
+    private String rishiGoogleCalendarId;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

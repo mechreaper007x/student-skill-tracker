@@ -11,6 +11,8 @@ import java.nio.file.Paths;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
+import com.skilltracker.student_skill_tracker.util.SecurityUtils;
+
 public class PythonCompiler implements ProgrammingLanguageCompiler {
 
     private static final String LANGUAGE_NAME = "Python";
@@ -34,6 +36,14 @@ public class PythonCompiler implements ProgrammingLanguageCompiler {
     @Override
     public CompilationResult executeCode(String sourceCode, String input, int timeoutSeconds) {
         CompilationResult result = new CompilationResult();
+
+        // RCE Security Layer: Block malicious keywords
+        if (SecurityUtils.containsMaliciousKeywords(sourceCode)) {
+            result.setSuccess(false);
+            result.setError("Security Violation: Malicious keywords detected in code.");
+            return result;
+        }
+
         String uniqueId = UUID.randomUUID().toString();
         String fileName = "solution_" + uniqueId + ".py";
         String filePath = TEMP_DIR + File.separator + fileName;
@@ -55,7 +65,7 @@ public class PythonCompiler implements ProgrammingLanguageCompiler {
                 }
             }
 
-            // Wait for completion
+            // Wait for completion (DoS Defense)
             boolean completed = runProcess.waitFor(timeoutSeconds, TimeUnit.SECONDS);
 
             if (!completed) {

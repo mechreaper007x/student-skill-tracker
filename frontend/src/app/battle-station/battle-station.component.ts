@@ -10,7 +10,8 @@ import {
   CompilationResult,
   CompilerInfo,
   CompilerService,
-  LeetCodeSubmissionResponse
+  LeetCodeSubmissionResponse,
+  RishiCodeChangeEvent
 } from '../core/compiler.service';
 import { LeetCodeQuestion, QuestionBankService } from '../core/question-bank.service';
 
@@ -33,6 +34,15 @@ export class BattleStationComponent implements OnInit, OnDestroy {
 
   private routeSubscription: Subscription | null = null;
   private questionDetailRequestToken = 0;
+  private editorChangeDisposable: { dispose: () => void } | null = null;
+  private telemetryFlushHandle: ReturnType<typeof setInterval> | null = null;
+  private activityTimerHandle: ReturnType<typeof setInterval> | null = null;
+  private telemetryBuffer: RishiCodeChangeEvent[] = [];
+  private telemetrySessionStartMs = 0;
+  private sessionActiveDurationMs = 0;
+  private lastActivityMs = 0;
+  private hasUserStartedCoding = false;
+  private readonly telemetryIdleTimeoutMs = 120000;
 
   // Compiler state
   availableLanguages = signal<CompilerInfo[]>([]);
@@ -50,6 +60,9 @@ export class BattleStationComponent implements OnInit, OnDestroy {
   result = signal<CompilationResult | null>(null);
   timeoutSeconds = signal(10);
   isSetupPanelCollapsed = signal(true);
+  rishiCodingSessionId = signal<number | null>(null);
+  rishiSessionElapsedMs = signal(0);
+  rishiSessionActiveMs = signal(0);
 
 
 
@@ -207,6 +220,8 @@ public:
     this.loadQuestions('all');
     this.loadLeetCodeAuthStatus();
     this.sourceCode.set(this.boilerplates['java']);
+    this.startRishiCodingSession();
+    this.startRishiActivityTimer();
   }
 
   toggleSetupPanel() {
@@ -215,6 +230,16 @@ public:
 
   ngOnDestroy() {
     this.routeSubscription?.unsubscribe();
+    this.editorChangeDisposable?.dispose();
+    if (this.telemetryFlushHandle) {
+      clearInterval(this.telemetryFlushHandle);
+      this.telemetryFlushHandle = null;
+    }
+    if (this.activityTimerHandle) {
+      clearInterval(this.activityTimerHandle);
+      this.activityTimerHandle = null;
+    }
+    this.endRishiCodingSession('battle_station_closed');
   }
 
   private loadAvailableLanguages() {
@@ -374,6 +399,39 @@ public:
 
   onCodeChange(nextCode: string) {
     this.sourceCode.set(nextCode || '');
+    this.markRishiActivity();
+  }
+
+  onEditorInit(editor: any) {
+    this.editorChangeDisposable?.dispose();
+    this.editorChangeDisposable = editor?.onDidChangeModelContent?.((event: any) => {
+      if (!this.isUserEditorChangeEvent(event)) {
+        return;
+      }
+
+      this.hasUserStartedCoding = true;
+      const model = editor.getModel?.();
+      const resultingCodeLength = model?.getValueLength?.() ?? this.sourceCode().length;
+      const editorVersion = model?.getVersionId?.() ?? 0;
+      const nowIso = new Date().toISOString();
+
+      for (const change of event?.changes || []) {
+        this.telemetryBuffer.push({
+          timestamp: nowIso,
+          editorVersion,
+          rangeOffset: change?.rangeOffset ?? 0,
+          rangeLength: change?.rangeLength ?? 0,
+          insertedChars: (change?.text || '').length,
+          deletedChars: change?.rangeLength ?? 0,
+          resultingCodeLength
+        });
+      }
+
+      this.markRishiActivity();
+      if (this.telemetryBuffer.length >= 80) {
+        this.flushRishiCodeChanges();
+      }
+    });
   }
 
   onQuestionSearchChange(event: Event) {
@@ -510,6 +568,7 @@ public:
       return;
     }
 
+    this.markRishiActivity();
     this.isExecuting.set(true);
     this.result.set(null);
 
@@ -522,6 +581,7 @@ public:
     }).subscribe({
       next: (executionResult) => {
         this.result.set(executionResult);
+        this.recordRishiCompileAttempt(executionResult.success, this.parseExecutionTimeMs(executionResult.executionTime));
         this.isExecuting.set(false);
       },
       error: (err) => {
@@ -533,6 +593,7 @@ public:
           language: this.selectedLanguage(),
           timestamp: new Date().toISOString()
         });
+        this.recordRishiCompileAttempt(false, 0);
         this.isExecuting.set(false);
       }
     });
@@ -542,6 +603,7 @@ public:
     if (this.isSubmittingLeetCode()) {
       return;
     }
+    this.markRishiActivity();
 
     const question = this.selectedQuestion();
     if (!question?.slug) {
@@ -626,22 +688,154 @@ public:
   onInputChange(event: Event) {
     const target = event.target as HTMLTextAreaElement;
     this.stdinInput.set(target.value);
+    this.markRishiActivity();
+  }
+
+  formatRishiDuration(ms: number): string {
+    const safeMs = Math.max(0, Math.floor(ms));
+    const totalSeconds = Math.floor(safeMs / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  }
+
+  private startRishiCodingSession() {
+    this.hasUserStartedCoding = false;
+    this.compilerService.startRishiCodingSession({
+      language: this.selectedLanguage(),
+      problemSlug: this.selectedQuestion()?.slug
+    }).subscribe({
+      next: (response) => {
+        this.rishiCodingSessionId.set(response.sessionId);
+        this.telemetrySessionStartMs = Date.now();
+        this.lastActivityMs = Date.now();
+        this.sessionActiveDurationMs = 0;
+        this.rishiSessionElapsedMs.set(0);
+        this.rishiSessionActiveMs.set(0);
+        this.startRishiTelemetryFlush();
+      },
+      error: () => {
+        this.rishiCodingSessionId.set(null);
+      }
+    });
+  }
+
+  private startRishiTelemetryFlush() {
+    if (this.telemetryFlushHandle) {
+      clearInterval(this.telemetryFlushHandle);
+    }
+    this.telemetryFlushHandle = setInterval(() => {
+      this.flushRishiCodeChanges();
+    }, 10000);
+  }
+
+  private startRishiActivityTimer() {
+    if (this.activityTimerHandle) {
+      clearInterval(this.activityTimerHandle);
+    }
+    this.activityTimerHandle = setInterval(() => {
+      if (!this.telemetrySessionStartMs) {
+        return;
+      }
+      const now = Date.now();
+      this.rishiSessionElapsedMs.set(now - this.telemetrySessionStartMs);
+      if (this.hasUserStartedCoding && now - this.lastActivityMs <= this.telemetryIdleTimeoutMs) {
+        this.sessionActiveDurationMs += 1000;
+        this.rishiSessionActiveMs.set(this.sessionActiveDurationMs);
+      }
+    }, 1000);
+  }
+
+  private markRishiActivity() {
+    this.lastActivityMs = Date.now();
+  }
+
+  private isUserEditorChangeEvent(event: any): boolean {
+    if (!event || event.isFlush) {
+      return false;
+    }
+    const changes = Array.isArray(event.changes) ? event.changes : [];
+    return changes.some((change: any) => {
+      const insertedChars = (change?.text || '').length;
+      const deletedChars = change?.rangeLength ?? 0;
+      return insertedChars > 0 || deletedChars > 0;
+    });
+  }
+
+  private flushRishiCodeChanges() {
+    const sessionId = this.rishiCodingSessionId();
+    if (!sessionId || this.telemetryBuffer.length === 0) {
+      return;
+    }
+
+    const payload = this.telemetryBuffer.splice(0, this.telemetryBuffer.length);
+    this.compilerService.recordRishiCodeChanges(sessionId, { events: payload }).subscribe({
+      error: () => {
+        const merged = [...payload, ...this.telemetryBuffer];
+        this.telemetryBuffer = merged.slice(-400);
+      }
+    });
+  }
+
+  private recordRishiCompileAttempt(success: boolean, executionTimeMs: number) {
+    const sessionId = this.rishiCodingSessionId();
+    if (!sessionId) {
+      return;
+    }
+
+    this.compilerService.recordRishiCompileAttempt(sessionId, {
+      success,
+      executionTimeMs,
+      language: this.selectedLanguage(),
+      problemSlug: this.selectedQuestion()?.slug
+    }).subscribe({
+      error: () => {
+        // Non-blocking telemetry.
+      }
+    });
+  }
+
+  private parseExecutionTimeMs(value: string | null | undefined): number {
+    if (!value) {
+      return 0;
+    }
+    const match = value.match(/(\d+)/);
+    return match ? Number(match[1]) : 0;
+  }
+
+  private endRishiCodingSession(reason: string) {
+    const sessionId = this.rishiCodingSessionId();
+    if (!sessionId) {
+      return;
+    }
+    this.rishiCodingSessionId.set(null);
+
+    this.flushRishiCodeChanges();
+
+    this.compilerService.endRishiCodingSession(sessionId, {
+      reason,
+      activeDurationMs: Math.max(0, Math.round(this.sessionActiveDurationMs))
+    }).subscribe({
+      error: () => {
+        // Non-blocking telemetry.
+      }
+    });
   }
 
   getLanguageIcon(command: string): string {
     switch (command) {
       case 'java':
-        return '☕';
+        return 'Coffee';
       case 'python':
-        return '🐍';
+        return 'Code2';
       case 'cpp':
       case 'c++':
-        return '⚡';
+        return 'Zap';
       case 'javascript':
       case 'js':
-        return '📜';
+        return 'FileJson';
       default:
-        return '📝';
+        return 'FileCode';
     }
   }
 

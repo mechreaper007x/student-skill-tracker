@@ -33,7 +33,9 @@ public class GitHubService {
     @SuppressWarnings("unchecked")
     public List<Map<String, Object>> fetchRepos(String githubUsername, String token) {
         try {
-            String url = GITHUB_API_BASE + "/users/" + githubUsername + "/repos?sort=updated&per_page=20&type=owner";
+            String safeUsername = sanitizeForUrl(githubUsername);
+            if (safeUsername.isBlank()) return List.of();
+            String url = GITHUB_API_BASE + "/users/" + safeUsername + "/repos?sort=updated&per_page=20&type=owner";
 
             HttpHeaders headers = new HttpHeaders();
             headers.set("Accept", "application/vnd.github.v3+json");
@@ -71,7 +73,7 @@ public class GitHubService {
                 repos.add(repo);
             }
 
-            logger.info("Fetched {} repos for GitHub user: {}", repos.size(), githubUsername);
+            logger.info("Fetched {} repos for GitHub user: {}", repos.size(), safeUsername);
             return repos;
 
         } catch (Exception e) {
@@ -85,7 +87,10 @@ public class GitHubService {
      */
     public Map<String, Long> fetchRepoLanguages(String owner, String repo, String token) {
         try {
-            String url = GITHUB_API_BASE + "/repos/" + owner + "/" + repo + "/languages";
+            String safeOwner = sanitizeForUrl(owner);
+            String safeRepo = sanitizeForUrl(repo);
+            if (safeOwner.isBlank() || safeRepo.isBlank()) return Map.of();
+            String url = GITHUB_API_BASE + "/repos/" + safeOwner + "/" + safeRepo + "/languages";
             HttpHeaders headers = createHeaders(token);
             HttpEntity<Void> entity = new HttpEntity<>(headers);
 
@@ -101,8 +106,13 @@ public class GitHubService {
      * Fetch repository file tree (skeleton).
      * Uses the recursive tree API to get the structure.
      */
+    @SuppressWarnings("unchecked")
     public List<Map<String, Object>> fetchRepoSkeleton(String owner, String repo, String token) {
         try {
+            String safeOwner = sanitizeForUrl(owner);
+            String safeRepo = sanitizeForUrl(repo);
+            if (safeOwner.isBlank() || safeRepo.isBlank()) return List.of();
+
             // Get default branch SHA first (simplified: assuming 'main' or 'master', but
             // better to query repo info first)
             // For now, let's try to fetch the tree from the default branch using the
@@ -110,7 +120,7 @@ public class GitHubService {
             // A more robust way is getting /repos/{owner}/{repo} -> default_branch ->
             // /git/trees/{sha}?recursive=1
 
-            String repoInfoUrl = GITHUB_API_BASE + "/repos/" + owner + "/" + repo;
+            String repoInfoUrl = GITHUB_API_BASE + "/repos/" + safeOwner + "/" + safeRepo;
             HttpHeaders headers = createHeaders(token);
             HttpEntity<Void> entity = new HttpEntity<>(headers);
 
@@ -118,7 +128,10 @@ public class GitHubService {
                     Map.class);
             String defaultBranch = (String) repoInfoResponse.getBody().get("default_branch");
 
-            String treeUrl = GITHUB_API_BASE + "/repos/" + owner + "/" + repo + "/git/trees/" + defaultBranch
+            String safeBranch = sanitizeForUrl(defaultBranch);
+            if (safeBranch.isBlank()) return List.of();
+
+            String treeUrl = GITHUB_API_BASE + "/repos/" + safeOwner + "/" + safeRepo + "/git/trees/" + safeBranch
                     + "?recursive=1";
             ResponseEntity<Map> treeResponse = restTemplate.exchange(treeUrl, HttpMethod.GET, entity, Map.class);
 
@@ -154,5 +167,10 @@ public class GitHubService {
             headers.set("Authorization", "Bearer " + token);
         }
         return headers;
+    }
+    
+    private String sanitizeForUrl(String input) {
+        if (input == null) return "";
+        return input.replaceAll("[^a-zA-Z0-9\\-_\\.]", "");
     }
 }

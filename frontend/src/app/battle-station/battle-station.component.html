@@ -217,7 +217,7 @@
               ? 'bg-crimson-600 border-crimson-600 text-white'
               : 'border-noir-800 text-noir-400 hover:text-white hover:border-noir-600'"
           >
-            <span>{{ getLanguageIcon(lang.command) }}</span>
+            <lucide-icon [name]="getLanguageIcon(lang.command)" class="w-3.5 h-3.5"></lucide-icon>
             {{ lang.languageName }}
           </button>
         </div>
@@ -294,9 +294,17 @@
             SOURCE // {{ selectedLanguage() | uppercase }}
           </span>
         </div>
-        <span class="text-[8px] font-mono text-noir-600">
-          TIMEOUT: {{ timeoutSeconds() }}s
-        </span>
+        <div class="text-right leading-tight">
+          <span class="block text-[8px] font-mono text-noir-600">
+            TIMEOUT: {{ timeoutSeconds() }}s
+          </span>
+          <span class="block text-[8px] font-mono text-noir-500">
+            RISHI TIMER: {{ formatRishiDuration(rishiSessionElapsedMs()) }}
+          </span>
+          <span class="block text-[8px] font-mono text-noir-500">
+            ACTIVE: {{ formatRishiDuration(rishiSessionActiveMs()) }}
+          </span>
+        </div>
       </div>
 
       <ngx-monaco-editor
@@ -304,6 +312,7 @@
         [options]="editorOptions"
         [ngModel]="sourceCode()"
         (ngModelChange)="onCodeChange($event)"
+        (onInit)="onEditorInit($event)"
       ></ngx-monaco-editor>
 
       <div class="border-t border-noir-800">
