@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { inject, Injectable, PLATFORM_ID, signal } from '@angular/core';
 import { Client, IMessage, StompSubscription } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
+import { resolveBackendBaseUrl } from './config/backend-url';
 
 export interface DuelMessage {
   username?: string;
@@ -101,8 +102,11 @@ export class WebSocketService {
   constructor() {
     if (!isPlatformBrowser(this.platformId)) return;
 
+    const backendBaseUrl = resolveBackendBaseUrl();
+    const socketUrl = backendBaseUrl ? `${backendBaseUrl}/ws` : '/ws';
+
     this.client = new Client({
-      webSocketFactory: () => new SockJS('/ws'),
+      webSocketFactory: () => new SockJS(socketUrl),
       debug: (msg: string) => console.log('[STOMP]', msg),
       reconnectDelay: 5000,
       heartbeatIncoming: 4000,
