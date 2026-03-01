@@ -16,25 +16,25 @@ import org.springframework.stereotype.Component;
 @Component
 public class SkillCalculator {
 
-    @Value("${scoring.problem-solving.divisor}")
+    @Value("${scoring.problem-solving.divisor:500.0}")
     private double psDivisor;
 
-    @Value("${scoring.algorithms.medium-weight}")
+    @Value("${scoring.algorithms.medium-weight:0.6}")
     private double algoMediumWeight;
 
-    @Value("${scoring.algorithms.hard-weight}")
+    @Value("${scoring.algorithms.hard-weight:1.0}")
     private double algoHardWeight;
 
-    @Value("${scoring.algorithms.divisor}")
+    @Value("${scoring.algorithms.divisor:200.0}")
     private double algoDivisor;
 
-    @Value("${scoring.data-structures.easy-weight}")
+    @Value("${scoring.data-structures.easy-weight:0.4}")
     private double dsEasyWeight;
 
-    @Value("${scoring.data-structures.medium-weight}")
+    @Value("${scoring.data-structures.medium-weight:0.8}")
     private double dsMediumWeight;
 
-    @Value("${scoring.data-structures.divisor}")
+    @Value("${scoring.data-structures.divisor:250.0}")
     private double dsDivisor;
 
     public double calculateProblemSolvingScore(int totalSolved) {
