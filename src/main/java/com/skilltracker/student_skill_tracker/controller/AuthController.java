@@ -1,13 +1,11 @@
 package com.skilltracker.student_skill_tracker.controller;
 
 import java.util.Map;
+import java.util.LinkedHashMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -27,32 +25,26 @@ import com.skilltracker.student_skill_tracker.security.JwtUtils;
 import com.skilltracker.student_skill_tracker.service.LoginAttemptService;
 
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
 
         private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
-        private static final String SECURE_FGP_COOKIE_NAME = "__Secure-Fgp";
-        private static final String DEV_FGP_COOKIE_NAME = "Fgp";
 
         private final AuthenticationManager authenticationManager;
         private final JwtUtils jwtUtils;
         private final StudentRepository studentRepository;
         private final LoginAttemptService loginAttemptService;
-        private final boolean forceSecureFingerprintCookie;
 
         public AuthController(AuthenticationManager authenticationManager,
                         JwtUtils jwtUtils,
                         StudentRepository studentRepository,
-                        LoginAttemptService loginAttemptService,
-                        @Value("${app.security.cookie-secure:false}") boolean forceSecureFingerprintCookie) {
+                        LoginAttemptService loginAttemptService) {
                 this.authenticationManager = authenticationManager;
                 this.jwtUtils = jwtUtils;
                 this.studentRepository = studentRepository;
                 this.loginAttemptService = loginAttemptService;
-                this.forceSecureFingerprintCookie = forceSecureFingerprintCookie;
         }
 
         /**
@@ -69,23 +61,28 @@ public class AuthController {
 
                 String email = authentication.getName();
                 return studentRepository.findByEmail(email)
-                                .map(student -> ResponseEntity.ok(Map.of(
-                                                "authenticated", true,
-                                                "id", student.getId(),
-                                                "email", student.getEmail(),
-                                                "name", student.getName(),
-                                                "leetcodeUsername", student.getLeetcodeUsername(),
-                                                "leetcodeSubmitConnected", student.hasLeetCodeSubmitAuth(),
-                                                "level", student.getLevel() != null ? student.getLevel() : 1,
-                                                "xp", student.getXp() != null ? student.getXp() : 0,
-                                                "duelWins", student.getDuelWins() != null ? student.getDuelWins() : 0,
-                                                "highestBloomLevel", student.getHighestBloomLevel() != null ? student.getHighestBloomLevel() : 1)))
+                                .map(student -> {
+                                        Map<String, Object> body = new LinkedHashMap<>();
+                                        body.put("authenticated", true);
+                                        body.put("id", student.getId());
+                                        body.put("email", student.getEmail());
+                                        body.put("name", student.getName());
+                                        body.put("leetcodeUsername", student.getLeetcodeUsername());
+                                        body.put("codeforcesHandle", student.getCodeforcesHandle());
+                                        body.put("leetcodeSubmitConnected", student.hasLeetCodeSubmitAuth());
+                                        body.put("level", student.getLevel() != null ? student.getLevel() : 1);
+                                        body.put("xp", student.getXp() != null ? student.getXp() : 0);
+                                        body.put("duelWins", student.getDuelWins() != null ? student.getDuelWins() : 0);
+                                        body.put("highestBloomLevel",
+                                                        student.getHighestBloomLevel() != null ? student.getHighestBloomLevel() : 1);
+                                        return ResponseEntity.ok(body);
+                                })
                                 .orElse(ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED)
                                                 .body(Map.of("authenticated", false)));
         }
 
         @PostMapping("/login")
-        public ResponseEntity<?> login(@RequestBody Map<String, String> credentials, HttpServletRequest request, HttpServletResponse response) {
+        public ResponseEntity<?> login(@RequestBody Map<String, String> credentials, HttpServletRequest request) {
                 String email = credentials.getOrDefault("email", "").trim();
                 String password = credentials.get("password");
                 String ip = extractClientIp(request);
@@ -110,25 +107,7 @@ public class AuthController {
                         
                         // Brute-Force: Reset on success
                         loginAttemptService.loginSucceeded(ip);
-                        
-                        // Multi-Fingerprinting: Cookie + UserAgent
-                        String cookieFgp = jwtUtils.generateSecureFingerprint();
-                        String userAgent = request.getHeader("User-Agent");
-                        
-                        String token = jwtUtils.generateToken(userDetails, cookieFgp, userAgent);
-
-                        // Keep secure cookies in production; allow local HTTP dev environments.
-                        boolean useSecureCookie = forceSecureFingerprintCookie || request.isSecure();
-                        String cookieName = useSecureCookie ? SECURE_FGP_COOKIE_NAME : DEV_FGP_COOKIE_NAME;
-
-                        ResponseCookie springCookie = ResponseCookie.from(cookieName, cookieFgp)
-                            .httpOnly(true)
-                            .secure(useSecureCookie)
-                            .path("/")
-                            .sameSite("Strict")
-                            .maxAge(86400) // 24 hours
-                            .build();
-                        response.addHeader(HttpHeaders.SET_COOKIE, springCookie.toString());
+                        String token = jwtUtils.generateToken(userDetails);
 
                         // Fetch student to get additional info
                         Student student = studentRepository.findByEmail(email)
@@ -142,6 +121,7 @@ public class AuthController {
                                         .name(student.getName())
                                         .leetcodeUsername(student.getLeetcodeUsername())
                                         .githubUsername(student.getGithubUsername())
+                                        .codeforcesHandle(student.getCodeforcesHandle())
                                         .leetcodeSubmitConnected(student.hasLeetCodeSubmitAuth())
                                         .level(student.getLevel() != null ? student.getLevel() : 1)
                                         .xp(student.getXp() != null ? student.getXp() : 0)

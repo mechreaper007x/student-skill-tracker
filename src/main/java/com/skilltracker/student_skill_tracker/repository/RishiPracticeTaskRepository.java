@@ -1,5 +1,6 @@
 package com.skilltracker.student_skill_tracker.repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -20,5 +21,6 @@ public interface RishiPracticeTaskRepository extends JpaRepository<RishiPractice
 
     List<RishiPracticeTask> findByStudentAndStatusInOrderByPriorityDescUpdatedAtAsc(
             Student student, List<String> statuses, Pageable pageable);
-}
 
+    List<RishiPracticeTask> findByStudentAndPlannedStartAtBetween(Student student, LocalDateTime start, LocalDateTime end);
+}

@@ -13,5 +13,8 @@ public class RishiCodeChangeEventDto {
     private Integer insertedChars;
     private Integer deletedChars;
     private Integer resultingCodeLength;
+    private String activityState;
+    private Boolean editorFocused;
+    private Boolean windowFocused;
+    private Boolean documentVisible;
 }
-

@@ -1,22 +1,14 @@
 package com.skilltracker.student_skill_tracker.compiler;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.UUID;
+import java.nio.file.Path;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
-
-import com.skilltracker.student_skill_tracker.util.SecurityUtils;
 
 public class PythonCompiler implements ProgrammingLanguageCompiler {
 
     private static final String LANGUAGE_NAME = "Python";
-    private static final String TEMP_DIR = System.getProperty("java.io.tmpdir");
     private static final String PYTHON_CMD;
 
     static {
@@ -36,48 +28,28 @@ public class PythonCompiler implements ProgrammingLanguageCompiler {
     @Override
     public CompilationResult executeCode(String sourceCode, String input, int timeoutSeconds) {
         CompilationResult result = new CompilationResult();
-
-        // RCE Security Layer: Block malicious keywords
-        if (SecurityUtils.containsMaliciousKeywords(sourceCode)) {
-            result.setSuccess(false);
-            result.setError("Security Violation: Malicious keywords detected in code.");
-            return result;
-        }
-
-        String uniqueId = UUID.randomUUID().toString();
-        String fileName = "solution_" + uniqueId + ".py";
-        String filePath = TEMP_DIR + File.separator + fileName;
+        Path workspace = null;
 
         try {
-            // Write Python code
-            Files.write(Paths.get(filePath), sourceCode.getBytes());
+            ExecutionSandbox.validateSourceSize(sourceCode);
+            workspace = ExecutionSandbox.createWorkspace("python");
+            Path sourceFile = workspace.resolve("solution.py");
+            Files.writeString(sourceFile, sourceCode, StandardCharsets.UTF_8);
 
-            // Execute
-            ProcessBuilder runBuilder = new ProcessBuilder(PYTHON_CMD, filePath);
-            runBuilder.redirectErrorStream(true);
-            Process runProcess = runBuilder.start();
+            ExecutionSandbox.ProcessResult runResult = ExecutionSandbox.run(
+                    workspace,
+                    List.of(PYTHON_CMD, "-I", "-S", "-B", sourceFile.toString()),
+                    input,
+                    timeoutSeconds);
 
-            // Send input
-            if (input != null && !input.isEmpty()) {
-                try (OutputStream os = runProcess.getOutputStream()) {
-                    os.write(input.getBytes());
-                    os.flush();
-                }
-            }
-
-            // Wait for completion (DoS Defense)
-            boolean completed = runProcess.waitFor(timeoutSeconds, TimeUnit.SECONDS);
-
-            if (!completed) {
-                runProcess.destroyForcibly();
+            if (runResult.timedOut()) {
                 result.setSuccess(false);
-                result.setError("Execution timeout (" + timeoutSeconds + " seconds)");
+                result.setError(runResult.output());
                 return result;
             }
 
-            // Capture output
-            String output = readStream(runProcess.getInputStream());
-            int exitCode = runProcess.exitValue();
+            String output = runResult.output();
+            int exitCode = runResult.exitCode();
 
             result.setSuccess(exitCode == 0);
             result.setOutput(output);
@@ -95,15 +67,14 @@ public class PythonCompiler implements ProgrammingLanguageCompiler {
                 result.setError(runtimeDetails);
             }
 
-        } catch (IOException | InterruptedException e) {
+        } catch (IllegalArgumentException e) {
+            result.setSuccess(false);
+            result.setError(e.getMessage());
+        } catch (Exception e) {
             result.setSuccess(false);
             result.setError("Exception: " + e.getMessage());
         } finally {
-            try {
-                Files.deleteIfExists(Paths.get(filePath));
-            } catch (IOException e) {
-                // Ignore
-            }
+            ExecutionSandbox.deleteWorkspace(workspace);
         }
 
         return result;
@@ -116,35 +87,11 @@ public class PythonCompiler implements ProgrammingLanguageCompiler {
 
     @Override
     public boolean isLanguageAvailable() {
-        try {
-            ProcessBuilder pb = new ProcessBuilder(PYTHON_CMD, "--version");
-            pb.redirectErrorStream(true);
-            Process p = pb.start();
-            return p.waitFor(5, TimeUnit.SECONDS) && p.exitValue() == 0;
-        } catch (Exception e) {
-            return false;
-        }
+        return ExecutionSandbox.isCommandAvailable(List.of(PYTHON_CMD, "--version"), 5);
     }
 
     @Override
     public String getLanguageVersion() {
-        try {
-            ProcessBuilder pb = new ProcessBuilder(PYTHON_CMD, "--version");
-            pb.redirectErrorStream(true);
-            Process p = pb.start();
-            return readStream(p.getInputStream());
-        } catch (Exception e) {
-            return "Unknown";
-        }
-    }
-
-    private String readStream(InputStream is) throws IOException {
-        BufferedReader reader = new BufferedReader(new InputStreamReader(is));
-        StringBuilder output = new StringBuilder();
-        String line;
-        while ((line = reader.readLine()) != null) {
-            output.append(line).append("\n");
-        }
-        return output.toString().trim();
+        return ExecutionSandbox.readCommandOutput(List.of(PYTHON_CMD, "--version"), 5);
     }
 }

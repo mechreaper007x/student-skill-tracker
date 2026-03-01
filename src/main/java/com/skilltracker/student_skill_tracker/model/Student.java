@@ -56,6 +56,9 @@ public class Student {
     @Column(name = "github_access_token")
     private String githubAccessToken;
 
+    @Column(name = "codeforces_handle", length = 120)
+    private String codeforcesHandle;
+
     @Column(name = "leetcode_session_enc", length = 4096)
     @ToString.Exclude
     private String leetcodeSessionEncrypted;
@@ -117,6 +120,10 @@ public class Student {
 
     @Column(name = "rishi_google_calendar_id", length = 512)
     private String rishiGoogleCalendarId;
+
+    @Column(name = "rishi_toggl_api_token_enc", length = 8192)
+    @ToString.Exclude
+    private String rishiTogglApiTokenEncrypted;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

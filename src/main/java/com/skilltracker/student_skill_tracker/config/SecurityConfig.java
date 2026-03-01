@@ -67,6 +67,10 @@ public class SecurityConfig {
                                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                                 .csrf(csrf -> csrf.disable()) // Stateless JWT typically disables CSRF when the token is
                                                               // in headers
+                                .formLogin(form -> form.disable())
+                                .httpBasic(httpBasic -> httpBasic.disable())
+                                .logout(logout -> logout.disable())
+                                .requestCache(requestCache -> requestCache.disable())
                                 .headers(headers -> headers
                                                 .contentTypeOptions(withDefaults())
                                                 .frameOptions(frame -> frame.sameOrigin())
@@ -100,6 +104,11 @@ public class SecurityConfig {
                                                                 "/api/auth/**",
                                                                 "/forgot-password.html", "/reset-password.html",
                                                                 "/api/auth/forgot-password", "/api/auth/reset-password",
+                                                                "/register", "/forgot-password", "/reset-password",
+                                                                "/dashboard", "/skills", "/advisor", "/leaderboard",
+                                                                "/arsenal", "/proving-grounds", "/duel-arena",
+                                                                "/cognitive-sprint", "/compiler", "/settings",
+                                                                "/battle-station",
                                                                 "/error",
                                                                 "/actuator/health", "/actuator/health/**",
                                                                 "/css/**", "/js/**", "/images/**",
@@ -124,7 +133,7 @@ public class SecurityConfig {
                 configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
                 configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "Origin",
                                 "X-Requested-With", "Cache-Control", "Pragma"));
-                configuration.setAllowCredentials(true);
+                configuration.setAllowCredentials(false);
                 configuration.setMaxAge(3600L);
                 UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
                 source.registerCorsConfiguration("/**", configuration);

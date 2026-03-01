@@ -106,14 +106,18 @@ public class RishiAgentService {
 
         List<String> actions = new ArrayList<>();
         actions.add("Agent context merged: coding telemetry + practice tasks + calendar availability.");
+        var coachingSummary = rishiIntegrationService.getCoachingSummary(student, 7);
+        actions.add("Daily coaching summary generated: focus=" + coachingSummary.getRecommendedFocus()
+                + ", minutes=" + coachingSummary.getRecommendedMinutesToday());
 
         boolean autoSchedule = Boolean.TRUE.equals(request.getAutoSchedule());
         if (autoSchedule && rishiIntegrationService.isGoogleCalendarConnected(student)) {
             RishiScheduleRequest scheduleRequest = new RishiScheduleRequest();
             scheduleRequest.setCount(2);
             scheduleRequest.setBlockMinutes(50);
-            var scheduleResponse = rishiIntegrationService.scheduleNextBlocks(student, scheduleRequest);
-            actions.add("Auto-scheduled " + scheduleResponse.getScheduledCount() + " study blocks in Google Calendar.");
+            var scheduleResponse = rishiIntegrationService.autoRescheduleMissedBlocks(student, scheduleRequest);
+            actions.add("Auto-rescheduled/scheduled " + scheduleResponse.getScheduledCount()
+                    + " study block(s) in Google Calendar.");
         }
 
         String persistedThreadId = rishiMemoryService.appendExchange(
@@ -150,6 +154,32 @@ public class RishiAgentService {
 
         String integrationLine = "GoogleCalendarConnected=" + rishiIntegrationService.isGoogleCalendarConnected(student)
                 + ", PendingTasks=" + pendingTasks;
+        String githubLine = rishiIntegrationService.getLatestGithubAnalytics(student)
+                .map(analytics -> "GitHub(" + analytics.getWindowDays() + "d): commits=" + analytics.getCommitCount()
+                        + ", prs=" + analytics.getPullRequestCount()
+                        + ", reviews=" + analytics.getReviewCount()
+                        + ", activeRepos=" + analytics.getActiveRepoCount())
+                .orElse("GitHub analytics: not synced");
+        String leetCodeLine = rishiIntegrationService.getLatestLeetCodeAnalytics(student)
+                .map(analytics -> "LeetCode(" + analytics.getWindowDays() + "d): solved=" + analytics.getTotalSolved()
+                        + ", easy/med/hard=" + analytics.getEasySolved() + "/" + analytics.getMediumSolved() + "/"
+                        + analytics.getHardSolved()
+                        + ", trend7d=" + String.format("%.1f%%", analytics.getSolveTrendPct()))
+                .orElse("LeetCode analytics: not synced");
+        String codeforcesLine = rishiIntegrationService.getLatestCodeforcesAnalytics(student)
+                .map(analytics -> "Codeforces(" + analytics.getWindowDays() + "d): rating=" + analytics.getCurrentRating()
+                        + ", maxRating=" + analytics.getMaxRating()
+                        + ", solvedWindow=" + analytics.getSolvedCurrentWindow()
+                        + ", trend=" + String.format("%.1f%%", analytics.getSolveTrendPct()))
+                .orElse("Codeforces analytics: not synced");
+        var focusMetrics = rishiIntegrationService.getFocusMetrics(student, 7);
+        var coachingSummary = rishiIntegrationService.getCoachingSummary(student, 7);
+        String focusLine = "Focus(7d): plannedMinutes=" + focusMetrics.getPlannedMinutes()
+                + ", actualMinutes=" + focusMetrics.getActualMinutes()
+                + ", adherence=" + String.format("%.1f%%", focusMetrics.getAdherencePct());
+        String coachingLine = "Coaching: focus=" + coachingSummary.getRecommendedFocus()
+                + ", minutesToday=" + coachingSummary.getRecommendedMinutesToday()
+                + ", missedTasks=" + coachingSummary.getMissedTasks();
 
         String topTasks = tasks.stream()
                 .filter(task -> !"DONE".equalsIgnoreCase(task.getStatus()))
@@ -157,7 +187,8 @@ public class RishiAgentService {
                 .map(task -> "- " + task.getTitle() + " [" + task.getStatus() + "]")
                 .reduce("", (a, b) -> a + b + "\n");
 
-        return integrationLine + "\n" + growthLine + "\nTop tasks:\n" + topTasks;
+        return integrationLine + "\n" + growthLine + "\n" + githubLine + "\n" + leetCodeLine + "\n" + codeforcesLine + "\n"
+                + focusLine + "\n" + coachingLine + "\nTop tasks:\n" + topTasks;
     }
 
     private String buildSkillSnapshot(Student student) {

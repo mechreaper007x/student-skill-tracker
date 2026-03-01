@@ -1,65 +1,50 @@
 package com.skilltracker.student_skill_tracker.compiler;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.UUID;
-import java.util.concurrent.TimeUnit;
+import java.nio.file.Path;
+import java.util.List;
 import java.util.regex.Pattern;
-
-import com.skilltracker.student_skill_tracker.util.SecurityUtils;
 
 public class CppCompiler implements ProgrammingLanguageCompiler {
 
     private static final String LANGUAGE_NAME = "C++";
-    private static final String TEMP_DIR = System.getProperty("java.io.tmpdir");
     private static final boolean IS_WINDOWS = System.getProperty("os.name").toLowerCase().contains("win");
     private static final Pattern MAIN_FUNCTION_PATTERN = Pattern.compile("\\bmain\\s*\\(");
 
     @Override
     public CompilationResult executeCode(String sourceCode, String input, int timeoutSeconds) {
         CompilationResult result = new CompilationResult();
-        
-        // RCE Security Layer: Block malicious keywords
-        if (SecurityUtils.containsMaliciousKeywords(sourceCode)) {
-            result.setSuccess(false);
-            result.setError("Security Violation: Malicious keywords detected in code.");
-            return result;
-        }
-
-        String uniqueId = UUID.randomUUID().toString();
-        String sourceFile = "solution_" + uniqueId + ".cpp";
-        String exePath = TEMP_DIR + File.separator + "solution_" + uniqueId + (IS_WINDOWS ? ".exe" : "");
-        String sourceFilePath = TEMP_DIR + File.separator + sourceFile;
+        Path workspace = null;
         boolean hasMainFunction = MAIN_FUNCTION_PATTERN.matcher(sourceCode).find();
 
         try {
+            ExecutionSandbox.validateSourceSize(sourceCode);
+            workspace = ExecutionSandbox.createWorkspace("cpp");
+            Path sourceFilePath = workspace.resolve("solution.cpp");
+            Path exePath = workspace.resolve(IS_WINDOWS ? "solution.exe" : "solution");
+
             // Write C++ code
-            Files.write(Paths.get(sourceFilePath), sourceCode.getBytes());
+            Files.writeString(sourceFilePath, sourceCode, StandardCharsets.UTF_8);
 
             // LeetCode-style C++ solutions often do not define main().
             // For local run, syntax-check only and return guidance.
             if (!hasMainFunction) {
-                ProcessBuilder syntaxCheckBuilder = new ProcessBuilder(
-                        "g++", "-fsyntax-only", sourceFilePath, "-std=c++17");
-                syntaxCheckBuilder.redirectErrorStream(true);
-                Process syntaxCheckProcess = syntaxCheckBuilder.start();
+                ExecutionSandbox.ProcessResult syntaxResult = ExecutionSandbox.run(
+                        workspace,
+                        List.of("g++", "-fsyntax-only", sourceFilePath.toString(), "-std=c++17"),
+                        "",
+                        15);
 
-                if (!syntaxCheckProcess.waitFor(15, TimeUnit.SECONDS)) {
-                    syntaxCheckProcess.destroyForcibly();
+                if (syntaxResult.timedOut()) {
                     result.setSuccess(false);
                     result.setError("Compilation timeout");
                     return result;
                 }
 
-                int syntaxExitCode = syntaxCheckProcess.exitValue();
+                int syntaxExitCode = syntaxResult.exitCode();
                 if (syntaxExitCode != 0) {
-                    String compileError = readStream(syntaxCheckProcess.getInputStream());
+                    String compileError = syntaxResult.output();
                     result.setSuccess(false);
                     result.setError("Compilation error:\n" + compileError);
                     return result;
@@ -74,52 +59,42 @@ public class CppCompiler implements ProgrammingLanguageCompiler {
             }
 
             // Compile and link executable when main() exists.
-            ProcessBuilder compileBuilder = new ProcessBuilder(
-                    "g++", "-o", exePath, sourceFilePath, "-std=c++17");
-            compileBuilder.redirectErrorStream(true);
-            Process compileProcess = compileBuilder.start();
+            ExecutionSandbox.ProcessResult compileResult = ExecutionSandbox.run(
+                    workspace,
+                    List.of("g++", "-o", exePath.toString(), sourceFilePath.toString(), "-std=c++17"),
+                    "",
+                    15);
 
-            if (!compileProcess.waitFor(15, TimeUnit.SECONDS)) {
-                compileProcess.destroyForcibly();
+            if (compileResult.timedOut()) {
                 result.setSuccess(false);
                 result.setError("Compilation timeout");
                 return result;
             }
 
-            int compileExitCode = compileProcess.exitValue();
+            int compileExitCode = compileResult.exitCode();
             if (compileExitCode != 0) {
-                String compileError = readStream(compileProcess.getInputStream());
+                String compileError = compileResult.output();
                 result.setSuccess(false);
                 result.setError("Compilation error:\n" + compileError);
                 return result;
             }
 
             // Execute (DoS Layer: Resource limits can be added here if OS supports)
-            ProcessBuilder runBuilder = new ProcessBuilder(exePath);
-            runBuilder.redirectErrorStream(true);
-            Process runProcess = runBuilder.start();
+            ExecutionSandbox.ProcessResult runResult = ExecutionSandbox.run(
+                    workspace,
+                    List.of(exePath.toString()),
+                    input,
+                    timeoutSeconds);
 
-            // Send input
-            if (input != null && !input.isEmpty()) {
-                try (OutputStream os = runProcess.getOutputStream()) {
-                    os.write(input.getBytes());
-                    os.flush();
-                }
-            }
-
-            // Wait for completion (DoS Defense)
-            boolean completed = runProcess.waitFor(timeoutSeconds, TimeUnit.SECONDS);
-
-            if (!completed) {
-                runProcess.destroyForcibly();
+            if (runResult.timedOut()) {
                 result.setSuccess(false);
                 result.setError("Execution timeout (" + timeoutSeconds + " seconds)");
                 return result;
             }
 
             // Capture output
-            String output = readStream(runProcess.getInputStream());
-            int exitCode = runProcess.exitValue();
+            String output = runResult.output();
+            int exitCode = runResult.exitCode();
 
             result.setSuccess(exitCode == 0);
             result.setOutput(output);
@@ -130,16 +105,14 @@ public class CppCompiler implements ProgrammingLanguageCompiler {
                 result.setError(runtimeDetails);
             }
 
-        } catch (IOException | InterruptedException e) {
+        } catch (IllegalArgumentException e) {
+            result.setSuccess(false);
+            result.setError(e.getMessage());
+        } catch (Exception e) {
             result.setSuccess(false);
             result.setError("Exception: " + e.getMessage());
         } finally {
-            try {
-                Files.deleteIfExists(Paths.get(sourceFilePath));
-                Files.deleteIfExists(Paths.get(exePath));
-            } catch (IOException e) {
-                // Ignore
-            }
+            ExecutionSandbox.deleteWorkspace(workspace);
         }
 
         return result;
@@ -152,35 +125,16 @@ public class CppCompiler implements ProgrammingLanguageCompiler {
 
     @Override
     public boolean isLanguageAvailable() {
-        try {
-            ProcessBuilder pb = new ProcessBuilder("g++", "--version");
-            pb.redirectErrorStream(true);
-            Process p = pb.start();
-            return p.waitFor(5, TimeUnit.SECONDS) && p.exitValue() == 0;
-        } catch (Exception e) {
-            return false;
-        }
+        return ExecutionSandbox.isCommandAvailable(List.of("g++", "--version"), 5);
     }
 
     @Override
     public String getLanguageVersion() {
-        try {
-            ProcessBuilder pb = new ProcessBuilder("g++", "--version");
-            pb.redirectErrorStream(true);
-            Process p = pb.start();
-            return readStream(p.getInputStream()).split("\n")[0];
-        } catch (Exception e) {
+        String output = ExecutionSandbox.readCommandOutput(List.of("g++", "--version"), 5);
+        if (output == null || output.isBlank()) {
             return "Unknown";
         }
-    }
-
-    private String readStream(InputStream is) throws IOException {
-        BufferedReader reader = new BufferedReader(new InputStreamReader(is));
-        StringBuilder output = new StringBuilder();
-        String line;
-        while ((line = reader.readLine()) != null) {
-            output.append(line).append("\n");
-        }
-        return output.toString().trim();
+        String[] lines = output.split("\n");
+        return lines.length == 0 ? "Unknown" : lines[0];
     }
 }

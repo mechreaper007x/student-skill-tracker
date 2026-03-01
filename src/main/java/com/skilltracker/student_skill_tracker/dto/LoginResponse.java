@@ -15,6 +15,7 @@ public class LoginResponse {
     private String name;
     private String leetcodeUsername;
     private String githubUsername;
+    private String codeforcesHandle;
     private boolean leetcodeSubmitConnected;
     private Integer level;
     private Integer xp;

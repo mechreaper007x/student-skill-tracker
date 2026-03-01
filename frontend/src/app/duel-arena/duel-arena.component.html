@@ -291,6 +291,16 @@
               <div *ngIf="isExecuting()" class="text-amber-400 animate-pulse">▶ EXECUTING...</div>
               <pre *ngIf="myResult()?.success" class="text-emerald-300 whitespace-pre-wrap break-words">{{ myResult()?.output }}</pre>
               <pre *ngIf="myResult() && !myResult()?.success" class="text-crimson-400 whitespace-pre-wrap break-words">{{ myResult()?.error }}</pre>
+              <div *ngIf="rishiRunInsight() as insight" class="mt-3 border border-amber-500/30 bg-amber-950/20 p-2 space-y-1">
+                <p class="text-[8px] font-mono text-amber-300 uppercase tracking-widest">
+                  RISHI ANALYSIS // {{ insight.mistakeCategory }} // {{ insight.failureBucket }} // {{ insight.accuracyPct | number:'1.0-1' }}%
+                </p>
+                <p class="text-[10px] text-noir-200">{{ insight.summary }}</p>
+                <p class="text-[10px] text-amber-200" *ngIf="insight.nextSteps.length">Fix now: {{ insight.nextSteps[0] }}</p>
+                <ul class="list-disc pl-4 text-[10px] text-amber-100 space-y-0.5">
+                  <li *ngFor="let step of insight.nextSteps">{{ step }}</li>
+                </ul>
+              </div>
             </div>
           </div>
         </div>

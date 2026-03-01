@@ -100,6 +100,10 @@ export interface RishiCodeChangeEvent {
   insertedChars: number;
   deletedChars: number;
   resultingCodeLength: number;
+  activityState?: string;
+  editorFocused?: boolean;
+  windowFocused?: boolean;
+  documentVisible?: boolean;
 }
 
 export interface RishiCodeChangeBatchRequest {
@@ -111,11 +115,38 @@ export interface RishiCompileAttemptRequest {
   executionTimeMs?: number;
   language?: string;
   problemSlug?: string;
+  source?: string;
+  errorMessage?: string;
+  outputPreview?: string;
+  submissionStatus?: string;
+  judgeMessage?: string;
+  testsPassed?: number;
+  testsTotal?: number;
+  failedTestInput?: string;
+  expectedOutput?: string;
+  actualOutput?: string;
+  stackTraceSnippet?: string;
+}
+
+export interface RishiCompileAttemptAnalysisResponse {
+  status: string;
+  success: boolean;
+  source: string;
+  failureBucket: string;
+  mistakeCategory: string;
+  accuracyPct: number;
+  summary: string;
+  nextSteps: string[];
+  recordedAt: string;
 }
 
 export interface RishiSessionEndRequest {
   reason?: string;
   activeDurationMs?: number;
+  typingDurationMs?: number;
+  cursorIdleDurationMs?: number;
+  editorUnfocusedDurationMs?: number;
+  tabHiddenDurationMs?: number;
 }
 
 export interface RishiGrowthMetrics {
@@ -208,8 +239,8 @@ export class CompilerService {
     return this.http.post<{ acceptedEvents: number }>(`${this.rishiCodingApiUrl}/sessions/${sessionId}/events`, request);
   }
 
-  recordRishiCompileAttempt(sessionId: number, request: RishiCompileAttemptRequest): Observable<{ status: string }> {
-    return this.http.post<{ status: string }>(`${this.rishiCodingApiUrl}/sessions/${sessionId}/compile`, request);
+  recordRishiCompileAttempt(sessionId: number, request: RishiCompileAttemptRequest): Observable<RishiCompileAttemptAnalysisResponse> {
+    return this.http.post<RishiCompileAttemptAnalysisResponse>(`${this.rishiCodingApiUrl}/sessions/${sessionId}/compile`, request);
   }
 
   endRishiCodingSession(sessionId: number, request: RishiSessionEndRequest): Observable<{ status: string }> {

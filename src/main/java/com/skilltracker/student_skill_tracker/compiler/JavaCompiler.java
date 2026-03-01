@@ -1,24 +1,15 @@
 package com.skilltracker.student_skill_tracker.compiler;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.UUID;
-import java.util.concurrent.TimeUnit;
+import java.nio.file.Path;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import com.skilltracker.student_skill_tracker.util.SecurityUtils;
 
 public class JavaCompiler implements ProgrammingLanguageCompiler {
 
     private static final String LANGUAGE_NAME = "Java";
-    private static final String TEMP_DIR = System.getProperty("java.io.tmpdir");
     private static final Pattern PUBLIC_CLASS_PATTERN = Pattern
             .compile("\\bpublic\\s+class\\s+([A-Za-z_$][A-Za-z\\d_$]*)");
     private static final Pattern CLASS_PATTERN = Pattern
@@ -29,20 +20,15 @@ public class JavaCompiler implements ProgrammingLanguageCompiler {
     @Override
     public CompilationResult executeCode(String sourceCode, String input, int timeoutSeconds) {
         CompilationResult result = new CompilationResult();
-        
-        // RCE Security Layer: Block malicious keywords
-        if (SecurityUtils.containsMaliciousKeywords(sourceCode)) {
-            result.setSuccess(false);
-            result.setError("Security Violation: Malicious keywords detected in code.");
-            return result;
-        }
-
-        String uniqueId = UUID.randomUUID().toString();
-        String generatedClassName = "Solution_" + uniqueId.replace("-", "");
-        String filePath = TEMP_DIR + File.separator + generatedClassName + ".java";
+        Path workspace = null;
+        String generatedClassName = "Solution_" + java.util.UUID.randomUUID().toString().replace("-", "");
         String runClassName = generatedClassName;
 
         try {
+            ExecutionSandbox.validateSourceSize(sourceCode);
+            workspace = ExecutionSandbox.createWorkspace("java");
+            Path sourceFile = workspace.resolve(generatedClassName + ".java");
+
             // Step 1: Normalize class name so launch target matches compiled class.
             String modifiedSource = sourceCode;
             Matcher publicClassMatcher = PUBLIC_CLASS_PATTERN.matcher(sourceCode);
@@ -57,23 +43,24 @@ public class JavaCompiler implements ProgrammingLanguageCompiler {
             }
 
             // Step 2: Write source code to file
-            Files.write(Paths.get(filePath), modifiedSource.getBytes());
+            Files.writeString(sourceFile, modifiedSource, StandardCharsets.UTF_8);
 
             // Step 3: Compile
-            ProcessBuilder compileBuilder = new ProcessBuilder("javac", filePath);
-            compileBuilder.redirectErrorStream(true);
-            Process compileProcess = compileBuilder.start();
+            ExecutionSandbox.ProcessResult compileResult = ExecutionSandbox.run(
+                    workspace,
+                    List.of("javac", sourceFile.toString()),
+                    "",
+                    10);
 
-            if (!compileProcess.waitFor(10, TimeUnit.SECONDS)) {
-                compileProcess.destroyForcibly();
+            if (compileResult.timedOut()) {
                 result.setSuccess(false);
                 result.setError("Compilation timeout");
                 return result;
             }
 
-            int compileExitCode = compileProcess.exitValue();
+            int compileExitCode = compileResult.exitCode();
             if (compileExitCode != 0) {
-                String compileError = readStream(compileProcess.getInputStream());
+                String compileError = compileResult.output();
                 result.setSuccess(false);
                 result.setError("Compilation error: " + compileError);
                 return result;
@@ -90,35 +77,24 @@ public class JavaCompiler implements ProgrammingLanguageCompiler {
             }
 
             // Step 4: Execute
-            File tempFile = new File(filePath);
-            String classPath = tempFile.getParent();
+            String classPath = workspace.toString();
 
             // DoS Security Layer: Add Xshare:off and limit execution resources
-            ProcessBuilder runBuilder = new ProcessBuilder("java", "-Xshare:off", "-Xmx128m", "-cp", classPath, runClassName);
-            runBuilder.redirectErrorStream(true);
-            Process runProcess = runBuilder.start();
+            ExecutionSandbox.ProcessResult runResult = ExecutionSandbox.run(
+                    workspace,
+                    List.of("java", "-Xshare:off", "-Xmx128m", "-cp", classPath, runClassName),
+                    input,
+                    timeoutSeconds);
 
-            // Step 5: Send input
-            if (input != null && !input.isEmpty()) {
-                try (OutputStream os = runProcess.getOutputStream()) {
-                    os.write(input.getBytes());
-                    os.flush();
-                }
-            }
-
-            // Step 6: Wait with timeout (DoS Defense)
-            boolean completed = runProcess.waitFor(timeoutSeconds, TimeUnit.SECONDS);
-
-            if (!completed) {
-                runProcess.destroyForcibly();
+            if (runResult.timedOut()) {
                 result.setSuccess(false);
                 result.setError("Execution timeout (" + timeoutSeconds + " seconds)");
                 return result;
             }
 
             // Step 7: Capture output
-            String output = readStream(runProcess.getInputStream());
-            int exitCode = runProcess.exitValue();
+            String output = runResult.output();
+            int exitCode = runResult.exitCode();
 
             result.setSuccess(exitCode == 0);
             if (exitCode == 0) {
@@ -139,19 +115,14 @@ public class JavaCompiler implements ProgrammingLanguageCompiler {
                 result.setError(runtimeDetails);
             }
 
-        } catch (IOException | InterruptedException e) {
+        } catch (IllegalArgumentException e) {
+            result.setSuccess(false);
+            result.setError(e.getMessage());
+        } catch (Exception e) {
             result.setSuccess(false);
             result.setError("Exception: " + e.getMessage());
         } finally {
-            try {
-                Files.deleteIfExists(Paths.get(filePath));
-                Files.deleteIfExists(Paths.get(TEMP_DIR + File.separator + generatedClassName + ".class"));
-                if (!generatedClassName.equals(runClassName)) {
-                    Files.deleteIfExists(Paths.get(TEMP_DIR + File.separator + runClassName + ".class"));
-                }
-            } catch (IOException e) {
-                // Ignore
-            }
+            ExecutionSandbox.deleteWorkspace(workspace);
         }
 
         return result;
@@ -164,36 +135,16 @@ public class JavaCompiler implements ProgrammingLanguageCompiler {
 
     @Override
     public boolean isLanguageAvailable() {
-        try {
-            ProcessBuilder pb = new ProcessBuilder("java", "-Xshare:off", "-version");
-            pb.redirectErrorStream(true);
-            Process p = pb.start();
-            return p.waitFor(5, TimeUnit.SECONDS) && p.exitValue() == 0;
-        } catch (Exception e) {
-            return false;
-        }
+        return ExecutionSandbox.isCommandAvailable(List.of("java", "-Xshare:off", "-version"), 5);
     }
 
     @Override
     public String getLanguageVersion() {
-        try {
-            ProcessBuilder pb = new ProcessBuilder("java", "-Xshare:off", "-version");
-            pb.redirectErrorStream(true);
-            Process p = pb.start();
-            String output = readStream(p.getInputStream());
-            return output.split("\n")[0];
-        } catch (Exception e) {
+        String output = ExecutionSandbox.readCommandOutput(List.of("java", "-Xshare:off", "-version"), 5);
+        if (output == null || output.isBlank()) {
             return "Unknown";
         }
-    }
-
-    private String readStream(InputStream is) throws IOException {
-        BufferedReader reader = new BufferedReader(new InputStreamReader(is));
-        StringBuilder output = new StringBuilder();
-        String line;
-        while ((line = reader.readLine()) != null) {
-            output.append(line).append("\n");
-        }
-        return output.toString().trim();
+        String[] lines = output.split("\n");
+        return lines.length == 0 ? "Unknown" : lines[0];
     }
 }

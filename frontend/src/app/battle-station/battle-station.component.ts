@@ -11,12 +11,15 @@ import {
   CompilerInfo,
   CompilerService,
   LeetCodeSubmissionResponse,
-  RishiCodeChangeEvent
+  RishiCodeChangeEvent,
+  RishiCompileAttemptAnalysisResponse,
+  RishiCompileAttemptRequest
 } from '../core/compiler.service';
 import { LeetCodeQuestion, QuestionBankService } from '../core/question-bank.service';
 
 export type StressMode = 'NORMAL' | 'ONE_SHOT' | 'BLITZ' | 'BLINDFOLD' | 'IRON_MAN';
 export type CognitiveTrack = 'HEURISTIC_FLOW' | 'SYSTEM2_OVERRIDE' | 'FAULT_TOLERANCE' | 'AFFECTIVE_REGULATION';
+type RishiSessionState = 'WAITING' | 'TYPING' | 'CURSOR_IDLE' | 'EDITOR_UNFOCUSED' | 'TAB_HIDDEN';
 
 @Component({
   selector: 'app-battle-station',
@@ -35,14 +38,43 @@ export class BattleStationComponent implements OnInit, OnDestroy {
   private routeSubscription: Subscription | null = null;
   private questionDetailRequestToken = 0;
   private editorChangeDisposable: { dispose: () => void } | null = null;
+  private editorFocusDisposable: { dispose: () => void } | null = null;
+  private editorBlurDisposable: { dispose: () => void } | null = null;
+  private editorCursorDisposable: { dispose: () => void } | null = null;
   private telemetryFlushHandle: ReturnType<typeof setInterval> | null = null;
   private activityTimerHandle: ReturnType<typeof setInterval> | null = null;
   private telemetryBuffer: RishiCodeChangeEvent[] = [];
   private telemetrySessionStartMs = 0;
   private sessionActiveDurationMs = 0;
-  private lastActivityMs = 0;
+  private sessionTypingDurationMs = 0;
+  private sessionCursorIdleDurationMs = 0;
+  private sessionEditorUnfocusedDurationMs = 0;
+  private sessionTabHiddenDurationMs = 0;
+  private lastEditorInteractionMs = 0;
+  private lastTypingMs = 0;
   private hasUserStartedCoding = false;
-  private readonly telemetryIdleTimeoutMs = 120000;
+  private isEditorTextFocused = false;
+  private isWindowFocused = true;
+  private isDocumentVisible = true;
+  private readonly typingRecencyWindowMs = 4000;
+  private readonly handleVisibilityChange = () => {
+    this.isDocumentVisible = typeof document === 'undefined' ? true : !document.hidden;
+    if (!this.isDocumentVisible) {
+      this.rishiSessionState.set('TAB_HIDDEN');
+      this.rishiSessionIdle.set(true);
+      return;
+    }
+    this.updateRishiSessionState(Date.now());
+  };
+  private readonly handleWindowBlur = () => {
+    this.isWindowFocused = false;
+    this.rishiSessionState.set('TAB_HIDDEN');
+    this.rishiSessionIdle.set(true);
+  };
+  private readonly handleWindowFocus = () => {
+    this.isWindowFocused = true;
+    this.updateRishiSessionState(Date.now());
+  };
 
   // Compiler state
   availableLanguages = signal<CompilerInfo[]>([]);
@@ -63,6 +95,8 @@ export class BattleStationComponent implements OnInit, OnDestroy {
   rishiCodingSessionId = signal<number | null>(null);
   rishiSessionElapsedMs = signal(0);
   rishiSessionActiveMs = signal(0);
+  rishiSessionState = signal<RishiSessionState>('WAITING');
+  rishiSessionIdle = signal(true);
 
 
 
@@ -120,6 +154,8 @@ export class BattleStationComponent implements OnInit, OnDestroy {
   isSubmittingLeetCode = signal(false);
   submissionResponse = signal<LeetCodeSubmissionResponse | null>(null);
   submissionError = signal<string | null>(null);
+  rishiRunInsight = signal<RishiCompileAttemptAnalysisResponse | null>(null);
+  rishiSubmissionInsight = signal<RishiCompileAttemptAnalysisResponse | null>(null);
   showEmotionModal = signal(false);
   isSavingEmotion = signal(false);
   canSubmitToLeetCode = computed(() => {
@@ -215,6 +251,7 @@ public:
   };
 
   ngOnInit() {
+    this.registerRishiPresenceTracking();
     this.registerRouteQuestionSync();
     this.loadAvailableLanguages();
     this.loadQuestions('all');
@@ -231,6 +268,9 @@ public:
   ngOnDestroy() {
     this.routeSubscription?.unsubscribe();
     this.editorChangeDisposable?.dispose();
+    this.editorFocusDisposable?.dispose();
+    this.editorBlurDisposable?.dispose();
+    this.editorCursorDisposable?.dispose();
     if (this.telemetryFlushHandle) {
       clearInterval(this.telemetryFlushHandle);
       this.telemetryFlushHandle = null;
@@ -239,6 +279,7 @@ public:
       clearInterval(this.activityTimerHandle);
       this.activityTimerHandle = null;
     }
+    this.unregisterRishiPresenceTracking();
     this.endRishiCodingSession('battle_station_closed');
   }
 
@@ -399,17 +440,41 @@ public:
 
   onCodeChange(nextCode: string) {
     this.sourceCode.set(nextCode || '');
-    this.markRishiActivity();
   }
 
   onEditorInit(editor: any) {
     this.editorChangeDisposable?.dispose();
+    this.editorFocusDisposable?.dispose();
+    this.editorBlurDisposable?.dispose();
+    this.editorCursorDisposable?.dispose();
+
+    this.editorFocusDisposable = editor?.onDidFocusEditorText?.(() => {
+      this.isEditorTextFocused = true;
+      this.markEditorInteraction(false);
+    });
+
+    this.editorBlurDisposable = editor?.onDidBlurEditorText?.(() => {
+      this.isEditorTextFocused = false;
+      this.updateRishiSessionState(Date.now());
+    });
+
+    this.editorCursorDisposable = editor?.onDidChangeCursorPosition?.((event: any) => {
+      if (!this.isEditorTextFocused) {
+        return;
+      }
+      const source = typeof event?.source === 'string' ? event.source.toLowerCase() : '';
+      if (source === 'api') {
+        return;
+      }
+      this.markEditorInteraction(false);
+    });
+
     this.editorChangeDisposable = editor?.onDidChangeModelContent?.((event: any) => {
       if (!this.isUserEditorChangeEvent(event)) {
         return;
       }
 
-      this.hasUserStartedCoding = true;
+      this.markEditorInteraction(true);
       const model = editor.getModel?.();
       const resultingCodeLength = model?.getValueLength?.() ?? this.sourceCode().length;
       const editorVersion = model?.getVersionId?.() ?? 0;
@@ -423,11 +488,14 @@ public:
           rangeLength: change?.rangeLength ?? 0,
           insertedChars: (change?.text || '').length,
           deletedChars: change?.rangeLength ?? 0,
-          resultingCodeLength
+          resultingCodeLength,
+          activityState: this.rishiSessionState(),
+          editorFocused: this.isEditorTextFocused,
+          windowFocused: this.isWindowFocused,
+          documentVisible: this.isDocumentVisible
         });
       }
 
-      this.markRishiActivity();
       if (this.telemetryBuffer.length >= 80) {
         this.flushRishiCodeChanges();
       }
@@ -571,6 +639,7 @@ public:
     this.markRishiActivity();
     this.isExecuting.set(true);
     this.result.set(null);
+    this.rishiRunInsight.set(null);
 
     this.compilerService.executeCode({
       sourceCode: this.sourceCode(),
@@ -581,19 +650,32 @@ public:
     }).subscribe({
       next: (executionResult) => {
         this.result.set(executionResult);
-        this.recordRishiCompileAttempt(executionResult.success, this.parseExecutionTimeMs(executionResult.executionTime));
+        this.recordRishiCompileAttempt({
+          source: 'battle_run_local',
+          success: executionResult.success,
+          executionTimeMs: this.parseExecutionTimeMs(executionResult.executionTime),
+          errorMessage: executionResult.error || '',
+          outputPreview: executionResult.output || ''
+        }, (insight) => this.rishiRunInsight.set(insight));
         this.isExecuting.set(false);
       },
       error: (err) => {
-        this.result.set({
+        const failedResult: CompilationResult = {
           success: false,
           output: '',
           error: err?.error?.error || 'Execution failed. Compiler service unavailable.',
           executionTime: '0ms',
           language: this.selectedLanguage(),
           timestamp: new Date().toISOString()
-        });
-        this.recordRishiCompileAttempt(false, 0);
+        };
+        this.result.set(failedResult);
+        this.recordRishiCompileAttempt({
+          source: 'battle_run_local',
+          success: false,
+          executionTimeMs: 0,
+          errorMessage: failedResult.error,
+          outputPreview: failedResult.output
+        }, (insight) => this.rishiRunInsight.set(insight));
         this.isExecuting.set(false);
       }
     });
@@ -624,6 +706,7 @@ public:
     this.isSubmittingLeetCode.set(true);
     this.submissionError.set(null);
     this.submissionResponse.set(null);
+    this.rishiSubmissionInsight.set(null);
 
     this.compilerService.submitToLeetCode({
       sourceCode: this.sourceCode(),
@@ -634,12 +717,43 @@ public:
       next: (response) => {
         this.submissionResponse.set(response);
         const accepted = this.isAcceptedStatus(response?.status);
+        const judge = response?.judgeResult as Record<string, unknown> | undefined;
+        const statusMsg = typeof judge?.['status_msg'] === 'string' ? judge['status_msg'] : '';
+        const compileError = typeof judge?.['compile_error'] === 'string' ? judge['compile_error'] : '';
+        const runtimeError = typeof judge?.['runtime_error'] === 'string' ? judge['runtime_error'] : '';
+        const testsTotal = this.extractJudgeCount(judge, ['total_testcases', 'totalTestcases', 'total_tests']);
+        const testsPassed = this.extractJudgeCount(judge, ['total_correct', 'passed_testcases', 'tests_passed']);
+        const failedTestInput = this.extractJudgeText(judge, ['last_testcase', 'failed_test_input', 'input']);
+        const expectedOutput = this.extractJudgeText(judge, ['expected_output', 'expectedOutput']);
+        const actualOutput = this.extractJudgeText(judge, ['code_output', 'actual_output', 'actualOutput', 'stdout']);
+        this.recordRishiCompileAttempt({
+          source: 'leetcode_submit',
+          success: accepted,
+          executionTimeMs: 0,
+          submissionStatus: response?.status || '',
+          judgeMessage: statusMsg,
+          errorMessage: compileError || runtimeError || (!accepted ? statusMsg : ''),
+          outputPreview: '',
+          testsTotal: testsTotal > 0 ? testsTotal : undefined,
+          testsPassed: testsPassed >= 0 ? testsPassed : undefined,
+          failedTestInput: failedTestInput || undefined,
+          expectedOutput: expectedOutput || undefined,
+          actualOutput: actualOutput || undefined,
+          stackTraceSnippet: runtimeError || undefined
+        }, (insight) => this.rishiSubmissionInsight.set(insight));
         this.showEmotionModal.set(!accepted);
         this.isSubmittingLeetCode.set(false);
       },
       error: (err) => {
         const errorMessage = err?.error?.error || err?.error?.details || 'LeetCode submission failed.';
         this.submissionError.set(errorMessage);
+        this.recordRishiCompileAttempt({
+          source: 'leetcode_submit',
+          success: false,
+          executionTimeMs: 0,
+          submissionStatus: 'SubmissionFailed',
+          errorMessage
+        }, (insight) => this.rishiSubmissionInsight.set(insight));
         this.isSubmittingLeetCode.set(false);
       }
     });
@@ -647,19 +761,23 @@ public:
 
   clearOutput() {
     this.result.set(null);
+    this.rishiRunInsight.set(null);
   }
 
   clearSubmissionState() {
     this.submissionResponse.set(null);
     this.submissionError.set(null);
+    this.rishiSubmissionInsight.set(null);
     this.showEmotionModal.set(false);
   }
 
   resetCode() {
     this.sourceCode.set(this.boilerplates[this.selectedLanguage()] || this.boilerplates['java']);
     this.result.set(null);
+    this.rishiRunInsight.set(null);
     this.submissionResponse.set(null);
     this.submissionError.set(null);
+    this.rishiSubmissionInsight.set(null);
     this.showEmotionModal.set(false);
     this.stdinInput.set('');
   }
@@ -699,8 +817,25 @@ public:
     return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
   }
 
+  formatRishiSessionState(state: RishiSessionState): string {
+    switch (state) {
+      case 'TYPING':
+        return 'TYPING';
+      case 'CURSOR_IDLE':
+        return 'CURSOR IDLE';
+      case 'EDITOR_UNFOCUSED':
+        return 'EDITOR UNFOCUSED';
+      case 'TAB_HIDDEN':
+        return 'TAB/WINDOW NOT VISIBLE';
+      case 'WAITING':
+      default:
+        return 'WAITING FOR CODE INPUT';
+    }
+  }
+
   private startRishiCodingSession() {
     this.hasUserStartedCoding = false;
+    this.isEditorTextFocused = false;
     this.compilerService.startRishiCodingSession({
       language: this.selectedLanguage(),
       problemSlug: this.selectedQuestion()?.slug
@@ -708,10 +843,17 @@ public:
       next: (response) => {
         this.rishiCodingSessionId.set(response.sessionId);
         this.telemetrySessionStartMs = Date.now();
-        this.lastActivityMs = Date.now();
+        this.lastEditorInteractionMs = this.telemetrySessionStartMs;
+        this.lastTypingMs = 0;
         this.sessionActiveDurationMs = 0;
+        this.sessionTypingDurationMs = 0;
+        this.sessionCursorIdleDurationMs = 0;
+        this.sessionEditorUnfocusedDurationMs = 0;
+        this.sessionTabHiddenDurationMs = 0;
         this.rishiSessionElapsedMs.set(0);
         this.rishiSessionActiveMs.set(0);
+        this.rishiSessionState.set('WAITING');
+        this.rishiSessionIdle.set(true);
         this.startRishiTelemetryFlush();
       },
       error: () => {
@@ -739,15 +881,94 @@ public:
       }
       const now = Date.now();
       this.rishiSessionElapsedMs.set(now - this.telemetrySessionStartMs);
-      if (this.hasUserStartedCoding && now - this.lastActivityMs <= this.telemetryIdleTimeoutMs) {
+      const state = this.deriveRishiSessionState(now);
+      this.rishiSessionState.set(state);
+      const isSessionActive = state === 'TYPING' || state === 'CURSOR_IDLE';
+      this.rishiSessionIdle.set(!isSessionActive);
+      switch (state) {
+        case 'TYPING':
+          this.sessionTypingDurationMs += 1000;
+          break;
+        case 'CURSOR_IDLE':
+          this.sessionCursorIdleDurationMs += 1000;
+          break;
+        case 'EDITOR_UNFOCUSED':
+          this.sessionEditorUnfocusedDurationMs += 1000;
+          break;
+        case 'TAB_HIDDEN':
+          this.sessionTabHiddenDurationMs += 1000;
+          break;
+        default:
+          break;
+      }
+      if (isSessionActive) {
         this.sessionActiveDurationMs += 1000;
         this.rishiSessionActiveMs.set(this.sessionActiveDurationMs);
       }
     }, 1000);
   }
 
+  private deriveRishiSessionState(now: number): RishiSessionState {
+    if (!this.telemetrySessionStartMs || !this.hasUserStartedCoding) {
+      return 'WAITING';
+    }
+    if (!this.isWindowFocused || !this.isDocumentVisible) {
+      return 'TAB_HIDDEN';
+    }
+    if (!this.isEditorTextFocused) {
+      return 'EDITOR_UNFOCUSED';
+    }
+    if (now - this.lastTypingMs <= this.typingRecencyWindowMs) {
+      return 'TYPING';
+    }
+    return 'CURSOR_IDLE';
+  }
+
+  private markEditorInteraction(isTyping: boolean) {
+    const now = Date.now();
+    this.lastEditorInteractionMs = now;
+    if (isTyping) {
+      this.hasUserStartedCoding = true;
+      this.lastTypingMs = now;
+    }
+    this.updateRishiSessionState(now);
+  }
+
   private markRishiActivity() {
-    this.lastActivityMs = Date.now();
+    if (!this.isEditorTextFocused) {
+      this.updateRishiSessionState(Date.now());
+      return;
+    }
+    this.markEditorInteraction(false);
+  }
+
+  private updateRishiSessionState(now: number) {
+    const state = this.deriveRishiSessionState(now);
+    this.rishiSessionState.set(state);
+    this.rishiSessionIdle.set(!(state === 'TYPING' || state === 'CURSOR_IDLE'));
+  }
+
+  private registerRishiPresenceTracking() {
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
+      return;
+    }
+
+    this.isWindowFocused = document.hasFocus();
+    this.isDocumentVisible = !document.hidden;
+
+    document.addEventListener('visibilitychange', this.handleVisibilityChange);
+    window.addEventListener('blur', this.handleWindowBlur);
+    window.addEventListener('focus', this.handleWindowFocus);
+  }
+
+  private unregisterRishiPresenceTracking() {
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
+      return;
+    }
+
+    document.removeEventListener('visibilitychange', this.handleVisibilityChange);
+    window.removeEventListener('blur', this.handleWindowBlur);
+    window.removeEventListener('focus', this.handleWindowFocus);
   }
 
   private isUserEditorChangeEvent(event: any): boolean {
@@ -777,18 +998,23 @@ public:
     });
   }
 
-  private recordRishiCompileAttempt(success: boolean, executionTimeMs: number) {
+  private recordRishiCompileAttempt(
+    request: RishiCompileAttemptRequest,
+    onInsight?: (insight: RishiCompileAttemptAnalysisResponse) => void
+  ) {
     const sessionId = this.rishiCodingSessionId();
     if (!sessionId) {
       return;
     }
 
     this.compilerService.recordRishiCompileAttempt(sessionId, {
-      success,
-      executionTimeMs,
-      language: this.selectedLanguage(),
-      problemSlug: this.selectedQuestion()?.slug
+      ...request,
+      language: request.language || this.selectedLanguage(),
+      problemSlug: request.problemSlug || this.selectedQuestion()?.slug
     }).subscribe({
+      next: (insight) => {
+        onInsight?.(insight);
+      },
       error: () => {
         // Non-blocking telemetry.
       }
@@ -803,6 +1029,44 @@ public:
     return match ? Number(match[1]) : 0;
   }
 
+  private extractJudgeCount(
+    judge: Record<string, unknown> | undefined,
+    keys: string[]
+  ): number {
+    if (!judge) {
+      return -1;
+    }
+    for (const key of keys) {
+      const value = judge[key];
+      if (typeof value === 'number' && Number.isFinite(value)) {
+        return Math.max(0, Math.floor(value));
+      }
+      if (typeof value === 'string' && value.trim()) {
+        const parsed = Number(value.trim());
+        if (Number.isFinite(parsed)) {
+          return Math.max(0, Math.floor(parsed));
+        }
+      }
+    }
+    return -1;
+  }
+
+  private extractJudgeText(
+    judge: Record<string, unknown> | undefined,
+    keys: string[]
+  ): string {
+    if (!judge) {
+      return '';
+    }
+    for (const key of keys) {
+      const value = judge[key];
+      if (typeof value === 'string' && value.trim()) {
+        return value.trim();
+      }
+    }
+    return '';
+  }
+
   private endRishiCodingSession(reason: string) {
     const sessionId = this.rishiCodingSessionId();
     if (!sessionId) {
@@ -814,12 +1078,18 @@ public:
 
     this.compilerService.endRishiCodingSession(sessionId, {
       reason,
-      activeDurationMs: Math.max(0, Math.round(this.sessionActiveDurationMs))
+      activeDurationMs: Math.max(0, Math.round(this.sessionActiveDurationMs)),
+      typingDurationMs: Math.max(0, Math.round(this.sessionTypingDurationMs)),
+      cursorIdleDurationMs: Math.max(0, Math.round(this.sessionCursorIdleDurationMs)),
+      editorUnfocusedDurationMs: Math.max(0, Math.round(this.sessionEditorUnfocusedDurationMs)),
+      tabHiddenDurationMs: Math.max(0, Math.round(this.sessionTabHiddenDurationMs))
     }).subscribe({
       error: () => {
         // Non-blocking telemetry.
       }
     });
+    this.rishiSessionState.set('WAITING');
+    this.rishiSessionIdle.set(true);
   }
 
   getLanguageIcon(command: string): string {

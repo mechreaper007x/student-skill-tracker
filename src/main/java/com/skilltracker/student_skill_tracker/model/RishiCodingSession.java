@@ -60,6 +60,22 @@ public class RishiCodingSession {
     @Builder.Default
     private Long activeDurationMs = 0L;
 
+    @Column(name = "typing_duration_ms")
+    @Builder.Default
+    private Long typingDurationMs = 0L;
+
+    @Column(name = "cursor_idle_duration_ms")
+    @Builder.Default
+    private Long cursorIdleDurationMs = 0L;
+
+    @Column(name = "editor_unfocused_duration_ms")
+    @Builder.Default
+    private Long editorUnfocusedDurationMs = 0L;
+
+    @Column(name = "tab_hidden_duration_ms")
+    @Builder.Default
+    private Long tabHiddenDurationMs = 0L;
+
     @Column(name = "total_change_events")
     @Builder.Default
     private Integer totalChangeEvents = 0;
@@ -105,4 +121,3 @@ public class RishiCodingSession {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 }
-

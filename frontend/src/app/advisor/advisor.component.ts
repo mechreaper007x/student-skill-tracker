@@ -104,13 +104,193 @@ interface IntegrationTask {
   updatedAt: string;
 }
 
+interface GithubAnalytics {
+  githubUsername: string;
+  windowDays: number;
+  commitCount: number;
+  pullRequestCount: number;
+  reviewCount: number;
+  issueCount: number;
+  activeRepoCount: number;
+  totalStars: number;
+  topLanguages: string;
+  capturedAt: string;
+}
+
+interface LeetCodeAnalytics {
+  leetcodeUsername: string;
+  windowDays: number;
+  totalSolved: number;
+  easySolved: number;
+  mediumSolved: number;
+  hardSolved: number;
+  ranking: number;
+  reputation: number;
+  contestRating: number;
+  contestAttendedCount: number;
+  solvedLast7d: number;
+  solvedPrev7d: number;
+  solveTrendPct: number;
+  weakTopics: string;
+  strongTopics: string;
+  capturedAt: string;
+}
+
+interface CodeforcesAnalytics {
+  codeforcesHandle: string;
+  windowDays: number;
+  currentRating: number;
+  maxRating: number;
+  rank: string;
+  maxRank: string;
+  contestCount: number;
+  solvedTotal: number;
+  solvedCurrentWindow: number;
+  solvedPreviousWindow: number;
+  solveTrendPct: number;
+  strongTags: string;
+  weakTags: string;
+  capturedAt: string;
+}
+
+interface FocusMetrics {
+  windowDays: number;
+  plannedMinutes: number;
+  actualMinutes: number;
+  plannedSessions: number;
+  actualSessions: number;
+  adherencePct: number;
+  dataSource: string;
+}
+
+interface TogglFocus {
+  windowDays: number;
+  trackedMinutes: number;
+  entryCount: number;
+  capturedAt: string;
+}
+
+interface AttemptCategoryTrend {
+  category: string;
+  currentCount: number;
+  previousCount: number;
+  sharePct: number;
+  trendPct: number;
+}
+
+interface AttemptDailyTrend {
+  date: string;
+  attempts: number;
+  successRatePct: number;
+  averageAccuracyPct: number;
+}
+
+interface AttemptSourceBreakdown {
+  source: string;
+  attempts: number;
+  successfulAttempts: number;
+  successRatePct: number;
+  averageAccuracyPct: number;
+}
+
+interface AttemptCategoryHeatmap {
+  category: string;
+  source: string;
+  attempts: number;
+  failedAttempts: number;
+}
+
+interface AttemptRecord {
+  attemptedAt: string;
+  source: string;
+  success: boolean;
+  failureBucket: string;
+  accuracyPct: number;
+  mistakeCategory: string;
+  summary: string;
+  nextSteps: string[];
+}
+
+interface AttemptHistoryResponse {
+  days: number;
+  limit: number;
+  totalAttempts: number;
+  successfulAttempts: number;
+  successRatePct: number;
+  averageAccuracyPct: number;
+  attemptsGrowthPct: number;
+  accuracyGrowthPct: number;
+  categoryTrends: AttemptCategoryTrend[];
+  recentAttempts: AttemptRecord[];
+  dailyTrends: AttemptDailyTrend[];
+  sourceBreakdown: AttemptSourceBreakdown[];
+  categoryHeatmap: AttemptCategoryHeatmap[];
+}
+
+interface ActivityDailyTrend {
+  date: string;
+  typingMinutes: number;
+  cursorIdleMinutes: number;
+  editorUnfocusedMinutes: number;
+  tabHiddenMinutes: number;
+  activeMinutes: number;
+}
+
+interface ActivityBreakdownResponse {
+  days: number;
+  typingMinutes: number;
+  cursorIdleMinutes: number;
+  editorUnfocusedMinutes: number;
+  tabHiddenMinutes: number;
+  activeMinutes: number;
+  totalTrackedMinutes: number;
+  typingSharePct: number;
+  cursorIdleSharePct: number;
+  editorUnfocusedSharePct: number;
+  tabHiddenSharePct: number;
+  dailyTrends: ActivityDailyTrend[];
+}
+
+interface CoachingSummaryResponse {
+  windowDays: number;
+  pendingTasks: number;
+  missedTasks: number;
+  plannedMinutes: number;
+  actualMinutes: number;
+  adherencePct: number;
+  recommendedMinutesToday: number;
+  recommendedFocus: string;
+  summary: string;
+  generatedAt: string;
+  nextActions: string[];
+}
+
+interface AttemptTrendPoint {
+  index: number;
+  accuracyPct: number;
+  success: boolean;
+  source: string;
+  category: string;
+  attemptedAt: string;
+}
+
 interface IntegrationStatusResponse {
   mode: 'chat' | 'agent';
   hasApiKey: boolean;
   googleCalendarConnected: boolean;
+  githubConnected: boolean;
+  leetcodeConnected: boolean;
+  codeforcesConnected: boolean;
+  togglConnected: boolean;
   googleCalendarId: string;
+  codeforcesHandle: string;
   taskCount: number;
   pendingTaskCount: number;
+  latestGithubAnalytics?: GithubAnalytics | null;
+  latestLeetCodeAnalytics?: LeetCodeAnalytics | null;
+  latestCodeforcesAnalytics?: CodeforcesAnalytics | null;
+  latestTogglFocus?: TogglFocus | null;
+  focusMetrics?: FocusMetrics | null;
   latestTasks: IntegrationTask[];
 }
 
@@ -135,6 +315,22 @@ interface CalendarScheduleResponse {
     eventId: string;
     eventLink: string;
   }>;
+}
+
+interface GithubAnalyticsSyncRequest {
+  windowDays?: number;
+}
+
+interface LeetCodeAnalyticsSyncRequest {
+  windowDays?: number;
+}
+
+interface CodeforcesAnalyticsSyncRequest {
+  windowDays?: number;
+}
+
+interface TogglFocusSyncRequest {
+  windowDays?: number;
 }
 
 @Component({
@@ -321,11 +517,560 @@ interface CalendarScheduleResponse {
                       </button>
                       <button
                         *ngIf="googleCalendarConnected()"
+                        (click)="autoRescheduleCalendarBlocks()"
+                        [disabled]="isReschedulingCalendar()"
+                        class="px-3 py-1.5 text-[9px] font-black uppercase tracking-widest border border-noir-700 text-noir-300 hover:text-white disabled:opacity-40"
+                      >
+                        {{ isReschedulingCalendar() ? 'Rescheduling...' : 'Auto Reschedule Missed' }}
+                      </button>
+                      <button
+                        *ngIf="googleCalendarConnected()"
                         (click)="disconnectGoogleCalendar()"
                         class="px-3 py-1.5 text-[9px] font-black uppercase tracking-widest border border-crimson-500/40 text-crimson-300 hover:bg-crimson-600/10"
                       >
                         Disconnect
                       </button>
+                    </div>
+                    <div class="mt-3 border border-noir-800 rounded-md px-2.5 py-2" *ngIf="coachingSummary() || isLoadingCoachingSummary()">
+                      <div class="flex items-center justify-between gap-2">
+                        <p class="text-[9px] text-noir-300 uppercase tracking-widest">Daily Coaching</p>
+                        <button
+                          (click)="loadCoachingSummary(7)"
+                          [disabled]="isLoadingCoachingSummary()"
+                          class="px-2 py-1 text-[8px] font-black uppercase tracking-widest border border-noir-700 text-noir-400 hover:text-white disabled:opacity-40"
+                        >
+                          {{ isLoadingCoachingSummary() ? 'Loading...' : 'Refresh' }}
+                        </button>
+                      </div>
+                      <p class="text-[9px] text-noir-500 mt-1" *ngIf="isLoadingCoachingSummary()">Synthesizing today's plan...</p>
+                      <div *ngIf="coachingSummary() as coach" class="mt-2 space-y-1.5">
+                        <p class="text-[9px] text-noir-300">{{ coach.summary }}</p>
+                        <p class="text-[9px] text-amber-300">
+                          Focus: {{ coach.recommendedFocus }} • {{ coach.recommendedMinutesToday }} min today
+                        </p>
+                        <ul class="list-disc pl-4 text-[9px] text-noir-400 space-y-0.5" *ngIf="coach.nextActions.length">
+                          <li *ngFor="let action of coach.nextActions">{{ action }}</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="border border-noir-800 rounded-lg p-3">
+                    <div class="flex items-center justify-between gap-3">
+                      <p class="text-[10px] font-semibold text-noir-300">GitHub Analytics</p>
+                      <span class="text-[9px] font-mono" [class]="githubConnected() ? 'text-emerald-400' : 'text-noir-500'">
+                        {{ githubConnected() ? 'CONNECTED' : 'NOT CONNECTED' }}
+                      </span>
+                    </div>
+                    <p class="text-[9px] text-noir-500 mt-1" *ngIf="githubAnalytics()">
+                      {{ githubAnalytics()?.githubUsername }} • {{ githubAnalytics()?.windowDays }}d snapshot
+                    </p>
+                    <p class="text-[9px] text-noir-500 mt-1" *ngIf="!githubAnalytics()">
+                      Link GitHub in Arsenal first, then sync analytics.
+                    </p>
+                    <div class="mt-3 flex gap-2 flex-wrap">
+                      <button
+                        (click)="syncGithubAnalytics()"
+                        [disabled]="!githubConnected() || isSyncingGithubAnalytics()"
+                        class="px-3 py-1.5 text-[9px] font-black uppercase tracking-widest border border-noir-700 text-noir-300 hover:text-white disabled:opacity-40"
+                      >
+                        {{ isSyncingGithubAnalytics() ? 'Syncing...' : 'Sync GitHub Metrics' }}
+                      </button>
+                    </div>
+                    <div class="mt-3 grid grid-cols-2 md:grid-cols-3 gap-2" *ngIf="githubAnalytics()">
+                      <div class="border border-noir-800 rounded-md px-2 py-1.5">
+                        <p class="text-[8px] uppercase tracking-widest text-noir-500">Commits</p>
+                        <p class="text-[11px] font-bold text-noir-200">{{ githubAnalytics()?.commitCount || 0 }}</p>
+                      </div>
+                      <div class="border border-noir-800 rounded-md px-2 py-1.5">
+                        <p class="text-[8px] uppercase tracking-widest text-noir-500">PRs</p>
+                        <p class="text-[11px] font-bold text-noir-200">{{ githubAnalytics()?.pullRequestCount || 0 }}</p>
+                      </div>
+                      <div class="border border-noir-800 rounded-md px-2 py-1.5">
+                        <p class="text-[8px] uppercase tracking-widest text-noir-500">Reviews</p>
+                        <p class="text-[11px] font-bold text-noir-200">{{ githubAnalytics()?.reviewCount || 0 }}</p>
+                      </div>
+                      <div class="border border-noir-800 rounded-md px-2 py-1.5">
+                        <p class="text-[8px] uppercase tracking-widest text-noir-500">Issues</p>
+                        <p class="text-[11px] font-bold text-noir-200">{{ githubAnalytics()?.issueCount || 0 }}</p>
+                      </div>
+                      <div class="border border-noir-800 rounded-md px-2 py-1.5">
+                        <p class="text-[8px] uppercase tracking-widest text-noir-500">Repos</p>
+                        <p class="text-[11px] font-bold text-noir-200">{{ githubAnalytics()?.activeRepoCount || 0 }}</p>
+                      </div>
+                      <div class="border border-noir-800 rounded-md px-2 py-1.5">
+                        <p class="text-[8px] uppercase tracking-widest text-noir-500">Stars</p>
+                        <p class="text-[11px] font-bold text-noir-200">{{ githubAnalytics()?.totalStars || 0 }}</p>
+                      </div>
+                    </div>
+                    <p class="text-[9px] text-noir-500 mt-2 truncate" *ngIf="githubAnalytics()?.topLanguages">
+                      Top languages: {{ githubAnalytics()?.topLanguages }}
+                    </p>
+                  </div>
+
+                  <div class="border border-noir-800 rounded-lg p-3">
+                    <div class="flex items-center justify-between gap-3">
+                      <p class="text-[10px] font-semibold text-noir-300">LeetCode Analytics</p>
+                      <span class="text-[9px] font-mono" [class]="leetcodeConnected() ? 'text-emerald-400' : 'text-noir-500'">
+                        {{ leetcodeConnected() ? 'CONNECTED' : 'NOT CONNECTED' }}
+                      </span>
+                    </div>
+                    <p class="text-[9px] text-noir-500 mt-1" *ngIf="leetcodeAnalytics()">
+                      {{ leetcodeAnalytics()?.leetcodeUsername }} • {{ leetcodeAnalytics()?.windowDays }}d snapshot
+                    </p>
+                    <p class="text-[9px] text-noir-500 mt-1" *ngIf="!leetcodeAnalytics()">
+                      Set your LeetCode username in profile, then sync analytics.
+                    </p>
+                    <div class="mt-3 flex gap-2 flex-wrap">
+                      <button
+                        (click)="syncLeetCodeAnalytics()"
+                        [disabled]="!leetcodeConnected() || isSyncingLeetCodeAnalytics()"
+                        class="px-3 py-1.5 text-[9px] font-black uppercase tracking-widest border border-noir-700 text-noir-300 hover:text-white disabled:opacity-40"
+                      >
+                        {{ isSyncingLeetCodeAnalytics() ? 'Syncing...' : 'Sync LeetCode Metrics' }}
+                      </button>
+                    </div>
+                    <div class="mt-3 grid grid-cols-2 md:grid-cols-3 gap-2" *ngIf="leetcodeAnalytics()">
+                      <div class="border border-noir-800 rounded-md px-2 py-1.5">
+                        <p class="text-[8px] uppercase tracking-widest text-noir-500">Total Solved</p>
+                        <p class="text-[11px] font-bold text-noir-200">{{ leetcodeAnalytics()?.totalSolved || 0 }}</p>
+                      </div>
+                      <div class="border border-noir-800 rounded-md px-2 py-1.5">
+                        <p class="text-[8px] uppercase tracking-widest text-noir-500">Easy</p>
+                        <p class="text-[11px] font-bold text-noir-200">{{ leetcodeAnalytics()?.easySolved || 0 }}</p>
+                      </div>
+                      <div class="border border-noir-800 rounded-md px-2 py-1.5">
+                        <p class="text-[8px] uppercase tracking-widest text-noir-500">Medium</p>
+                        <p class="text-[11px] font-bold text-noir-200">{{ leetcodeAnalytics()?.mediumSolved || 0 }}</p>
+                      </div>
+                      <div class="border border-noir-800 rounded-md px-2 py-1.5">
+                        <p class="text-[8px] uppercase tracking-widest text-noir-500">Hard</p>
+                        <p class="text-[11px] font-bold text-noir-200">{{ leetcodeAnalytics()?.hardSolved || 0 }}</p>
+                      </div>
+                      <div class="border border-noir-800 rounded-md px-2 py-1.5">
+                        <p class="text-[8px] uppercase tracking-widest text-noir-500">Solved Last 7d</p>
+                        <p class="text-[11px] font-bold text-noir-200">{{ leetcodeAnalytics()?.solvedLast7d || 0 }}</p>
+                      </div>
+                      <div class="border border-noir-800 rounded-md px-2 py-1.5">
+                        <p class="text-[8px] uppercase tracking-widest text-noir-500">7d Trend</p>
+                        <p
+                          class="text-[11px] font-bold"
+                          [class.text-emerald-300]="(leetcodeAnalytics()?.solveTrendPct ?? 0) >= 0"
+                          [class.text-crimson-300]="(leetcodeAnalytics()?.solveTrendPct ?? 0) < 0"
+                        >
+                          {{ (leetcodeAnalytics()?.solveTrendPct ?? 0) | number:'1.0-1' }}%
+                        </p>
+                      </div>
+                    </div>
+                    <p class="text-[9px] text-noir-500 mt-2" *ngIf="leetcodeAnalytics()?.strongTopics">
+                      Strong topics: {{ leetcodeAnalytics()?.strongTopics }}
+                    </p>
+                    <p class="text-[9px] text-noir-500 mt-1" *ngIf="leetcodeAnalytics()?.weakTopics">
+                      Weak topics: {{ leetcodeAnalytics()?.weakTopics }}
+                    </p>
+                  </div>
+
+                  <div class="border border-noir-800 rounded-lg p-3">
+                    <div class="flex items-center justify-between gap-3">
+                      <p class="text-[10px] font-semibold text-noir-300">Codeforces Analytics</p>
+                      <span class="text-[9px] font-mono" [class]="codeforcesConnected() ? 'text-emerald-400' : 'text-noir-500'">
+                        {{ codeforcesConnected() ? 'CONNECTED' : 'NOT CONNECTED' }}
+                      </span>
+                    </div>
+                    <div class="mt-3 flex gap-2">
+                      <input
+                        type="text"
+                        [ngModel]="codeforcesHandleInput()"
+                        (ngModelChange)="codeforcesHandleInput.set($event)"
+                        placeholder="Codeforces handle"
+                        class="flex-1 bg-black border border-noir-800 rounded-md px-2.5 py-1.5 text-[10px] text-noir-200 placeholder:text-noir-600 focus:outline-none focus:border-crimson-500/40"
+                      >
+                      <button
+                        (click)="saveCodeforcesHandle()"
+                        [disabled]="isSavingCodeforcesHandle()"
+                        class="px-3 py-1.5 text-[9px] font-black uppercase tracking-widest border border-emerald-500/40 text-emerald-300 hover:bg-emerald-600/10 disabled:opacity-40"
+                      >
+                        {{ isSavingCodeforcesHandle() ? 'Saving...' : 'Save' }}
+                      </button>
+                    </div>
+                    <p class="text-[9px] text-noir-500 mt-2" *ngIf="codeforcesAnalytics()">
+                      {{ codeforcesAnalytics()?.codeforcesHandle }} • {{ codeforcesAnalytics()?.windowDays }}d snapshot
+                    </p>
+                    <div class="mt-3 flex gap-2 flex-wrap">
+                      <button
+                        (click)="syncCodeforcesAnalytics()"
+                        [disabled]="!codeforcesConnected() || isSyncingCodeforcesAnalytics()"
+                        class="px-3 py-1.5 text-[9px] font-black uppercase tracking-widest border border-noir-700 text-noir-300 hover:text-white disabled:opacity-40"
+                      >
+                        {{ isSyncingCodeforcesAnalytics() ? 'Syncing...' : 'Sync Codeforces Metrics' }}
+                      </button>
+                    </div>
+                    <div class="mt-3 grid grid-cols-2 md:grid-cols-3 gap-2" *ngIf="codeforcesAnalytics()">
+                      <div class="border border-noir-800 rounded-md px-2 py-1.5">
+                        <p class="text-[8px] uppercase tracking-widest text-noir-500">Rating</p>
+                        <p class="text-[11px] font-bold text-noir-200">{{ codeforcesAnalytics()?.currentRating || 0 }}</p>
+                      </div>
+                      <div class="border border-noir-800 rounded-md px-2 py-1.5">
+                        <p class="text-[8px] uppercase tracking-widest text-noir-500">Max Rating</p>
+                        <p class="text-[11px] font-bold text-noir-200">{{ codeforcesAnalytics()?.maxRating || 0 }}</p>
+                      </div>
+                      <div class="border border-noir-800 rounded-md px-2 py-1.5">
+                        <p class="text-[8px] uppercase tracking-widest text-noir-500">Contests</p>
+                        <p class="text-[11px] font-bold text-noir-200">{{ codeforcesAnalytics()?.contestCount || 0 }}</p>
+                      </div>
+                      <div class="border border-noir-800 rounded-md px-2 py-1.5">
+                        <p class="text-[8px] uppercase tracking-widest text-noir-500">Solved (All)</p>
+                        <p class="text-[11px] font-bold text-noir-200">{{ codeforcesAnalytics()?.solvedTotal || 0 }}</p>
+                      </div>
+                      <div class="border border-noir-800 rounded-md px-2 py-1.5">
+                        <p class="text-[8px] uppercase tracking-widest text-noir-500">Solved (Window)</p>
+                        <p class="text-[11px] font-bold text-noir-200">{{ codeforcesAnalytics()?.solvedCurrentWindow || 0 }}</p>
+                      </div>
+                      <div class="border border-noir-800 rounded-md px-2 py-1.5">
+                        <p class="text-[8px] uppercase tracking-widest text-noir-500">Trend</p>
+                        <p
+                          class="text-[11px] font-bold"
+                          [class.text-emerald-300]="(codeforcesAnalytics()?.solveTrendPct ?? 0) >= 0"
+                          [class.text-crimson-300]="(codeforcesAnalytics()?.solveTrendPct ?? 0) < 0"
+                        >
+                          {{ (codeforcesAnalytics()?.solveTrendPct ?? 0) | number:'1.0-1' }}%
+                        </p>
+                      </div>
+                    </div>
+                    <p class="text-[9px] text-noir-500 mt-2" *ngIf="codeforcesAnalytics()?.rank">
+                      Rank: {{ codeforcesAnalytics()?.rank }} | Max Rank: {{ codeforcesAnalytics()?.maxRank || '-' }}
+                    </p>
+                    <p class="text-[9px] text-noir-500 mt-1" *ngIf="codeforcesAnalytics()?.strongTags">
+                      Strong tags: {{ codeforcesAnalytics()?.strongTags }}
+                    </p>
+                    <p class="text-[9px] text-noir-500 mt-1" *ngIf="codeforcesAnalytics()?.weakTags">
+                      Weak tags: {{ codeforcesAnalytics()?.weakTags }}
+                    </p>
+                  </div>
+
+                  <div class="border border-noir-800 rounded-lg p-3">
+                    <div class="flex items-center justify-between gap-3">
+                      <p class="text-[10px] font-semibold text-noir-300">Toggl Focus Sync</p>
+                      <span class="text-[9px] font-mono" [class]="togglConnected() ? 'text-emerald-400' : 'text-noir-500'">
+                        {{ togglConnected() ? 'CONNECTED' : 'NOT CONNECTED' }}
+                      </span>
+                    </div>
+                    <div class="mt-3 flex gap-2" *ngIf="!togglConnected()">
+                      <input
+                        type="password"
+                        [ngModel]="togglTokenInput()"
+                        (ngModelChange)="togglTokenInput.set($event)"
+                        placeholder="Toggl API token"
+                        class="flex-1 bg-black border border-noir-800 rounded-md px-2.5 py-1.5 text-[10px] text-noir-200 placeholder:text-noir-600 focus:outline-none focus:border-crimson-500/40"
+                      >
+                      <button
+                        (click)="saveTogglToken()"
+                        [disabled]="isSavingTogglToken()"
+                        class="px-3 py-1.5 text-[9px] font-black uppercase tracking-widest border border-emerald-500/40 text-emerald-300 hover:bg-emerald-600/10 disabled:opacity-40"
+                      >
+                        {{ isSavingTogglToken() ? 'Saving...' : 'Connect' }}
+                      </button>
+                    </div>
+                    <div class="mt-3 flex gap-2 flex-wrap" *ngIf="togglConnected()">
+                      <button
+                        (click)="syncTogglFocus()"
+                        [disabled]="isSyncingTogglFocus()"
+                        class="px-3 py-1.5 text-[9px] font-black uppercase tracking-widest border border-noir-700 text-noir-300 hover:text-white disabled:opacity-40"
+                      >
+                        {{ isSyncingTogglFocus() ? 'Syncing...' : 'Sync 7d Focus' }}
+                      </button>
+                      <button
+                        (click)="disconnectToggl()"
+                        class="px-3 py-1.5 text-[9px] font-black uppercase tracking-widest border border-crimson-500/40 text-crimson-300 hover:bg-crimson-600/10"
+                      >
+                        Disconnect
+                      </button>
+                    </div>
+                    <p class="text-[9px] text-noir-500 mt-2" *ngIf="togglFocus()">
+                      Last sync: {{ togglFocus()?.trackedMinutes || 0 }} minutes in {{ togglFocus()?.windowDays || 0 }}d ({{ togglFocus()?.entryCount || 0 }} entries)
+                    </p>
+                  </div>
+
+                  <div class="border border-noir-800 rounded-lg p-3" *ngIf="focusMetrics()">
+                    <div class="flex items-center justify-between gap-3">
+                      <p class="text-[10px] font-semibold text-noir-300">Focus Adherence</p>
+                      <span class="text-[9px] font-mono text-noir-500">
+                        {{ focusMetrics()?.windowDays }}d
+                      </span>
+                    </div>
+                    <div class="mt-3 grid grid-cols-2 md:grid-cols-3 gap-2">
+                      <div class="border border-noir-800 rounded-md px-2 py-1.5">
+                        <p class="text-[8px] uppercase tracking-widest text-noir-500">Planned Minutes</p>
+                        <p class="text-[11px] font-bold text-noir-200">{{ focusMetrics()?.plannedMinutes || 0 }}</p>
+                      </div>
+                      <div class="border border-noir-800 rounded-md px-2 py-1.5">
+                        <p class="text-[8px] uppercase tracking-widest text-noir-500">Actual Minutes</p>
+                        <p class="text-[11px] font-bold text-noir-200">{{ focusMetrics()?.actualMinutes || 0 }}</p>
+                      </div>
+                      <div class="border border-noir-800 rounded-md px-2 py-1.5">
+                        <p class="text-[8px] uppercase tracking-widest text-noir-500">Adherence</p>
+                        <p
+                          class="text-[11px] font-bold"
+                          [class.text-emerald-300]="(focusMetrics()?.adherencePct ?? 0) >= 80"
+                          [class.text-amber-300]="(focusMetrics()?.adherencePct ?? 0) >= 50 && (focusMetrics()?.adherencePct ?? 0) < 80"
+                          [class.text-crimson-300]="(focusMetrics()?.adherencePct ?? 0) < 50"
+                        >
+                          {{ (focusMetrics()?.adherencePct ?? 0) | number:'1.0-1' }}%
+                        </p>
+                      </div>
+                    </div>
+                    <p class="text-[9px] text-noir-500 mt-2">
+                      Sessions (planned/actual): {{ focusMetrics()?.plannedSessions || 0 }} / {{ focusMetrics()?.actualSessions || 0 }}
+                    </p>
+                    <p class="text-[9px] text-noir-600 mt-1" *ngIf="focusMetrics()?.dataSource">
+                      Source: {{ focusMetrics()?.dataSource }}
+                    </p>
+                  </div>
+
+                  <div class="border border-noir-800 rounded-lg p-3" *ngIf="activityBreakdown() || isLoadingActivityBreakdown()">
+                    <div class="flex items-center justify-between gap-3">
+                      <p class="text-[10px] font-semibold text-noir-300">Compiler Activity States</p>
+                      <span class="text-[9px] font-mono text-noir-500">{{ activityBreakdown()?.days || attemptHistoryWindowDays() }}d</span>
+                    </div>
+                    <div class="mt-2 text-[9px] text-noir-500 font-mono" *ngIf="isLoadingActivityBreakdown()">
+                      Loading state breakdown...
+                    </div>
+                    <div *ngIf="activityBreakdown() as breakdown" class="mt-3 space-y-3">
+                      <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+                        <div class="border border-noir-800 rounded-md px-2 py-1.5">
+                          <p class="text-[8px] uppercase tracking-widest text-noir-500">Typing</p>
+                          <p class="text-[11px] font-bold text-cyan-300">{{ breakdown.typingMinutes || 0 }}m</p>
+                        </div>
+                        <div class="border border-noir-800 rounded-md px-2 py-1.5">
+                          <p class="text-[8px] uppercase tracking-widest text-noir-500">Cursor Idle</p>
+                          <p class="text-[11px] font-bold text-emerald-300">{{ breakdown.cursorIdleMinutes || 0 }}m</p>
+                        </div>
+                        <div class="border border-noir-800 rounded-md px-2 py-1.5">
+                          <p class="text-[8px] uppercase tracking-widest text-noir-500">Editor Unfocused</p>
+                          <p class="text-[11px] font-bold text-amber-300">{{ breakdown.editorUnfocusedMinutes || 0 }}m</p>
+                        </div>
+                        <div class="border border-noir-800 rounded-md px-2 py-1.5">
+                          <p class="text-[8px] uppercase tracking-widest text-noir-500">Tab Hidden</p>
+                          <p class="text-[11px] font-bold text-rose-300">{{ breakdown.tabHiddenMinutes || 0 }}m</p>
+                        </div>
+                      </div>
+                      <div class="space-y-1">
+                        <div class="h-2 rounded bg-noir-900 overflow-hidden flex">
+                          <div class="bg-cyan-500/80" [style.width.%]="toPercent(breakdown.typingSharePct || 0)"></div>
+                          <div class="bg-emerald-500/80" [style.width.%]="toPercent(breakdown.cursorIdleSharePct || 0)"></div>
+                          <div class="bg-amber-500/80" [style.width.%]="toPercent(breakdown.editorUnfocusedSharePct || 0)"></div>
+                          <div class="bg-rose-500/80" [style.width.%]="toPercent(breakdown.tabHiddenSharePct || 0)"></div>
+                        </div>
+                        <p class="text-[8px] text-noir-500">
+                          Active {{ breakdown.activeMinutes || 0 }}m / Total tracked {{ breakdown.totalTrackedMinutes || 0 }}m
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="border border-noir-800 rounded-lg p-3" *ngIf="attemptHistory() || isLoadingAttemptHistory()">
+                    <div class="flex items-start justify-between gap-3">
+                      <div>
+                        <p class="text-[10px] font-semibold text-noir-300">Rishi Attempt History</p>
+                        <p class="text-[8px] text-noir-600 mt-0.5">Compiler growth from tracked run/submit attempts</p>
+                      </div>
+                      <div class="flex items-center gap-1">
+                        <button
+                          *ngFor="let days of attemptHistoryWindows"
+                          (click)="setAttemptHistoryWindow(days)"
+                          [disabled]="isLoadingAttemptHistory()"
+                          class="px-2 py-1 text-[8px] font-black uppercase tracking-widest border rounded disabled:opacity-40 transition-colors"
+                          [class.border-crimson-500/60]="attemptHistoryWindowDays() === days"
+                          [class.text-crimson-300]="attemptHistoryWindowDays() === days"
+                          [class.bg-crimson-600/10]="attemptHistoryWindowDays() === days"
+                          [class.border-noir-700]="attemptHistoryWindowDays() !== days"
+                          [class.text-noir-400]="attemptHistoryWindowDays() !== days"
+                          [class.hover:text-white]="attemptHistoryWindowDays() !== days"
+                        >
+                          {{ days }}d
+                        </button>
+                        <button
+                          (click)="refreshAttemptHistory()"
+                          [disabled]="isLoadingAttemptHistory()"
+                          class="px-2 py-1 text-[8px] font-black uppercase tracking-widest border border-noir-700 text-noir-400 hover:text-white rounded disabled:opacity-40"
+                        >
+                          Refresh
+                        </button>
+                        <button
+                          (click)="exportAttemptHistoryCsv()"
+                          [disabled]="isLoadingAttemptHistory() || isExportingAttemptHistory()"
+                          class="px-2 py-1 text-[8px] font-black uppercase tracking-widest border border-noir-700 text-noir-400 hover:text-white rounded disabled:opacity-40"
+                        >
+                          {{ isExportingAttemptHistory() ? 'Exporting...' : 'Export CSV' }}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div class="mt-2 text-[9px] text-noir-500 font-mono" *ngIf="isLoadingAttemptHistory()">
+                      Loading compiler attempt trends...
+                    </div>
+
+                    <div *ngIf="attemptHistory() as history" class="mt-3 space-y-3">
+                      <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
+                        <div class="border border-noir-800 rounded-md px-2 py-1.5">
+                          <p class="text-[8px] uppercase tracking-widest text-noir-500">Attempts</p>
+                          <p class="text-[11px] font-bold text-noir-200">{{ history.totalAttempts || 0 }}</p>
+                        </div>
+                        <div class="border border-noir-800 rounded-md px-2 py-1.5">
+                          <p class="text-[8px] uppercase tracking-widest text-noir-500">Success Rate</p>
+                          <p class="text-[11px] font-bold text-noir-200">{{ (history.successRatePct || 0) | number:'1.0-1' }}%</p>
+                        </div>
+                        <div class="border border-noir-800 rounded-md px-2 py-1.5">
+                          <p class="text-[8px] uppercase tracking-widest text-noir-500">Avg Accuracy</p>
+                          <p class="text-[11px] font-bold text-noir-200">{{ (history.averageAccuracyPct || 0) | number:'1.0-1' }}%</p>
+                        </div>
+                        <div class="border border-noir-800 rounded-md px-2 py-1.5">
+                          <p class="text-[8px] uppercase tracking-widest text-noir-500">Volume Trend</p>
+                          <p
+                            class="text-[11px] font-bold"
+                            [class.text-emerald-300]="(history.attemptsGrowthPct || 0) >= 0"
+                            [class.text-crimson-300]="(history.attemptsGrowthPct || 0) < 0"
+                          >
+                            {{ (history.attemptsGrowthPct || 0) | number:'1.0-1' }}%
+                          </p>
+                        </div>
+                        <div class="border border-noir-800 rounded-md px-2 py-1.5">
+                          <p class="text-[8px] uppercase tracking-widest text-noir-500">Accuracy Trend</p>
+                          <p
+                            class="text-[11px] font-bold"
+                            [class.text-emerald-300]="(history.accuracyGrowthPct || 0) >= 0"
+                            [class.text-crimson-300]="(history.accuracyGrowthPct || 0) < 0"
+                          >
+                            {{ (history.accuracyGrowthPct || 0) | number:'1.0-1' }}%
+                          </p>
+                        </div>
+                      </div>
+
+                      <div *ngIf="attemptTrendPoints().length">
+                        <p class="text-[9px] text-noir-500 uppercase tracking-widest mb-1">Recent Accuracy Timeline</p>
+                        <div class="h-16 border border-noir-800 rounded-md px-1.5 py-1 flex items-end gap-1 bg-black/40">
+                          <div
+                            *ngFor="let point of attemptTrendPoints()"
+                            class="flex-1 min-w-[8px] rounded-sm transition-all"
+                            [style.height.%]="toPercent(point.accuracyPct > 0 ? point.accuracyPct : (point.success ? 45 : 20))"
+                            [class.bg-emerald-500/70]="point.success"
+                            [class.bg-crimson-500/70]="!point.success"
+                            [title]="(point.attemptedAt | date:'MMM d, h:mm a') + ' • ' + formatAttemptSource(point.source) + ' • ' + point.category + ' • ' + (point.accuracyPct | number:'1.0-1') + '%'"
+                          ></div>
+                        </div>
+                        <div class="flex items-center gap-3 mt-1 text-[8px] text-noir-500">
+                          <span class="flex items-center gap-1"><span class="w-2 h-2 rounded bg-emerald-500/70"></span>Success</span>
+                          <span class="flex items-center gap-1"><span class="w-2 h-2 rounded bg-crimson-500/70"></span>Fail</span>
+                        </div>
+                      </div>
+
+                      <div *ngIf="history.dailyTrends.length">
+                        <p class="text-[9px] text-noir-500 uppercase tracking-widest mb-1">Daily Attempt Trend</p>
+                        <div class="h-20 border border-noir-800 rounded-md px-1.5 py-1 flex items-end gap-1 bg-black/40">
+                          <div
+                            *ngFor="let day of history.dailyTrends.slice(-14)"
+                            class="flex-1 min-w-[8px] rounded-sm transition-all bg-indigo-500/70"
+                            [style.height.%]="toPercent((day.attempts || 0) * 12)"
+                            [title]="day.date + ' • attempts: ' + day.attempts + ' • success: ' + (day.successRatePct | number:'1.0-1') + '%'"
+                          ></div>
+                        </div>
+                      </div>
+
+                      <div *ngIf="history.sourceBreakdown.length">
+                        <p class="text-[9px] text-noir-500 uppercase tracking-widest mb-1">Source Split</p>
+                        <div class="space-y-1.5">
+                          <div *ngFor="let source of history.sourceBreakdown" class="border border-noir-800 rounded-md px-2 py-1.5">
+                            <div class="flex items-center justify-between gap-2">
+                              <p class="text-[8px] font-mono text-noir-300">{{ formatAttemptSource(source.source) }}</p>
+                              <p class="text-[8px] font-mono text-noir-500">{{ source.attempts }} attempts</p>
+                            </div>
+                            <div class="mt-1 h-1.5 rounded bg-noir-900">
+                              <div class="h-1.5 rounded bg-emerald-500/70" [style.width.%]="toPercent(source.successRatePct || 0)"></div>
+                            </div>
+                            <p class="text-[8px] text-noir-500 mt-1">
+                              Success {{ source.successRatePct | number:'1.0-1' }}% • Accuracy {{ source.averageAccuracyPct | number:'1.0-1' }}%
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div *ngIf="history.categoryHeatmap.length">
+                        <p class="text-[9px] text-noir-500 uppercase tracking-widest mb-1">Category Heatmap</p>
+                        <div class="space-y-1 max-h-44 overflow-y-auto custom-scrollbar pr-1">
+                          <div *ngFor="let cell of history.categoryHeatmap.slice(0, 24)" class="border border-noir-800 rounded-md px-2 py-1">
+                            <div class="flex items-center justify-between gap-2">
+                              <p class="text-[8px] text-noir-300">{{ cell.category }} • {{ formatAttemptSource(cell.source) }}</p>
+                              <p class="text-[8px] font-mono text-noir-500">{{ cell.attempts }}</p>
+                            </div>
+                            <div class="mt-1 h-1 rounded bg-noir-900">
+                              <div
+                                class="h-1 rounded bg-crimson-500/70"
+                                [style.width.%]="toPercent(cell.attempts > 0 ? (cell.failedAttempts * 100.0) / cell.attempts : 0)"
+                              ></div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div *ngIf="history.categoryTrends.length">
+                        <p class="text-[9px] text-noir-500 uppercase tracking-widest mb-1">Mistake Category Trends</p>
+                        <div class="space-y-1.5">
+                          <div *ngFor="let trend of history.categoryTrends.slice(0, 6)" class="border border-noir-800 rounded-md px-2 py-1.5">
+                            <div class="flex items-center justify-between gap-2">
+                              <p class="text-[8px] font-mono text-noir-300">{{ trend.category }}</p>
+                              <span class="text-[8px] font-mono" [class]="(trend.trendPct || 0) <= 0 ? 'text-emerald-300' : 'text-amber-300'">
+                                {{ (trend.trendPct || 0) | number:'1.0-1' }}%
+                              </span>
+                            </div>
+                            <p class="text-[8px] text-noir-500">
+                              {{ trend.currentCount }} now / {{ trend.previousCount }} prev
+                            </p>
+                            <div class="mt-1 h-1.5 rounded bg-noir-900">
+                              <div class="h-1.5 rounded bg-crimson-500/70" [style.width.%]="toPercent(trend.sharePct || 0)"></div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div *ngIf="attemptSourceOptions().length > 1" class="space-y-1">
+                        <p class="text-[9px] text-noir-500 uppercase tracking-widest">Source Filter</p>
+                        <div class="flex flex-wrap gap-1.5">
+                          <button
+                            *ngFor="let source of attemptSourceOptions()"
+                            (click)="setAttemptSourceFilter(source)"
+                            class="px-2 py-1 text-[8px] font-black uppercase tracking-widest border rounded transition-colors"
+                            [class.border-crimson-500/60]="attemptSourceFilter() === source"
+                            [class.text-crimson-300]="attemptSourceFilter() === source"
+                            [class.bg-crimson-600/10]="attemptSourceFilter() === source"
+                            [class.border-noir-700]="attemptSourceFilter() !== source"
+                            [class.text-noir-400]="attemptSourceFilter() !== source"
+                            [class.hover:text-white]="attemptSourceFilter() !== source"
+                          >
+                            {{ source === 'ALL' ? 'ALL' : formatAttemptSource(source) }}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div *ngIf="filteredRecentAttempts().length">
+                        <p class="text-[9px] text-noir-500 uppercase tracking-widest mb-1">Latest Rishi Guidance</p>
+                        <div class="space-y-2 max-h-52 overflow-y-auto custom-scrollbar pr-1">
+                          <div *ngFor="let attempt of filteredRecentAttempts()" class="border border-noir-800 rounded-md px-2.5 py-2">
+                            <div class="flex items-center justify-between gap-2">
+                              <p class="text-[9px] text-noir-200">
+                                {{ attempt.mistakeCategory }} • {{ attempt.failureBucket || 'NONE' }} • {{ formatAttemptSource(attempt.source) }}
+                              </p>
+                              <span class="text-[8px] font-mono" [class]="attempt.success ? 'text-emerald-300' : 'text-crimson-300'">
+                                {{ attempt.success ? 'SUCCESS' : 'FAIL' }} • {{ attempt.accuracyPct | number:'1.0-1' }}%
+                              </span>
+                            </div>
+                            <p class="text-[8px] text-noir-600 mt-1">{{ attempt.attemptedAt | date:'MMM d, h:mm a' }}</p>
+                            <p class="text-[9px] text-noir-400 mt-1">{{ attempt.summary }}</p>
+                            <p class="text-[9px] text-amber-300 mt-1" *ngIf="attempt.nextSteps.length">
+                              Next: {{ attempt.nextSteps[0] }}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -499,6 +1244,58 @@ export class AdvisorComponent implements OnInit {
   maskedApiKey = signal('');
   hasApiKey = signal(false);
   googleCalendarConnected = signal(false);
+  githubConnected = signal(false);
+  leetcodeConnected = signal(false);
+  codeforcesConnected = signal(false);
+  togglConnected = signal(false);
+  githubAnalytics = signal<GithubAnalytics | null>(null);
+  leetcodeAnalytics = signal<LeetCodeAnalytics | null>(null);
+  codeforcesAnalytics = signal<CodeforcesAnalytics | null>(null);
+  togglFocus = signal<TogglFocus | null>(null);
+  focusMetrics = signal<FocusMetrics | null>(null);
+  activityBreakdown = signal<ActivityBreakdownResponse | null>(null);
+  attemptHistory = signal<AttemptHistoryResponse | null>(null);
+  readonly attemptHistoryWindows: number[] = [7, 14, 30];
+  attemptHistoryWindowDays = signal<number>(14);
+  attemptSourceFilter = signal<string>('ALL');
+  attemptSourceOptions = computed(() => {
+    const history = this.attemptHistory();
+    if (!history?.recentAttempts?.length) {
+      return ['ALL'];
+    }
+    const sources = Array.from(new Set(history.recentAttempts.map((item) => item.source).filter((value) => !!value)));
+    return ['ALL', ...sources];
+  });
+  filteredRecentAttempts = computed(() => {
+    const history = this.attemptHistory();
+    if (!history?.recentAttempts?.length) {
+      return [];
+    }
+    const selectedSource = this.attemptSourceFilter();
+    if (selectedSource === 'ALL') {
+      return history.recentAttempts;
+    }
+    return history.recentAttempts.filter((item) => item.source === selectedSource);
+  });
+  attemptTrendPoints = computed<AttemptTrendPoint[]>(() => {
+    const history = this.attemptHistory();
+    if (!history?.recentAttempts?.length) {
+      return [];
+    }
+    return history.recentAttempts
+      .slice(0, 12)
+      .reverse()
+      .map((item, index) => ({
+        index,
+        accuracyPct: this.toPercent(item.accuracyPct || 0),
+        success: !!item.success,
+        source: item.source || '',
+        category: item.mistakeCategory || 'Unknown',
+        attemptedAt: item.attemptedAt
+      }));
+  });
+  codeforcesHandleInput = signal('');
+  togglTokenInput = signal('');
   pendingTaskCount = signal(0);
   integrationTasks = signal<IntegrationTask[]>([]);
 
@@ -507,6 +1304,18 @@ export class AdvisorComponent implements OnInit {
   isGeneratingPlan = signal(false);
   isClearingMemory = signal(false);
   isSchedulingCalendar = signal(false);
+  isSyncingGithubAnalytics = signal(false);
+  isSyncingLeetCodeAnalytics = signal(false);
+  isSavingCodeforcesHandle = signal(false);
+  isSyncingCodeforcesAnalytics = signal(false);
+  isSavingTogglToken = signal(false);
+  isSyncingTogglFocus = signal(false);
+  isLoadingActivityBreakdown = signal(false);
+  isLoadingAttemptHistory = signal(false);
+  isExportingAttemptHistory = signal(false);
+  isReschedulingCalendar = signal(false);
+  coachingSummary = signal<CoachingSummaryResponse | null>(null);
+  isLoadingCoachingSummary = signal(false);
   isConnectingIntegration = signal(false);
 
   configStatus = signal<{ success: boolean; message: string } | null>(null);
@@ -661,11 +1470,135 @@ export class AdvisorComponent implements OnInit {
       next: (status) => {
         this.mode.set(status.mode || 'chat');
         this.googleCalendarConnected.set(!!status.googleCalendarConnected);
+        this.githubConnected.set(!!status.githubConnected);
+        this.leetcodeConnected.set(!!status.leetcodeConnected);
+        this.codeforcesConnected.set(!!status.codeforcesConnected);
+        this.togglConnected.set(!!status.togglConnected);
+        this.githubAnalytics.set(status.latestGithubAnalytics || null);
+        this.leetcodeAnalytics.set(status.latestLeetCodeAnalytics || null);
+        this.codeforcesAnalytics.set(status.latestCodeforcesAnalytics || null);
+        this.togglFocus.set(status.latestTogglFocus || null);
+        this.focusMetrics.set(status.focusMetrics || null);
+        this.codeforcesHandleInput.set(status.codeforcesHandle || '');
+        this.togglTokenInput.set('');
         this.pendingTaskCount.set(status.pendingTaskCount || 0);
         this.integrationTasks.set(status.latestTasks || []);
+        this.loadAttemptHistory(this.attemptHistoryWindowDays(), this.getAttemptHistoryLimit(this.attemptHistoryWindowDays()));
+        this.loadActivityBreakdown(this.attemptHistoryWindowDays());
+        this.loadCoachingSummary(7);
       },
       error: () => {
         this.googleCalendarConnected.set(false);
+        this.githubConnected.set(false);
+        this.leetcodeConnected.set(false);
+        this.codeforcesConnected.set(false);
+        this.togglConnected.set(false);
+        this.githubAnalytics.set(null);
+        this.leetcodeAnalytics.set(null);
+        this.codeforcesAnalytics.set(null);
+        this.togglFocus.set(null);
+        this.focusMetrics.set(null);
+        this.activityBreakdown.set(null);
+        this.attemptHistory.set(null);
+        this.attemptSourceFilter.set('ALL');
+        this.coachingSummary.set(null);
+        this.isLoadingActivityBreakdown.set(false);
+        this.isLoadingAttemptHistory.set(false);
+        this.isLoadingCoachingSummary.set(false);
+      }
+    });
+  }
+
+  loadAttemptHistory(days: number = 14, limit: number = 12) {
+    this.isLoadingAttemptHistory.set(true);
+    this.http.get<AttemptHistoryResponse>(`/api/rishi/coding/attempt-history?days=${days}&limit=${limit}`).subscribe({
+      next: (resp) => {
+        this.isLoadingAttemptHistory.set(false);
+        this.attemptHistory.set(resp || null);
+        const allowedSources = new Set((resp?.recentAttempts || []).map((item) => item.source));
+        if (this.attemptSourceFilter() !== 'ALL' && !allowedSources.has(this.attemptSourceFilter())) {
+          this.attemptSourceFilter.set('ALL');
+        }
+      },
+      error: () => {
+        this.isLoadingAttemptHistory.set(false);
+        this.attemptHistory.set(null);
+        this.attemptSourceFilter.set('ALL');
+      }
+    });
+  }
+
+  loadActivityBreakdown(days: number = 14) {
+    this.isLoadingActivityBreakdown.set(true);
+    this.http.get<ActivityBreakdownResponse>(`/api/rishi/coding/activity-breakdown?days=${days}`).subscribe({
+      next: (resp) => {
+        this.isLoadingActivityBreakdown.set(false);
+        this.activityBreakdown.set(resp || null);
+      },
+      error: () => {
+        this.isLoadingActivityBreakdown.set(false);
+        this.activityBreakdown.set(null);
+      }
+    });
+  }
+
+  loadCoachingSummary(days: number = 7) {
+    this.isLoadingCoachingSummary.set(true);
+    this.http.get<CoachingSummaryResponse>(`/api/rishi/integrations/coaching-summary?days=${days}`).subscribe({
+      next: (resp) => {
+        this.isLoadingCoachingSummary.set(false);
+        this.coachingSummary.set(resp || null);
+      },
+      error: () => {
+        this.isLoadingCoachingSummary.set(false);
+        this.coachingSummary.set(null);
+      }
+    });
+  }
+
+  setAttemptHistoryWindow(days: number) {
+    if (!this.attemptHistoryWindows.includes(days)) {
+      return;
+    }
+    if (this.attemptHistoryWindowDays() === days && this.attemptHistory()) {
+      return;
+    }
+    this.attemptHistoryWindowDays.set(days);
+    this.loadAttemptHistory(days, this.getAttemptHistoryLimit(days));
+  }
+
+  refreshAttemptHistory() {
+    this.loadAttemptHistory(this.attemptHistoryWindowDays(), this.getAttemptHistoryLimit(this.attemptHistoryWindowDays()));
+    this.loadActivityBreakdown(this.attemptHistoryWindowDays());
+  }
+
+  setAttemptSourceFilter(source: string) {
+    this.attemptSourceFilter.set(source || 'ALL');
+  }
+
+  exportAttemptHistoryCsv() {
+    if (this.isExportingAttemptHistory()) {
+      return;
+    }
+    this.isExportingAttemptHistory.set(true);
+    const days = this.attemptHistoryWindowDays();
+    this.http.get(`/api/rishi/coding/attempt-history/export?days=${days}`, { responseType: 'text' }).subscribe({
+      next: (csv) => {
+        this.isExportingAttemptHistory.set(false);
+        if (!isPlatformBrowser(this.platformId)) {
+          return;
+        }
+        const blob = new Blob([csv || ''], { type: 'text/csv;charset=utf-8' });
+        const url = window.URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = `rishi_attempt_history_${days}d.csv`;
+        anchor.click();
+        window.URL.revokeObjectURL(url);
+      },
+      error: (err: HttpErrorResponse) => {
+        this.isExportingAttemptHistory.set(false);
+        this.planStatus.set({ success: false, message: this.extractError(err, 'Failed to export attempt history.') });
       }
     });
   }
@@ -712,6 +1645,202 @@ export class AdvisorComponent implements OnInit {
       error: (err: HttpErrorResponse) => {
         this.isSchedulingCalendar.set(false);
         this.planStatus.set({ success: false, message: this.extractError(err, 'Calendar scheduling failed.') });
+      }
+    });
+  }
+
+  autoRescheduleCalendarBlocks() {
+    if (this.isReschedulingCalendar()) {
+      return;
+    }
+    this.isReschedulingCalendar.set(true);
+    this.http.post<CalendarScheduleResponse>('/api/rishi/integrations/google-calendar/auto-reschedule', {
+      count: 2,
+      blockMinutes: 50
+    }).subscribe({
+      next: (resp) => {
+        this.isReschedulingCalendar.set(false);
+        this.planStatus.set({
+          success: true,
+          message: `Auto-rescheduled and scheduled ${resp.scheduledCount} study block(s).`
+        });
+        this.loadIntegrationsStatus();
+      },
+      error: (err: HttpErrorResponse) => {
+        this.isReschedulingCalendar.set(false);
+        this.planStatus.set({ success: false, message: this.extractError(err, 'Auto-reschedule failed.') });
+      }
+    });
+  }
+
+  syncGithubAnalytics(windowDays: number = 30) {
+    if (this.isSyncingGithubAnalytics()) {
+      return;
+    }
+    if (!this.githubConnected()) {
+      this.planStatus.set({ success: false, message: 'Link GitHub in Arsenal before syncing analytics.' });
+      return;
+    }
+
+    this.isSyncingGithubAnalytics.set(true);
+    const payload: GithubAnalyticsSyncRequest = { windowDays };
+    this.http.post<GithubAnalytics>('/api/rishi/integrations/github/analytics/sync', payload).subscribe({
+      next: (resp) => {
+        this.isSyncingGithubAnalytics.set(false);
+        this.githubAnalytics.set(resp || null);
+        this.planStatus.set({
+          success: true,
+          message: `GitHub analytics synced (${resp?.windowDays || windowDays}d): ${resp?.commitCount || 0} commits, ${resp?.pullRequestCount || 0} PRs.`
+        });
+        this.loadIntegrationsStatus();
+      },
+      error: (err: HttpErrorResponse) => {
+        this.isSyncingGithubAnalytics.set(false);
+        this.planStatus.set({ success: false, message: this.extractError(err, 'GitHub analytics sync failed.') });
+      }
+    });
+  }
+
+  syncLeetCodeAnalytics(windowDays: number = 30) {
+    if (this.isSyncingLeetCodeAnalytics()) {
+      return;
+    }
+    if (!this.leetcodeConnected()) {
+      this.planStatus.set({ success: false, message: 'Set your LeetCode username before syncing analytics.' });
+      return;
+    }
+
+    this.isSyncingLeetCodeAnalytics.set(true);
+    const payload: LeetCodeAnalyticsSyncRequest = { windowDays };
+    this.http.post<LeetCodeAnalytics>('/api/rishi/integrations/leetcode/analytics/sync', payload).subscribe({
+      next: (resp) => {
+        this.isSyncingLeetCodeAnalytics.set(false);
+        this.leetcodeAnalytics.set(resp || null);
+        this.planStatus.set({
+          success: true,
+          message: `LeetCode analytics synced (${resp?.windowDays || windowDays}d): ${resp?.totalSolved || 0} solved, 7d trend ${resp?.solveTrendPct?.toFixed(1) || '0.0'}%.`
+        });
+        this.loadIntegrationsStatus();
+      },
+      error: (err: HttpErrorResponse) => {
+        this.isSyncingLeetCodeAnalytics.set(false);
+        this.planStatus.set({ success: false, message: this.extractError(err, 'LeetCode analytics sync failed.') });
+      }
+    });
+  }
+
+  saveCodeforcesHandle() {
+    if (this.isSavingCodeforcesHandle()) {
+      return;
+    }
+    const handle = this.codeforcesHandleInput().trim();
+    this.isSavingCodeforcesHandle.set(true);
+    this.http.post<{ codeforcesHandle: string }>('/api/rishi/integrations/codeforces/handle', { handle }).subscribe({
+      next: (resp) => {
+        this.isSavingCodeforcesHandle.set(false);
+        this.codeforcesHandleInput.set(resp?.codeforcesHandle || '');
+        this.planStatus.set({
+          success: true,
+          message: handle ? `Codeforces handle linked: ${resp?.codeforcesHandle || handle}` : 'Codeforces handle removed.'
+        });
+        this.loadIntegrationsStatus();
+      },
+      error: (err: HttpErrorResponse) => {
+        this.isSavingCodeforcesHandle.set(false);
+        this.planStatus.set({ success: false, message: this.extractError(err, 'Failed to save Codeforces handle.') });
+      }
+    });
+  }
+
+  syncCodeforcesAnalytics(windowDays: number = 30) {
+    if (this.isSyncingCodeforcesAnalytics()) {
+      return;
+    }
+    if (!this.codeforcesConnected()) {
+      this.planStatus.set({ success: false, message: 'Set your Codeforces handle before syncing analytics.' });
+      return;
+    }
+
+    this.isSyncingCodeforcesAnalytics.set(true);
+    const payload: CodeforcesAnalyticsSyncRequest = { windowDays };
+    this.http.post<CodeforcesAnalytics>('/api/rishi/integrations/codeforces/analytics/sync', payload).subscribe({
+      next: (resp) => {
+        this.isSyncingCodeforcesAnalytics.set(false);
+        this.codeforcesAnalytics.set(resp || null);
+        this.planStatus.set({
+          success: true,
+          message: `Codeforces analytics synced (${resp?.windowDays || windowDays}d): rating ${resp?.currentRating || 0}, solved ${resp?.solvedCurrentWindow || 0}.`
+        });
+        this.loadIntegrationsStatus();
+      },
+      error: (err: HttpErrorResponse) => {
+        this.isSyncingCodeforcesAnalytics.set(false);
+        this.planStatus.set({ success: false, message: this.extractError(err, 'Codeforces analytics sync failed.') });
+      }
+    });
+  }
+
+  saveTogglToken() {
+    if (this.isSavingTogglToken()) {
+      return;
+    }
+    const apiToken = this.togglTokenInput().trim();
+    if (!apiToken) {
+      this.planStatus.set({ success: false, message: 'Paste your Toggl API token before saving.' });
+      return;
+    }
+
+    this.isSavingTogglToken.set(true);
+    this.http.post('/api/rishi/integrations/toggl/token', { apiToken }).subscribe({
+      next: () => {
+        this.isSavingTogglToken.set(false);
+        this.togglTokenInput.set('');
+        this.planStatus.set({ success: true, message: 'Toggl connected successfully.' });
+        this.loadIntegrationsStatus();
+      },
+      error: (err: HttpErrorResponse) => {
+        this.isSavingTogglToken.set(false);
+        this.planStatus.set({ success: false, message: this.extractError(err, 'Failed to connect Toggl.') });
+      }
+    });
+  }
+
+  syncTogglFocus(windowDays: number = 7) {
+    if (this.isSyncingTogglFocus()) {
+      return;
+    }
+    if (!this.togglConnected()) {
+      this.planStatus.set({ success: false, message: 'Connect Toggl before syncing focus time.' });
+      return;
+    }
+
+    this.isSyncingTogglFocus.set(true);
+    const payload: TogglFocusSyncRequest = { windowDays };
+    this.http.post<TogglFocus>('/api/rishi/integrations/toggl/focus/sync', payload).subscribe({
+      next: (resp) => {
+        this.isSyncingTogglFocus.set(false);
+        this.togglFocus.set(resp || null);
+        this.planStatus.set({
+          success: true,
+          message: `Toggl synced (${resp?.windowDays || windowDays}d): ${resp?.trackedMinutes || 0} tracked minutes.`
+        });
+        this.loadIntegrationsStatus();
+      },
+      error: (err: HttpErrorResponse) => {
+        this.isSyncingTogglFocus.set(false);
+        this.planStatus.set({ success: false, message: this.extractError(err, 'Toggl sync failed.') });
+      }
+    });
+  }
+
+  disconnectToggl() {
+    this.http.post('/api/rishi/integrations/toggl/disconnect', {}).subscribe({
+      next: () => {
+        this.planStatus.set({ success: true, message: 'Toggl disconnected.' });
+        this.loadIntegrationsStatus();
+      },
+      error: (err: HttpErrorResponse) => {
+        this.planStatus.set({ success: false, message: this.extractError(err, 'Failed to disconnect Toggl.') });
       }
     });
   }
@@ -996,6 +2125,17 @@ export class AdvisorComponent implements OnInit {
     return 'text';
   }
 
+  formatAttemptSource(source: string): string {
+    if (!source) {
+      return 'Unknown';
+    }
+    return source
+      .toLowerCase()
+      .split('_')
+      .map((chunk) => (chunk ? chunk.charAt(0).toUpperCase() + chunk.slice(1) : chunk))
+      .join(' ');
+  }
+
   toggleSettingsPanel() { this.showSettings.set(!this.showSettings()); }
   togglePlanExpansion() { this.isPlanExpanded.set(!this.isPlanExpanded()); }
 
@@ -1022,6 +2162,23 @@ export class AdvisorComponent implements OnInit {
       const container = document.querySelector('.advisor-chat-scroll');
       if (container) container.scrollTop = container.scrollHeight;
     }, 100);
+  }
+
+  private getAttemptHistoryLimit(days: number): number {
+    if (days <= 7) {
+      return 12;
+    }
+    if (days <= 14) {
+      return 20;
+    }
+    return 30;
+  }
+
+  toPercent(value: number): number {
+    if (!Number.isFinite(value)) {
+      return 0;
+    }
+    return Math.max(0, Math.min(100, value));
   }
 }
 

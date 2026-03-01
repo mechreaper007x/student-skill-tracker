@@ -3,7 +3,9 @@ package com.skilltracker.student_skill_tracker.controller;
 import java.util.Map;
 import java.util.Optional;
 
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -16,6 +18,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.skilltracker.student_skill_tracker.dto.RishiCodeChangeBatchRequest;
+import com.skilltracker.student_skill_tracker.dto.RishiActivityBreakdownResponse;
+import com.skilltracker.student_skill_tracker.dto.RishiAttemptHistoryResponse;
+import com.skilltracker.student_skill_tracker.dto.RishiCompileAttemptAnalysisResponse;
 import com.skilltracker.student_skill_tracker.dto.RishiCompileAttemptRequest;
 import com.skilltracker.student_skill_tracker.dto.RishiGrowthSummaryResponse;
 import com.skilltracker.student_skill_tracker.dto.RishiSessionEndRequest;
@@ -81,8 +86,9 @@ public class RishiCodingTelemetryController {
         }
 
         try {
-            rishiCodingTelemetryService.recordCompileAttempt(studentOpt.get(), sessionId, request);
-            return ResponseEntity.ok(Map.of("status", "ok"));
+            RishiCompileAttemptAnalysisResponse response = rishiCodingTelemetryService.recordCompileAttempt(
+                    studentOpt.get(), sessionId, request);
+            return ResponseEntity.ok(response);
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", ex.getMessage()));
         }
@@ -119,6 +125,50 @@ public class RishiCodingTelemetryController {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping("/attempt-history")
+    public ResponseEntity<?> getAttemptHistory(
+            Authentication authentication,
+            @RequestParam(name = "days", defaultValue = "14") int days,
+            @RequestParam(name = "limit", defaultValue = "20") int limit) {
+        Optional<Student> studentOpt = getCurrentStudent(authentication);
+        if (studentOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Not authenticated"));
+        }
+
+        RishiAttemptHistoryResponse response = rishiCodingTelemetryService.getAttemptHistory(studentOpt.get(), days, limit);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/attempt-history/export")
+    public ResponseEntity<?> exportAttemptHistoryCsv(
+            Authentication authentication,
+            @RequestParam(name = "days", defaultValue = "14") int days) {
+        Optional<Student> studentOpt = getCurrentStudent(authentication);
+        if (studentOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Not authenticated"));
+        }
+
+        String csv = rishiCodingTelemetryService.exportAttemptHistoryCsv(studentOpt.get(), days);
+        String filename = "rishi_attempt_history_" + Math.max(7, Math.min(60, days)) + "d.csv";
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("text/csv"))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .body(csv);
+    }
+
+    @GetMapping("/activity-breakdown")
+    public ResponseEntity<?> getActivityBreakdown(
+            Authentication authentication,
+            @RequestParam(name = "days", defaultValue = "14") int days) {
+        Optional<Student> studentOpt = getCurrentStudent(authentication);
+        if (studentOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Not authenticated"));
+        }
+
+        RishiActivityBreakdownResponse response = rishiCodingTelemetryService.getActivityBreakdown(studentOpt.get(), days);
+        return ResponseEntity.ok(response);
+    }
+
     private Optional<Student> getCurrentStudent(Authentication authentication) {
         Authentication auth = authentication;
         if (auth == null) {
@@ -132,4 +182,3 @@ public class RishiCodingTelemetryController {
         return studentRepository.findByEmailIgnoreCase(email);
     }
 }
-

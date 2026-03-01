@@ -10,5 +10,15 @@ public class RishiCompileAttemptRequest {
     private Long executionTimeMs;
     private String language;
     private String problemSlug;
+    private String source;
+    private String errorMessage;
+    private String outputPreview;
+    private String submissionStatus;
+    private String judgeMessage;
+    private Integer testsPassed;
+    private Integer testsTotal;
+    private String failedTestInput;
+    private String expectedOutput;
+    private String actualOutput;
+    private String stackTraceSnippet;
 }
-

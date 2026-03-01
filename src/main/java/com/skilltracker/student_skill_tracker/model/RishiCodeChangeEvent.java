@@ -58,6 +58,18 @@ public class RishiCodeChangeEvent {
     @Column(name = "resulting_code_length")
     private Integer resultingCodeLength;
 
+    @Column(name = "activity_state", length = 40)
+    private String activityState;
+
+    @Column(name = "editor_focused")
+    private Boolean editorFocused;
+
+    @Column(name = "window_focused")
+    private Boolean windowFocused;
+
+    @Column(name = "document_visible")
+    private Boolean documentVisible;
+
     @Lob
     @Column(name = "meta_json")
     private String metaJson;
@@ -66,4 +78,3 @@ public class RishiCodeChangeEvent {
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 }
-

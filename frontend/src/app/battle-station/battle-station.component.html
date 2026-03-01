@@ -304,6 +304,16 @@
           <span class="block text-[8px] font-mono text-noir-500">
             ACTIVE: {{ formatRishiDuration(rishiSessionActiveMs()) }}
           </span>
+          <span
+            class="block text-[8px] font-mono"
+            [class.text-cyan-300]="rishiSessionState() === 'TYPING'"
+            [class.text-emerald-400]="rishiSessionState() === 'CURSOR_IDLE'"
+            [class.text-amber-400]="rishiSessionState() === 'EDITOR_UNFOCUSED'"
+            [class.text-rose-400]="rishiSessionState() === 'TAB_HIDDEN'"
+            [class.text-noir-500]="rishiSessionState() === 'WAITING'"
+          >
+            STATE: {{ formatRishiSessionState(rishiSessionState()) }}
+          </span>
         </div>
       </div>
 
@@ -366,6 +376,28 @@
           *ngIf="result() && !result()?.success"
           class="text-crimson-400 font-mono text-sm whitespace-pre-wrap break-words leading-relaxed"
         >{{ result()?.error }}{{ result()?.output ? '\n\n' + result()?.output : '' }}</pre>
+
+        <div *ngIf="rishiRunInsight() as insight" class="mt-4 border border-amber-500/30 bg-amber-950/20 p-3 space-y-2">
+          <div class="flex items-center justify-between">
+            <p class="text-[9px] font-mono text-amber-300 uppercase tracking-widest">RISHI RUN ANALYSIS</p>
+            <p class="text-[9px] font-mono text-noir-300">Accuracy {{ insight.accuracyPct | number:'1.0-1' }}%</p>
+          </div>
+          <p class="text-[11px] text-noir-200">
+            {{ insight.summary }}
+          </p>
+          <p class="text-[10px] text-noir-400 uppercase tracking-widest">
+            Category: {{ insight.mistakeCategory }}
+          </p>
+          <p class="text-[10px] text-noir-500 uppercase tracking-widest">
+            Bucket: {{ insight.failureBucket }}
+          </p>
+          <p class="text-[10px] text-amber-300" *ngIf="insight.nextSteps.length">
+            Fix now: {{ insight.nextSteps[0] }}
+          </p>
+          <ul class="list-disc pl-4 text-[11px] text-amber-100 space-y-1">
+            <li *ngFor="let step of insight.nextSteps">{{ step }}</li>
+          </ul>
+        </div>
       </div>
 
       <div class="p-4 space-y-3">
@@ -412,6 +444,28 @@
           >
             View Submission
           </a>
+        </div>
+
+        <div *ngIf="rishiSubmissionInsight() as insight" class="border border-indigo-500/30 bg-indigo-950/20 p-3 space-y-2">
+          <div class="flex items-center justify-between">
+            <p class="text-[9px] font-mono text-indigo-300 uppercase tracking-widest">RISHI SUBMISSION ANALYSIS</p>
+            <p class="text-[9px] font-mono text-noir-300">Accuracy {{ insight.accuracyPct | number:'1.0-1' }}%</p>
+          </div>
+          <p class="text-[11px] text-noir-200">
+            {{ insight.summary }}
+          </p>
+          <p class="text-[10px] text-noir-400 uppercase tracking-widest">
+            Category: {{ insight.mistakeCategory }}
+          </p>
+          <p class="text-[10px] text-noir-500 uppercase tracking-widest">
+            Bucket: {{ insight.failureBucket }}
+          </p>
+          <p class="text-[10px] text-indigo-200" *ngIf="insight.nextSteps.length">
+            Fix now: {{ insight.nextSteps[0] }}
+          </p>
+          <ul class="list-disc pl-4 text-[11px] text-indigo-100 space-y-1">
+            <li *ngFor="let step of insight.nextSteps">{{ step }}</li>
+          </ul>
         </div>
       </div>
     </div>

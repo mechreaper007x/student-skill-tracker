@@ -8,5 +8,8 @@ import lombok.Setter;
 public class RishiSessionEndRequest {
     private String reason;
     private Long activeDurationMs;
+    private Long typingDurationMs;
+    private Long cursorIdleDurationMs;
+    private Long editorUnfocusedDurationMs;
+    private Long tabHiddenDurationMs;
 }
-

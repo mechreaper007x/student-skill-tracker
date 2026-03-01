@@ -7,7 +7,12 @@ import { MonacoEditorModule } from 'ngx-monaco-editor-v2';
 import { Subject } from 'rxjs';
 import { debounceTime, takeUntil } from 'rxjs/operators';
 import { AuthService } from '../core/auth/auth.service';
-import { CompilationResult, CompilerService } from '../core/compiler.service';
+import {
+  CompilationResult,
+  CompilerService,
+  RishiCompileAttemptAnalysisResponse,
+  RishiCompileAttemptRequest
+} from '../core/compiler.service';
 import {
     AnswerResult,
     MatchStartPayload,
@@ -95,6 +100,9 @@ export class DuelArenaComponent implements OnInit, OnDestroy {
   selectedLanguage = signal<DuelLanguage>('java');
   isExecuting = signal(false);
   myResult = signal<CompilationResult | null>(null);
+  rishiRunInsight = signal<RishiCompileAttemptAnalysisResponse | null>(null);
+  rishiCodingSessionId = signal<number | null>(null);
+  private pendingDuelCompileAttempt: RishiCompileAttemptRequest | null = null;
   codingSubmitted = signal(false);
 
   // Answer result from server
@@ -187,6 +195,7 @@ export class DuelArenaComponent implements OnInit, OnDestroy {
   ngOnDestroy() {
     this.destroy$.next();
     this.destroy$.complete();
+    this.endDuelRishiCodingSession('duel_component_destroyed');
     this.stopRoundTimer();
     if (this.phase() === 'matchmaking') {
       this.wsService.leaveLobby().subscribe();
@@ -280,6 +289,10 @@ export class DuelArenaComponent implements OnInit, OnDestroy {
     if (round.type === 'CODING') {
       const lang = this.selectedLanguage();
       this.myCode.set(this.getStarterCodeForLanguage(round.starterCode, lang));
+      this.rishiRunInsight.set(null);
+      this.startDuelRishiCodingSession(round);
+    } else {
+      this.endDuelRishiCodingSession(`duel_round_${round.type.toLowerCase()}_started`);
     }
 
     // Start timer
@@ -450,6 +463,7 @@ export class DuelArenaComponent implements OnInit, OnDestroy {
     if (this.isExecuting() || !this.myCode().trim()) return;
     this.isExecuting.set(true);
     this.myResult.set(null);
+    this.rishiRunInsight.set(null);
 
     this.compilerService.executeCode({
       sourceCode: this.myCode(),
@@ -460,14 +474,31 @@ export class DuelArenaComponent implements OnInit, OnDestroy {
     }).subscribe({
       next: (result) => {
         this.myResult.set(result);
+        this.recordDuelRishiCompileAttempt({
+          source: 'duel_run',
+          success: result.success,
+          executionTimeMs: this.parseExecutionTimeMs(result.executionTime),
+          errorMessage: result.error || '',
+          outputPreview: result.output || '',
+          problemSlug: this.getDuelProblemSlug(this.currentRoundData())
+        });
         this.isExecuting.set(false);
       },
       error: (err) => {
-        this.myResult.set({
+        const failedResult: CompilationResult = {
           success: false, output: '',
           error: err?.error?.error || 'Execution failed.',
           executionTime: '0ms', language: this.selectedLanguage(),
           timestamp: new Date().toISOString()
+        };
+        this.myResult.set(failedResult);
+        this.recordDuelRishiCompileAttempt({
+          source: 'duel_run',
+          success: false,
+          executionTimeMs: 0,
+          errorMessage: failedResult.error,
+          outputPreview: failedResult.output,
+          problemSlug: this.getDuelProblemSlug(this.currentRoundData())
         });
         this.isExecuting.set(false);
       }
@@ -477,6 +508,7 @@ export class DuelArenaComponent implements OnInit, OnDestroy {
   submitCoding() {
     this.codingSubmitted.set(true);
     const passed = this.myResult()?.success ? 1 : 0;
+    this.endDuelRishiCodingSession('duel_coding_submitted');
     this.wsService.submitAnswer(this.sessionId(), this.currentUserMatchmakingId(), String(passed));
     this.wsService.sendExecuteStatus(this.sessionId(), this.currentUserMatchmakingId(), passed ? 'PASSED' : 'FAILED', passed, 1);
     setTimeout(() => {
@@ -484,7 +516,86 @@ export class DuelArenaComponent implements OnInit, OnDestroy {
     }, 2000);
   }
 
+  private startDuelRishiCodingSession(round: RoundData | null) {
+    const currentSessionId = this.rishiCodingSessionId();
+    if (currentSessionId) {
+      return;
+    }
+
+    this.compilerService.startRishiCodingSession({
+      language: this.selectedLanguage(),
+      problemSlug: this.getDuelProblemSlug(round)
+    }).subscribe({
+      next: (response) => {
+        this.rishiCodingSessionId.set(response.sessionId);
+        if (this.pendingDuelCompileAttempt) {
+          const pending = this.pendingDuelCompileAttempt;
+          this.pendingDuelCompileAttempt = null;
+          this.recordDuelRishiCompileAttempt(pending);
+        }
+      },
+      error: () => {
+        this.rishiCodingSessionId.set(null);
+        this.pendingDuelCompileAttempt = null;
+      }
+    });
+  }
+
+  private endDuelRishiCodingSession(reason: string) {
+    this.pendingDuelCompileAttempt = null;
+    const sessionId = this.rishiCodingSessionId();
+    if (!sessionId) {
+      return;
+    }
+
+    this.rishiCodingSessionId.set(null);
+    this.compilerService.endRishiCodingSession(sessionId, { reason }).subscribe({
+      error: () => {
+        // Non-blocking telemetry.
+      }
+    });
+  }
+
+  private recordDuelRishiCompileAttempt(request: RishiCompileAttemptRequest) {
+    const sessionId = this.rishiCodingSessionId();
+    if (!sessionId) {
+      this.pendingDuelCompileAttempt = { ...request };
+      this.startDuelRishiCodingSession(this.currentRoundData());
+      return;
+    }
+
+    this.compilerService.recordRishiCompileAttempt(sessionId, {
+      ...request,
+      language: request.language || this.selectedLanguage(),
+      problemSlug: request.problemSlug || this.getDuelProblemSlug(this.currentRoundData())
+    }).subscribe({
+      next: (insight) => {
+        this.rishiRunInsight.set(insight);
+      },
+      error: () => {
+        // Non-blocking telemetry.
+      }
+    });
+  }
+
+  private parseExecutionTimeMs(value: string | null | undefined): number {
+    if (!value) {
+      return 0;
+    }
+    const match = value.match(/(\d+)/);
+    return match ? Number(match[1]) : 0;
+  }
+
+  private getDuelProblemSlug(round: RoundData | null): string {
+    const base = (round?.title || `duel-round-${this.currentRound()}`).toLowerCase();
+    return base
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 255);
+  }
+
   returnToLobby() {
+    this.endDuelRishiCodingSession('duel_return_to_lobby');
     this.stopRoundTimer();
     this.sessionId.set('');
     this.opponent.set('');
@@ -496,6 +607,7 @@ export class DuelArenaComponent implements OnInit, OnDestroy {
     this.player2Name.set('');
     this.lastAnswerResult.set(null);
     this.winner.set('');
+    this.rishiRunInsight.set(null);
     this.clearRealtimeSignals();
     this.phase.set('lobby');
   }
