@@ -1,6 +1,6 @@
 package com.skilltracker.student_skill_tracker.config;
 
-import static org.springframework.security.config.Customizer.withDefaults;
+import static org.springframework.security.config.Customizer.*;
 
 import java.util.Arrays;
 import java.util.List;
@@ -19,9 +19,9 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.argon2.Argon2PasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 import org.springframework.security.web.header.writers.StaticHeadersWriter;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -80,7 +80,8 @@ public class SecurityConfig {
                                                                 "camera=(), microphone=(), geolocation=()"))
                                                 .contentSecurityPolicy(csp -> csp.policyDirectives(
                                                                 "default-src 'self'; " +
-                                                                                "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
+                                                                                "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
+                                                                                +
                                                                                 "style-src 'self' 'unsafe-inline'; " +
                                                                                 "img-src 'self' data: https:; " +
                                                                                 "connect-src 'self' https: wss: ws:; " +
@@ -90,7 +91,8 @@ public class SecurityConfig {
                                                                                 "frame-ancestors 'self';")))
                                 .exceptionHandling(exception -> exception
                                                 .authenticationEntryPoint((request, response, authException) -> {
-                                                        logger.debug("Unauthenticated request to {}", request.getRequestURI());
+                                                        logger.debug("Unauthenticated request to {}",
+                                                                        request.getRequestURI());
                                                         response.setStatus(
                                                                         jakarta.servlet.http.HttpServletResponse.SC_UNAUTHORIZED);
                                                         response.setContentType("application/json");
@@ -110,6 +112,7 @@ public class SecurityConfig {
                                                                 "/cognitive-sprint", "/compiler", "/settings",
                                                                 "/battle-station",
                                                                 "/error",
+                                                                "/api/ping",
                                                                 "/actuator/health", "/actuator/health/**",
                                                                 "/css/**", "/js/**", "/images/**",
                                                                 "/index.html", "/favicon.ico", "/*.js", "/*.css",

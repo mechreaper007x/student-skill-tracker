@@ -1,4 +1,4 @@
-2services:
+services:
   - type: web
     name: student-skill-tracker-backend
     runtime: docker
@@ -6,7 +6,7 @@
     region: ohio
     dockerfilePath: ./Dockerfile
     dockerContext: .
-    healthCheckPath: /actuator/health
+    healthCheckPath: /api/ping
     envVars:
       - key: SPRING_PROFILES_ACTIVE
         value: prod
@@ -21,7 +21,7 @@
       - key: JWT_SECRET
         generateValue: true
       - key: JAVA_OPTS
-        value: "-XX:+UseSerialGC -Xmx300m -XX:MaxMetaspaceSize=150m -XX:ReservedCodeCacheSize=64m -Xss512k"
+        value: "-XX:+UseSerialGC -Xmx256m -XX:MaxMetaspaceSize=128m -XX:ReservedCodeCacheSize=64m -Xss512k"
 
   - type: web
     name: student-skill-tracker-frontend
