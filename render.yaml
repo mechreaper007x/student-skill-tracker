@@ -13,7 +13,7 @@ services:
       - key: PORT
         value: 8080
       - key: DB_URL
-        placeholder: "jdbc:postgresql://host:port/dbname?prepareThreshold=0"
+        sync: false
       - key: DB_USERNAME
         sync: false
       - key: DB_PASSWORD
