@@ -26,6 +26,14 @@ services:
         value: simple
       - key: REDIS_HEALTH_ENABLED
         value: false
+      - key: UPSTASH_REDIS_HOST
+        sync: false
+      - key: UPSTASH_REDIS_PORT
+        value: 6379
+      - key: UPSTASH_REDIS_PASSWORD
+        sync: false
+      - key: UPSTASH_REDIS_SSL
+        value: true
 
   - type: web
     name: student-skill-tracker-frontend
