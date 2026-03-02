@@ -10,12 +10,14 @@
     envVars:
       - key: SPRING_PROFILES_ACTIVE
         value: prod
+      - key: PORT
+        value: 8080
       - key: DB_URL
-        value: jdbc:h2:file:./skilltrackerdb;AUTO_SERVER=TRUE
+        placeholder: "jdbc:postgresql://host:port/dbname?prepareThreshold=0"
       - key: DB_USERNAME
-        value: sa
+        sync: false
       - key: DB_PASSWORD
-        value: ""
+        sync: false
       - key: JWT_SECRET
         generateValue: true
 
