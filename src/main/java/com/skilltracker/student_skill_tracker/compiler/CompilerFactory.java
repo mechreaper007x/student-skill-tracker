@@ -10,12 +10,13 @@ public class CompilerFactory {
     private static final Map<String, ProgrammingLanguageCompiler> COMPILERS = new HashMap<>();
 
     static {
-        COMPILERS.put("java", new JavaCompiler());
-        COMPILERS.put("python", new PythonCompiler());
-        COMPILERS.put("cpp", new CppCompiler());
-        COMPILERS.put("c++", new CppCompiler());
-        COMPILERS.put("javascript", new JavaScriptCompiler());
-        COMPILERS.put("js", new JavaScriptCompiler());
+        // --- PROACTIVE FIX: Offload to Piston API to bypass Render 0.1 CPU limit ---
+        COMPILERS.put("java", new PistonCompilerProvider("java"));
+        COMPILERS.put("python", new PistonCompilerProvider("python"));
+        COMPILERS.put("cpp", new PistonCompilerProvider("cpp"));
+        COMPILERS.put("c++", new PistonCompilerProvider("cpp"));
+        COMPILERS.put("javascript", new PistonCompilerProvider("javascript"));
+        COMPILERS.put("js", new PistonCompilerProvider("javascript"));
     }
 
     public static ProgrammingLanguageCompiler getCompiler(String language) {
