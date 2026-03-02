@@ -6,7 +6,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import com.skilltracker.student_skill_tracker.dto.RishiAgentExecuteRequest;
@@ -37,20 +36,19 @@ public class RishiAsyncAgentService {
         return taskStatuses.get(taskId);
     }
 
-    @Async("rishiAgentExecutor")
     public void processTaskAsync(String taskId, Student student, RishiAgentExecuteRequest request) {
-        try {
-            logger.info("Starting AI processing for task {}", taskId);
-            taskStatuses.put(taskId, new TaskStatus("PROCESSING", null, null));
+        logger.info("Enqueuing AI task {}", taskId);
+        taskStatuses.put(taskId, new TaskStatus("PROCESSING", null, null));
 
-            RishiAgentExecuteResponse response = rishiAgentService.execute(student, request);
-
-            taskStatuses.put(taskId, new TaskStatus("COMPLETED", response, null));
-            logger.info("Completed AI processing for task {}", taskId);
-        } catch (Exception e) {
-            logger.error("Failed AI processing for task {}", taskId, e);
-            taskStatuses.put(taskId, new TaskStatus("FAILED", null, e.getMessage()));
-        }
+        rishiAgentService.execute(student, request).whenComplete((response, ex) -> {
+            if (ex != null) {
+                logger.error("Failed AI processing for task {}", taskId, ex);
+                taskStatuses.put(taskId, new TaskStatus("FAILED", null, ex.getMessage()));
+            } else {
+                logger.info("Completed AI processing for task {}", taskId);
+                taskStatuses.put(taskId, new TaskStatus("COMPLETED", response, null));
+            }
+        });
     }
 
     public static class TaskStatus {

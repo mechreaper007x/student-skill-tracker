@@ -3,7 +3,9 @@ package com.skilltracker.student_skill_tracker.service;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -67,8 +69,9 @@ public class RishiAgentService {
                 this.mistakePatternService = mistakePatternService;
         }
 
+        @Async("rishiAgentExecutor")
         @Transactional
-        public RishiAgentExecuteResponse execute(Student student, RishiAgentExecuteRequest request) {
+        public CompletableFuture<RishiAgentExecuteResponse> execute(Student student, RishiAgentExecuteRequest request) {
                 if (request == null || isBlank(request.getMessage())) {
                         throw new IllegalArgumentException("Message is required");
                 }
@@ -144,7 +147,7 @@ public class RishiAgentService {
                 student.setRishiMode("agent");
                 studentRepository.save(student);
 
-                return RishiAgentExecuteResponse.builder()
+                RishiAgentExecuteResponse response = RishiAgentExecuteResponse.builder()
                                 .reply(reply)
                                 .provider(DEFAULT_PROVIDER)
                                 .model(model)
@@ -152,6 +155,7 @@ public class RishiAgentService {
                                 .threadId(persistedThreadId)
                                 .actions(actions)
                                 .build();
+                return CompletableFuture.completedFuture(response);
         }
 
         private String buildAgentContext(Student student) {
