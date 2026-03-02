@@ -28,7 +28,10 @@ import com.skilltracker.student_skill_tracker.dto.LeetCodeSubmissionRequest;
 import com.skilltracker.student_skill_tracker.model.Student;
 import com.skilltracker.student_skill_tracker.repository.StudentRepository;
 import com.skilltracker.student_skill_tracker.service.CognitiveMetricService;
+import com.skilltracker.student_skill_tracker.service.ForgettingVelocityService;
 import com.skilltracker.student_skill_tracker.service.LeetCodeService;
+import com.skilltracker.student_skill_tracker.service.PistonCompilerService;
+import com.skilltracker.student_skill_tracker.service.RishiToolRegistry;
 import com.skilltracker.student_skill_tracker.service.TokenCryptoService;
 
 @RestController
@@ -44,20 +47,22 @@ public class CompilerController {
     private final StudentRepository studentRepository;
     private final TokenCryptoService tokenCryptoService;
     private final CognitiveMetricService cognitiveMetricService;
-    private final com.skilltracker.student_skill_tracker.service.ForgettingVelocityService forgettingVelocityService;
+    private final ForgettingVelocityService forgettingVelocityService;
     private final SimpMessagingTemplate messagingTemplate;
-    private final com.skilltracker.student_skill_tracker.service.RishiToolRegistry rishiToolRegistry;
+    private final RishiToolRegistry rishiToolRegistry;
     private final CompilerFactory compilerFactory;
+    private final PistonCompilerService pistonCompilerService;
 
     public CompilerController(
             LeetCodeService leetCodeService,
             StudentRepository studentRepository,
             TokenCryptoService tokenCryptoService,
             CognitiveMetricService cognitiveMetricService,
-            com.skilltracker.student_skill_tracker.service.ForgettingVelocityService forgettingVelocityService,
+            ForgettingVelocityService forgettingVelocityService,
             SimpMessagingTemplate messagingTemplate,
-            com.skilltracker.student_skill_tracker.service.RishiToolRegistry rishiToolRegistry,
-            CompilerFactory compilerFactory) {
+            RishiToolRegistry rishiToolRegistry,
+            CompilerFactory compilerFactory,
+            PistonCompilerService pistonCompilerService) {
         this.leetCodeService = leetCodeService;
         this.studentRepository = studentRepository;
         this.tokenCryptoService = tokenCryptoService;
@@ -66,6 +71,7 @@ public class CompilerController {
         this.messagingTemplate = messagingTemplate;
         this.rishiToolRegistry = rishiToolRegistry;
         this.compilerFactory = compilerFactory;
+        this.pistonCompilerService = pistonCompilerService;
     }
 
     /**
@@ -73,7 +79,8 @@ public class CompilerController {
      * Protected by JWT via SecurityConfig (anyRequest().authenticated()).
      */
     @PostMapping("/execute")
-    public ResponseEntity<?> executeCode(@RequestBody CodeExecutionRequest request, Authentication authentication) {
+    public ResponseEntity<?> executeCode(@jakarta.validation.Valid @RequestBody CodeExecutionRequest request,
+            Authentication authentication) {
         logger.info("Code execution request: language={}, timeout={}s",
                 request.getLanguage(), request.getTimeoutSeconds());
 
@@ -107,11 +114,24 @@ public class CompilerController {
                     "error", "Source code cannot be empty"));
         }
 
-        // Check if language is supported and available
-        if (!compilerFactory.isLanguageSupported(request.getLanguage())) {
+        // --- SECURITY VALIDATION: Piston Payload Limit ---
+        if (request.getSourceCode().getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 200_000) {
             return ResponseEntity.badRequest().body(Map.of(
-                    "error", "Unsupported or unavailable language: " + request.getLanguage(),
-                    "availableLanguages", compilerFactory.getAvailableCompilers()));
+                    "error", "Source code exceeds the maximum allowed size of 200KB"));
+        }
+
+        if (request.getInput() != null
+                && request.getInput().getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 100_000) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "Input text exceeds the maximum allowed size of 100KB"));
+        }
+
+        // Check if language is supported via API request (Piston handles many)
+        if (!compilerFactory.isLanguageSupported(request.getLanguage())) {
+            // Note: If using Piston exclusively, you might eventually remove this local
+            // check,
+            // but keeping it ensures UI syncs with supported languages.
+            logger.warn("Language {} might not be locally supported but forwarding to Piston.", request.getLanguage());
         }
 
         // Enforce timeout limits (min 1s, max 30s)
@@ -120,9 +140,8 @@ public class CompilerController {
         try {
             long startTime = System.currentTimeMillis();
 
-            CompilationResult result = compilerFactory
-                    .getCompiler(request.getLanguage())
-                    .executeCode(request.getSourceCode(), request.getInput(), timeout);
+            // --- Direct service call requested by user ---
+            CompilationResult result = pistonCompilerService.executeRemotely(request);
 
             long elapsed = System.currentTimeMillis() - startTime;
             result.setExecutionTime(elapsed + "ms");

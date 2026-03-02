@@ -2,11 +2,10 @@ package com.skilltracker.student_skill_tracker.compiler;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
-import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.RestClient;
 
 import com.skilltracker.student_skill_tracker.dto.piston.PistonRequest;
 import com.skilltracker.student_skill_tracker.dto.piston.PistonResponse;
@@ -17,23 +16,16 @@ public class PistonCompilerProvider implements ProgrammingLanguageCompiler {
     private final String language;
     private final String version;
     private final String apiUrl;
-    private final RestTemplate restTemplate;
-
-    // Default versions as of 2025
-    private static final Map<String, String> VERSION_MAP = Map.of(
-            "java", "15.10.0",
-            "python", "3.10.0",
-            "cpp", "10.2.0",
-            "javascript", "18.15.0");
+    private final RestClient restClient;
 
     private static final java.util.regex.Pattern PUBLIC_CLASS_PATTERN = java.util.regex.Pattern
             .compile("\\bpublic\\s+class\\s+([A-Za-z_$][A-Za-z\\d_$]*)");
 
-    public PistonCompilerProvider(String language, String apiUrl) { // Modified constructor as per instruction
+    public PistonCompilerProvider(String language, String apiUrl) {
         this.language = language;
-        this.apiUrl = apiUrl; // Initialized as per instruction
-        this.version = VERSION_MAP.getOrDefault(language, "latest");
-        this.restTemplate = new RestTemplate(); // Initialized here as it's no longer static
+        this.apiUrl = apiUrl;
+        this.version = "*"; // Piston picks latest if "*" is sent
+        this.restClient = RestClient.create();
     }
 
     @Override
@@ -58,7 +50,11 @@ public class PistonCompilerProvider implements ProgrammingLanguageCompiler {
                 .build();
 
         try {
-            PistonResponse response = restTemplate.postForObject(apiUrl, request, PistonResponse.class);
+            PistonResponse response = restClient.post()
+                    .uri(apiUrl)
+                    .body(request)
+                    .retrieve()
+                    .body(PistonResponse.class);
 
             if (response == null || response.getRun() == null) {
                 return CompilationResult.builder()
@@ -69,11 +65,21 @@ public class PistonCompilerProvider implements ProgrammingLanguageCompiler {
             }
 
             PistonResponse.PistonResult run = response.getRun();
-            boolean success = run.getCode() == 0 && (run.getStderr() == null || run.getStderr().isBlank());
+            // User requested check: success if exit code is 0
+            boolean success = run.getCode() == 0;
+
+            // User requested to use getOutput() which handles combined streams (stdout +
+            // stderr)
+            String combinedOutput = run.getOutput();
+            if (combinedOutput == null) {
+                // Fallback if not available
+                combinedOutput = (run.getStdout() != null ? run.getStdout() : "") +
+                        (run.getStderr() != null ? run.getStderr() : "");
+            }
 
             return CompilationResult.builder()
                     .success(success)
-                    .output(run.getStdout())
+                    .output(combinedOutput)
                     .error(run.getStderr())
                     .executionTime("remote")
                     .language(language)
