@@ -8,6 +8,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -50,10 +51,12 @@ public class LeetCodeService {
         this.restTemplate = restTemplate;
     }
 
+    @Cacheable(value = "leetcodeStats", key = "#username", unless = "#result.isEmpty()")
     public Map<String, Object> fetchStats(String username) {
         try {
             String safeUsername = sanitizeForUrl(username);
-            if (safeUsername.isBlank()) return Map.of();
+            if (safeUsername.isBlank())
+                return Map.of();
             String url = "https://leetcode-stats-api.herokuapp.com/" + safeUsername;
             return restTemplate.getForObject(url, Map.class);
         } catch (Exception e) {
@@ -63,10 +66,12 @@ public class LeetCodeService {
     }
 
     private String sanitizeForUrl(String input) {
-        if (input == null) return "";
+        if (input == null)
+            return "";
         return input.replaceAll("[^a-zA-Z0-9\\-_\\.]", "");
     }
 
+    @Cacheable(value = "leetcodeLanguageStats", key = "#username", unless = "#result.isEmpty()")
     public Map<String, Object> fetchLanguageStats(String username) {
         try {
             String query = """
@@ -92,6 +97,7 @@ public class LeetCodeService {
         }
     }
 
+    @Cacheable(value = "leetcodeFullStats", key = "#username", unless = "#result.isEmpty()")
     public Map<String, Object> fetchFullStats(String username) {
         try {
             String query = """
@@ -240,7 +246,8 @@ public class LeetCodeService {
         }
 
         try {
-            Map<String, Object> cachedPayload = getCachedQuestionPayload(normalizedSlug, slugFromUrl, normalizedTitleKey);
+            Map<String, Object> cachedPayload = getCachedQuestionPayload(normalizedSlug, slugFromUrl,
+                    normalizedTitleKey);
             if (cachedPayload != null) {
                 return ResponseEntity.ok(cachedPayload);
             }
