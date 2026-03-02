@@ -4,10 +4,11 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -32,23 +33,13 @@ public class LeetCodeService {
     private static final long SUBMISSION_POLL_INTERVAL_MS = 1200L;
     private static final int GRAPHQL_RETRY_ATTEMPTS = 2;
     private static final long GRAPHQL_RETRY_DELAY_MS = 250L;
-    private static final long QUESTION_DETAILS_CACHE_TTL_MS = 30 * 60 * 1000L;
 
     private final RestTemplate restTemplate;
-    private final Map<String, QuestionDetailsCacheEntry> questionDetailsCache = new ConcurrentHashMap<>();
+    private final CacheManager cacheManager;
 
-    private static final class QuestionDetailsCacheEntry {
-        private final Map<String, Object> payload;
-        private final long expiresAtMs;
-
-        private QuestionDetailsCacheEntry(Map<String, Object> payload, long expiresAtMs) {
-            this.payload = payload;
-            this.expiresAtMs = expiresAtMs;
-        }
-    }
-
-    public LeetCodeService(RestTemplate restTemplate) {
+    public LeetCodeService(RestTemplate restTemplate, CacheManager cacheManager) {
         this.restTemplate = restTemplate;
+        this.cacheManager = cacheManager;
     }
 
     @Cacheable(value = "leetcodeStats", key = "#username", unless = "#result.isEmpty()")
@@ -246,8 +237,8 @@ public class LeetCodeService {
         }
 
         try {
-            Map<String, Object> cachedPayload = getCachedQuestionPayload(normalizedSlug, slugFromUrl,
-                    normalizedTitleKey);
+            String cacheTitleKeyTmp = normalizeTitleKey(normalizedTitleHint);
+            Map<String, Object> cachedPayload = getCachedQuestionPayload(normalizedSlug, slugFromUrl, cacheTitleKeyTmp);
             if (cachedPayload != null) {
                 return ResponseEntity.ok(cachedPayload);
             }
@@ -431,13 +422,16 @@ public class LeetCodeService {
         return question != null;
     }
 
+    @SuppressWarnings("unchecked")
     private Map<String, Object> getCachedQuestionPayload(String slug, String slugFromUrl, String titleKey) {
-        evictExpiredQuestionCacheEntries();
+        Cache cache = cacheManager.getCache("leetcodeQuestionDetails");
+        if (cache == null)
+            return null;
 
         for (String key : buildQuestionCacheKeys(slug, slugFromUrl, titleKey)) {
-            QuestionDetailsCacheEntry entry = questionDetailsCache.get(key);
-            if (entry != null && entry.expiresAtMs > System.currentTimeMillis()) {
-                return entry.payload;
+            Map<String, Object> entry = cache.get(key, Map.class);
+            if (entry != null) {
+                return entry;
             }
         }
         return null;
@@ -448,6 +442,10 @@ public class LeetCodeService {
             return;
         }
 
+        Cache cache = cacheManager.getCache("leetcodeQuestionDetails");
+        if (cache == null)
+            return;
+
         Map<String, Object> data = asMap(payload.get("data"));
         Map<String, Object> question = asMap(data == null ? null : data.get("question"));
         String resolvedSlug = normalizeSlug(asString(question == null ? null : question.get("titleSlug")));
@@ -455,10 +453,8 @@ public class LeetCodeService {
         String cacheSlug = !resolvedSlug.isBlank() ? resolvedSlug : normalizeSlug(slugHint);
         String cacheTitleKey = titleKeyHint == null ? "" : titleKeyHint;
 
-        long expiresAt = System.currentTimeMillis() + QUESTION_DETAILS_CACHE_TTL_MS;
-        QuestionDetailsCacheEntry entry = new QuestionDetailsCacheEntry(payload, expiresAt);
         for (String key : buildQuestionCacheKeys(cacheSlug, "", cacheTitleKey)) {
-            questionDetailsCache.put(key, entry);
+            cache.put(key, payload);
         }
     }
 
@@ -480,11 +476,6 @@ public class LeetCodeService {
         }
 
         return keys;
-    }
-
-    private void evictExpiredQuestionCacheEntries() {
-        long now = System.currentTimeMillis();
-        questionDetailsCache.entrySet().removeIf(entry -> entry.getValue().expiresAtMs <= now);
     }
 
     private String resolveSlugByTitle(String titleHint) {

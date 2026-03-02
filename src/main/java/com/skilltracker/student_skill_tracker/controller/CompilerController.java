@@ -29,8 +29,8 @@ import com.skilltracker.student_skill_tracker.model.Student;
 import com.skilltracker.student_skill_tracker.repository.StudentRepository;
 import com.skilltracker.student_skill_tracker.service.CognitiveMetricService;
 import com.skilltracker.student_skill_tracker.service.ForgettingVelocityService;
+import com.skilltracker.student_skill_tracker.service.JDoodleCompilerService;
 import com.skilltracker.student_skill_tracker.service.LeetCodeService;
-import com.skilltracker.student_skill_tracker.service.PistonCompilerService;
 import com.skilltracker.student_skill_tracker.service.RishiToolRegistry;
 import com.skilltracker.student_skill_tracker.service.TokenCryptoService;
 
@@ -51,7 +51,7 @@ public class CompilerController {
     private final SimpMessagingTemplate messagingTemplate;
     private final RishiToolRegistry rishiToolRegistry;
     private final CompilerFactory compilerFactory;
-    private final PistonCompilerService pistonCompilerService;
+    private final JDoodleCompilerService jdoodleCompilerService;
 
     public CompilerController(
             LeetCodeService leetCodeService,
@@ -62,7 +62,7 @@ public class CompilerController {
             SimpMessagingTemplate messagingTemplate,
             RishiToolRegistry rishiToolRegistry,
             CompilerFactory compilerFactory,
-            PistonCompilerService pistonCompilerService) {
+            JDoodleCompilerService jdoodleCompilerService) {
         this.leetCodeService = leetCodeService;
         this.studentRepository = studentRepository;
         this.tokenCryptoService = tokenCryptoService;
@@ -71,7 +71,7 @@ public class CompilerController {
         this.messagingTemplate = messagingTemplate;
         this.rishiToolRegistry = rishiToolRegistry;
         this.compilerFactory = compilerFactory;
-        this.pistonCompilerService = pistonCompilerService;
+        this.jdoodleCompilerService = jdoodleCompilerService;
     }
 
     /**
@@ -141,7 +141,7 @@ public class CompilerController {
             long startTime = System.currentTimeMillis();
 
             // --- Direct service call requested by user ---
-            CompilationResult result = pistonCompilerService.executeRemotely(request);
+            CompilationResult result = jdoodleCompilerService.executeRemotely(request);
 
             long elapsed = System.currentTimeMillis() - startTime;
             result.setExecutionTime(elapsed + "ms");

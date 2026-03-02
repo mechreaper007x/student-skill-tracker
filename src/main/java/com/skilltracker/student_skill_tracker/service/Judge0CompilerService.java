@@ -14,16 +14,16 @@ import com.skilltracker.student_skill_tracker.dto.judge0.Judge0Request;
 import com.skilltracker.student_skill_tracker.dto.judge0.Judge0Response;
 
 @Service
-public class PistonCompilerService {
+public class Judge0CompilerService {
 
-    private static final Logger logger = LoggerFactory.getLogger(PistonCompilerService.class);
+    private static final Logger logger = LoggerFactory.getLogger(Judge0CompilerService.class);
 
     private final RestClient restClient;
     private final String apiUrl;
     private final String rapidApiKey;
     private final String rapidApiHost;
 
-    public PistonCompilerService(
+    public Judge0CompilerService(
             @Value("${judge0.api.url:https://judge0-ce.p.rapidapi.com/submissions?base64_encoded=false&wait=true}") String apiUrl,
             @Value("${judge0.api.key:}") String rapidApiKey,
             @Value("${judge0.api.host:judge0-ce.p.rapidapi.com}") String rapidApiHost) {
