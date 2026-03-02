@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.skilltracker.student_skill_tracker.service.QuestionService;
 
@@ -90,6 +91,7 @@ public class QuestionController {
      * question.
      */
     @GetMapping("/smart-pick")
+    @Transactional(readOnly = true)
     public ResponseEntity<Map<String, Object>> getSmartPick(
             org.springframework.security.core.Authentication authentication) {
         if (authentication == null) {

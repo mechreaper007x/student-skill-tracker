@@ -61,10 +61,10 @@ public class AiAdvisorService {
         double ds = safe(sd.getDataStructuresScore());
         double total = ps + alg + ds;
 
-        List<String> priorities = determinePriorities(ps, alg, ds);
-        String topPriority = priorities.get(0);
-
-        List<Map<String, Object>> commonQuestions = commonQuestionsService.getCommonQuestionsForStudent(sd.getStudent().getId());
+        Long studentId = sd.getStudent() != null ? sd.getStudent().getId() : null;
+        List<Map<String, Object>> commonQuestions = studentId != null 
+            ? commonQuestionsService.getCommonQuestionsForStudent(studentId)
+            : Collections.emptyList();
         List<Map<String, Object>> personalized = commonQuestionsService.personalizeQuestions(commonQuestions, sd, topPriority);
         Map<String, Object> questionOfTheDay = personalized.isEmpty() ? Collections.emptyMap() : personalized.get(0);
 

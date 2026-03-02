@@ -9,6 +9,7 @@ import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.skilltracker.student_skill_tracker.dto.DashboardResponseDTO;
 import com.skilltracker.student_skill_tracker.dto.SkillDataDTO;
@@ -36,14 +37,14 @@ public class DashboardService {
         this.objectMapper = new ObjectMapper();
     }
 
+    @Transactional(readOnly = true)
     public Optional<DashboardResponseDTO> getDashboardData(Long studentId) {
-        return studentRepository.findById(studentId)
-                .map(this::buildDashboardResponse);
+        return studentRepository.findById(studentId).map(this::buildDashboardResponse);
     }
 
+    @Transactional(readOnly = true)
     public Optional<DashboardResponseDTO> getDashboardDataByEmail(String email) {
-        return studentRepository.findByEmail(email)
-                .map(this::buildDashboardResponse);
+        return studentRepository.findByEmail(email).map(this::buildDashboardResponse);
     }
 
     private DashboardResponseDTO buildDashboardResponse(Student student) {

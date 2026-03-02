@@ -6,6 +6,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -82,12 +83,13 @@ public class CommonQuestionsService {
      * - Sort by number of matched weak-tags (desc) then by difficulty (Easy < Medium < Hard)
      */
     public List<Map<String, Object>> personalizeQuestions(List<Map<String, Object>> inputQuestions, SkillData skillData, String topPriority) {
-        if (inputQuestions == null) return Collections.emptyList();
+        if (inputQuestions == null || inputQuestions.isEmpty()) return Collections.emptyList();
         if (skillData == null) return new ArrayList<>(inputQuestions);
 
-        Set<String> topTierTitles = topTierQuestions.stream()
-            .map(q -> (String) q.get("title"))
-            .collect(Collectors.toSet());
+        Set<String> topTierTitles = topTierQuestions != null ? topTierQuestions.stream()
+            .map(q -> q != null ? (String) q.get("title") : null)
+            .filter(Objects::nonNull)
+            .collect(Collectors.toSet()) : Collections.emptySet();
 
         // Determine weak areas
         Set<String> weakTags = new HashSet<>();
