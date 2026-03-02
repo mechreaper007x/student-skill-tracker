@@ -5,31 +5,54 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+
+import jakarta.annotation.PostConstruct;
+
+@Service
 public class CompilerFactory {
 
-    private static final Map<String, ProgrammingLanguageCompiler> COMPILERS = new HashMap<>();
+    @Value("${piston.api.url:https://emkc.org/api/v2/piston/execute}")
+    private String pistonUrl;
 
-    static {
-        // --- PROACTIVE FIX: Offload to Piston API to bypass Render 0.1 CPU limit ---
-        COMPILERS.put("java", new PistonCompilerProvider("java"));
-        COMPILERS.put("python", new PistonCompilerProvider("python"));
-        COMPILERS.put("cpp", new PistonCompilerProvider("cpp"));
-        COMPILERS.put("c++", new PistonCompilerProvider("cpp"));
-        COMPILERS.put("javascript", new PistonCompilerProvider("javascript"));
-        COMPILERS.put("js", new PistonCompilerProvider("javascript"));
+    @Value("${piston.api.enabled:true}")
+    private boolean pistonEnabled;
+
+    private final Map<String, ProgrammingLanguageCompiler> compilers = new HashMap<>();
+
+    @PostConstruct
+    public void init() {
+        if (pistonEnabled) {
+            // PROACTIVE FIX: Use remote Piston API configured in application.properties
+            compilers.put("java", new PistonCompilerProvider("java", pistonUrl));
+            compilers.put("python", new PistonCompilerProvider("python", pistonUrl));
+            compilers.put("cpp", new PistonCompilerProvider("cpp", pistonUrl));
+            compilers.put("c++", new PistonCompilerProvider("cpp", pistonUrl));
+            compilers.put("javascript", new PistonCompilerProvider("javascript", pistonUrl));
+            compilers.put("js", new PistonCompilerProvider("javascript", pistonUrl));
+        } else {
+            // Fallback to local if disabled (not recommended for Render)
+            compilers.put("java", new JavaCompiler());
+            compilers.put("python", new PythonCompiler());
+            compilers.put("cpp", new CppCompiler());
+            compilers.put("c++", new CppCompiler());
+            compilers.put("javascript", new JavaScriptCompiler());
+            compilers.put("js", new JavaScriptCompiler());
+        }
     }
 
-    public static ProgrammingLanguageCompiler getCompiler(String language) {
-        ProgrammingLanguageCompiler compiler = COMPILERS.get(language.toLowerCase());
+    public ProgrammingLanguageCompiler getCompiler(String language) {
+        ProgrammingLanguageCompiler compiler = compilers.get(language.toLowerCase());
         if (compiler == null) {
             throw new IllegalArgumentException("Unsupported language: " + language);
         }
         return compiler;
     }
 
-    public static List<CompilerInfo> getAvailableCompilers() {
+    public List<CompilerInfo> getAvailableCompilers() {
         List<CompilerInfo> available = new ArrayList<>();
-        for (Map.Entry<String, ProgrammingLanguageCompiler> entry : COMPILERS.entrySet()) {
+        for (Map.Entry<String, ProgrammingLanguageCompiler> entry : compilers.entrySet()) {
             ProgrammingLanguageCompiler compiler = entry.getValue();
             if (compiler.isLanguageAvailable()) {
                 available.add(new CompilerInfo(
@@ -41,8 +64,8 @@ public class CompilerFactory {
         return available;
     }
 
-    public static boolean isLanguageSupported(String language) {
-        ProgrammingLanguageCompiler compiler = COMPILERS.get(language.toLowerCase());
+    public boolean isLanguageSupported(String language) {
+        ProgrammingLanguageCompiler compiler = compilers.get(language.toLowerCase());
         return compiler != null && compiler.isLanguageAvailable();
     }
 }

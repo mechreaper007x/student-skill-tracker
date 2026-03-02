@@ -47,6 +47,7 @@ public class CompilerController {
     private final com.skilltracker.student_skill_tracker.service.ForgettingVelocityService forgettingVelocityService;
     private final SimpMessagingTemplate messagingTemplate;
     private final com.skilltracker.student_skill_tracker.service.RishiToolRegistry rishiToolRegistry;
+    private final CompilerFactory compilerFactory;
 
     public CompilerController(
             LeetCodeService leetCodeService,
@@ -55,7 +56,8 @@ public class CompilerController {
             CognitiveMetricService cognitiveMetricService,
             com.skilltracker.student_skill_tracker.service.ForgettingVelocityService forgettingVelocityService,
             SimpMessagingTemplate messagingTemplate,
-            com.skilltracker.student_skill_tracker.service.RishiToolRegistry rishiToolRegistry) {
+            com.skilltracker.student_skill_tracker.service.RishiToolRegistry rishiToolRegistry,
+            CompilerFactory compilerFactory) {
         this.leetCodeService = leetCodeService;
         this.studentRepository = studentRepository;
         this.tokenCryptoService = tokenCryptoService;
@@ -63,6 +65,7 @@ public class CompilerController {
         this.forgettingVelocityService = forgettingVelocityService;
         this.messagingTemplate = messagingTemplate;
         this.rishiToolRegistry = rishiToolRegistry;
+        this.compilerFactory = compilerFactory;
     }
 
     /**
@@ -105,10 +108,10 @@ public class CompilerController {
         }
 
         // Check if language is supported and available
-        if (!CompilerFactory.isLanguageSupported(request.getLanguage())) {
+        if (!compilerFactory.isLanguageSupported(request.getLanguage())) {
             return ResponseEntity.badRequest().body(Map.of(
                     "error", "Unsupported or unavailable language: " + request.getLanguage(),
-                    "availableLanguages", CompilerFactory.getAvailableCompilers()));
+                    "availableLanguages", compilerFactory.getAvailableCompilers()));
         }
 
         // Enforce timeout limits (min 1s, max 30s)
@@ -117,7 +120,7 @@ public class CompilerController {
         try {
             long startTime = System.currentTimeMillis();
 
-            CompilationResult result = CompilerFactory
+            CompilationResult result = compilerFactory
                     .getCompiler(request.getLanguage())
                     .executeCode(request.getSourceCode(), request.getInput(), timeout);
 
@@ -195,7 +198,7 @@ public class CompilerController {
      */
     @GetMapping("/languages")
     public ResponseEntity<List<CompilerInfo>> getAvailableLanguages() {
-        return ResponseEntity.ok(CompilerFactory.getAvailableCompilers());
+        return ResponseEntity.ok(compilerFactory.getAvailableCompilers());
     }
 
     @GetMapping("/leetcode/auth-status")

@@ -14,11 +14,10 @@ import com.skilltracker.student_skill_tracker.dto.piston.PistonResponse;
 public class PistonCompilerProvider implements ProgrammingLanguageCompiler {
 
     private static final Logger logger = LoggerFactory.getLogger(PistonCompilerProvider.class);
-    private static final String PISTON_URL = "https://emkc.org/api/v2/piston/execute";
-    private static final RestTemplate restTemplate = new RestTemplate();
-
     private final String language;
     private final String version;
+    private final String apiUrl;
+    private final RestTemplate restTemplate;
 
     // Default versions as of 2025
     private static final Map<String, String> VERSION_MAP = Map.of(
@@ -30,9 +29,11 @@ public class PistonCompilerProvider implements ProgrammingLanguageCompiler {
     private static final java.util.regex.Pattern PUBLIC_CLASS_PATTERN = java.util.regex.Pattern
             .compile("\\bpublic\\s+class\\s+([A-Za-z_$][A-Za-z\\d_$]*)");
 
-    public PistonCompilerProvider(String language) {
+    public PistonCompilerProvider(String language, String apiUrl) { // Modified constructor as per instruction
         this.language = language;
+        this.apiUrl = apiUrl; // Initialized as per instruction
         this.version = VERSION_MAP.getOrDefault(language, "latest");
+        this.restTemplate = new RestTemplate(); // Initialized here as it's no longer static
     }
 
     @Override
@@ -57,7 +58,7 @@ public class PistonCompilerProvider implements ProgrammingLanguageCompiler {
                 .build();
 
         try {
-            PistonResponse response = restTemplate.postForObject(PISTON_URL, request, PistonResponse.class);
+            PistonResponse response = restTemplate.postForObject(apiUrl, request, PistonResponse.class);
 
             if (response == null || response.getRun() == null) {
                 return CompilationResult.builder()
