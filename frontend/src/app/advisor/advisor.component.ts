@@ -79,6 +79,17 @@ interface AgentExecuteResponse {
   actions?: string[];
 }
 
+interface AgentTaskEnqueueResponse {
+  taskId: string;
+  status: string;
+}
+
+interface AgentTaskPollResponse {
+  status: string;
+  response: AgentExecuteResponse;
+  error: string;
+}
+
 interface StudyPlanResponse {
   hasPlan: boolean;
   topic: string;
@@ -2041,21 +2052,15 @@ export class AdvisorComponent implements OnInit {
       autoSchedule: message.toLowerCase().includes('schedule') || message.toLowerCase().includes('calendar')
     };
 
-    this.http.post<AgentExecuteResponse>('/api/rishi/agent/execute', payload).subscribe({
-      next: (resp) => {
-        const actions = (resp.actions || []).map((item) => `- ${item}`).join('\n');
-        const content = actions ? `${resp.reply}\n\n**Agent Actions**\n${actions}` : resp.reply;
-        this.addAssistantMessage(content || 'Agent returned no response.', responseType);
-
-        if (resp.threadId) {
-          this.activeThreadId.set(resp.threadId);
-          this.loadThreads();
+    this.http.post<AgentTaskEnqueueResponse>('/api/rishi/agent/execute', payload).subscribe({
+      next: (enqueueResp) => {
+        if (!enqueueResp?.taskId) {
+          this.addAssistantMessage('Agent queue failed: no task ID returned.', 'text');
+          this.isGenerating.set(false);
+          this.scrollToBottom();
+          return;
         }
-
-        this.mode.set('agent');
-        this.loadIntegrationsStatus();
-        this.isGenerating.set(false);
-        this.scrollToBottom();
+        this.pollAgentTask(enqueueResp.taskId, responseType);
       },
       error: (err: HttpErrorResponse) => {
         this.addAssistantMessage(this.extractError(err, 'Agent mode failed. Retry in chat mode.'), 'text');
@@ -2063,6 +2068,52 @@ export class AdvisorComponent implements OnInit {
         this.scrollToBottom();
       }
     });
+  }
+
+  private pollAgentTask(taskId: string, responseType: 'text' | 'strategy', attempt: number = 0) {
+    const maxAttempts = 90; // 90 * 2s = 3 min max wait
+    const pollIntervalMs = 2000;
+
+    if (attempt >= maxAttempts) {
+      this.addAssistantMessage('Agent request timed out. The server is under heavy load. Try again shortly.', 'text');
+      this.isGenerating.set(false);
+      this.scrollToBottom();
+      return;
+    }
+
+    setTimeout(() => {
+      this.http.get<AgentTaskPollResponse>(`/api/rishi/agent/task/${taskId}`).subscribe({
+        next: (poll) => {
+          if (poll.status === 'COMPLETED' && poll.response) {
+            const resp = poll.response;
+            const actions = (resp.actions || []).map((item) => `- ${item}`).join('\n');
+            const content = actions ? `${resp.reply}\n\n**Agent Actions**\n${actions}` : resp.reply;
+            this.addAssistantMessage(content || 'Agent returned no response.', responseType);
+
+            if (resp.threadId) {
+              this.activeThreadId.set(resp.threadId);
+              this.loadThreads();
+            }
+
+            this.mode.set('agent');
+            this.loadIntegrationsStatus();
+            this.isGenerating.set(false);
+            this.scrollToBottom();
+          } else if (poll.status === 'FAILED') {
+            this.addAssistantMessage(poll.error || 'Agent processing failed.', 'text');
+            this.isGenerating.set(false);
+            this.scrollToBottom();
+          } else {
+            // PENDING or PROCESSING — keep polling
+            this.pollAgentTask(taskId, responseType, attempt + 1);
+          }
+        },
+        error: () => {
+          // Network hiccup, retry polling
+          this.pollAgentTask(taskId, responseType, attempt + 1);
+        }
+      });
+    }, pollIntervalMs);
   }
 
   private saveConfigInternal(options: { onSuccess: () => void; onError: (message: string) => void }) {

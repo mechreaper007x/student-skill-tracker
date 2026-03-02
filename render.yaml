@@ -21,7 +21,7 @@
       - key: JWT_SECRET
         generateValue: true
       - key: JAVA_OPTS
-        value: "-XX:+UseZGC -XX:+ZGenerational -Xmx400m"
+        value: "-XX:+UseSerialGC -Xmx300m -XX:MaxMetaspaceSize=150m -XX:ReservedCodeCacheSize=64m -Xss512k"
 
   - type: web
     name: student-skill-tracker-frontend

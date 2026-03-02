@@ -6,29 +6,31 @@ import java.util.Optional;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.skilltracker.student_skill_tracker.dto.RishiAgentExecuteRequest;
-import com.skilltracker.student_skill_tracker.dto.RishiAgentExecuteResponse;
 import com.skilltracker.student_skill_tracker.model.Student;
 import com.skilltracker.student_skill_tracker.repository.StudentRepository;
-import com.skilltracker.student_skill_tracker.service.RishiAgentService;
+import com.skilltracker.student_skill_tracker.service.RishiAsyncAgentService;
+import com.skilltracker.student_skill_tracker.service.RishiAsyncAgentService.TaskStatus;
 
 @RestController
 @RequestMapping("/api/rishi/agent")
 public class RishiAgentController {
 
     private final StudentRepository studentRepository;
-    private final RishiAgentService rishiAgentService;
+    private final RishiAsyncAgentService rishiAsyncAgentService;
 
     public RishiAgentController(
             StudentRepository studentRepository,
-            RishiAgentService rishiAgentService) {
+            RishiAsyncAgentService rishiAsyncAgentService) {
         this.studentRepository = studentRepository;
-        this.rishiAgentService = rishiAgentService;
+        this.rishiAsyncAgentService = rishiAsyncAgentService;
     }
 
     @PostMapping("/execute")
@@ -41,8 +43,8 @@ public class RishiAgentController {
         }
 
         try {
-            RishiAgentExecuteResponse response = rishiAgentService.execute(studentOpt.get(), request);
-            return ResponseEntity.ok(response);
+            String taskId = rishiAsyncAgentService.enqueueTask(studentOpt.get(), request);
+            return ResponseEntity.accepted().body(Map.of("taskId", taskId, "status", "PENDING"));
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
         } catch (Exception ex) {
@@ -51,6 +53,20 @@ public class RishiAgentController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Agent request failed: " + ex.getMessage()));
         }
+    }
+
+    @GetMapping("/task/{taskId}")
+    public ResponseEntity<?> getTaskStatus(@PathVariable String taskId) {
+        TaskStatus status = rishiAsyncAgentService.getTaskStatus(taskId);
+        if (status == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "Task not found", "status", "NOT_FOUND"));
+        }
+
+        return ResponseEntity.ok(Map.of(
+                "status", status.getStatus(),
+                "response", status.getResponse() != null ? status.getResponse() : Map.of(),
+                "error", status.getErrorMessage() != null ? status.getErrorMessage() : ""));
     }
 
     private Optional<Student> getCurrentStudent(Authentication auth) {
