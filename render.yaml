@@ -1,4 +1,4 @@
-services:
+2services:
   - type: web
     name: student-skill-tracker-backend
     runtime: docker
