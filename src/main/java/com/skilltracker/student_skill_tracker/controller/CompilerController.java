@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -35,23 +36,33 @@ import com.skilltracker.student_skill_tracker.service.TokenCryptoService;
 public class CompilerController {
 
     private static final Logger logger = LoggerFactory.getLogger(CompilerController.class);
+    private static final double RAGE_COMPILE_THRESHOLD = 0.20;
+    private static final int MIN_COMPILATIONS_FOR_ANALYSIS = 5;
+    private static final long STAGNATION_VELOCITY_MS = 120_000;
+    private static final long INTERVENTION_COOLDOWN_MINUTES = 60;
     private final LeetCodeService leetCodeService;
     private final StudentRepository studentRepository;
     private final TokenCryptoService tokenCryptoService;
     private final CognitiveMetricService cognitiveMetricService;
     private final com.skilltracker.student_skill_tracker.service.ForgettingVelocityService forgettingVelocityService;
+    private final SimpMessagingTemplate messagingTemplate;
+    private final com.skilltracker.student_skill_tracker.service.RishiToolRegistry rishiToolRegistry;
 
     public CompilerController(
             LeetCodeService leetCodeService,
             StudentRepository studentRepository,
             TokenCryptoService tokenCryptoService,
             CognitiveMetricService cognitiveMetricService,
-            com.skilltracker.student_skill_tracker.service.ForgettingVelocityService forgettingVelocityService) {
+            com.skilltracker.student_skill_tracker.service.ForgettingVelocityService forgettingVelocityService,
+            SimpMessagingTemplate messagingTemplate,
+            com.skilltracker.student_skill_tracker.service.RishiToolRegistry rishiToolRegistry) {
         this.leetCodeService = leetCodeService;
         this.studentRepository = studentRepository;
         this.tokenCryptoService = tokenCryptoService;
         this.cognitiveMetricService = cognitiveMetricService;
         this.forgettingVelocityService = forgettingVelocityService;
+        this.messagingTemplate = messagingTemplate;
+        this.rishiToolRegistry = rishiToolRegistry;
     }
 
     /**
@@ -64,6 +75,19 @@ public class CompilerController {
                 request.getLanguage(), request.getTimeoutSeconds());
 
         Optional<Student> studentOpt = getCurrentStudent(authentication);
+
+        // --- AGENT AUTHORITY: Compiler Lock Check ---
+        if (studentOpt.isPresent() && studentOpt.get().isCompilerLocked()) {
+            Student locked = studentOpt.get();
+            return ResponseEntity.status(423).body(Map.of(
+                    "error", "Compiler locked by Rishi",
+                    "reason",
+                    locked.getCompilerLockReason() != null ? locked.getCompilerLockReason() : "Agent intervention",
+                    "lockedUntil", locked.getCompilerLockedUntil().toString(),
+                    "remainingSeconds",
+                    java.time.Duration.between(LocalDateTime.now(), locked.getCompilerLockedUntil()).getSeconds()));
+        }
+
         studentOpt.ifPresent(student -> {
             cognitiveMetricService.trackPlanningTime(student, request.getProblemSlug());
             cognitiveMetricService.trackRecoveryVelocity(student);
@@ -105,20 +129,55 @@ public class CompilerController {
             logger.info("Execution complete: success={}, time={}ms", result.isSuccess(), elapsed);
 
             studentOpt.ifPresent(student -> {
-                cognitiveMetricService.recordCompilation(student, result.isSuccess());
-                
+                int consecutiveFailures = cognitiveMetricService.recordCompilation(student, result.isSuccess());
+
                 if (result.isSuccess()) {
                     String topicSlug = request.getProblemSlug() != null ? request.getProblemSlug() : "general-coding";
                     forgettingVelocityService.recordEventAndUpdateMastery(
-                        student, 
-                        topicSlug, 
-                        "COMPILER_RUN", 
-                        elapsed, 
-                        0, // Zero errors on success
-                        true, 
-                        false, 
-                        "{}"
-                    );
+                            student,
+                            topicSlug,
+                            "COMPILER_RUN",
+                            elapsed,
+                            0, // Zero errors on success
+                            true,
+                            false,
+                            "{}");
+                    // Reset escalation on success
+                    if (student.getLockEscalationLevel() != null && student.getLockEscalationLevel() > 0) {
+                        student.setLockEscalationLevel(0);
+                        studentRepository.save(student);
+                    }
+                } else if (consecutiveFailures >= 5) {
+                    // Progressive Lock Escalation
+                    int level = student.getLockEscalationLevel() != null ? student.getLockEscalationLevel() : 0;
+                    rishiToolRegistry.bindStudent(student);
+                    try {
+                        if (consecutiveFailures >= 15 || level >= 2) {
+                            // Level 2: Nuclear — 30 min lock + practice task
+                            rishiToolRegistry.lockCompiler(30,
+                                    "Severe rage-compiling (" + consecutiveFailures
+                                            + " failures). 30-minute cooldown enforced.");
+                            rishiToolRegistry.createPracticeTask(
+                                    request.getProblemSlug() != null ? request.getProblemSlug() : "general",
+                                    "Review fundamentals — triggered by " + consecutiveFailures
+                                            + " consecutive failures",
+                                    45,
+                                    "AUTO_ESCALATION_L2");
+                        } else if (consecutiveFailures >= 10 || level >= 1) {
+                            // Level 1: Serious — 10 min lock
+                            rishiToolRegistry.lockCompiler(10,
+                                    "Repeated failures (" + consecutiveFailures
+                                            + "). 10-minute break. Write pseudocode before retrying.");
+                        } else {
+                            // Level 0: Warning — 3 min lock
+                            rishiToolRegistry.lockCompiler(3,
+                                    "5 consecutive failures detected. Take 3 minutes to re-read the problem.");
+                        }
+                    } finally {
+                        rishiToolRegistry.clearStudent();
+                    }
+                    student.setLockEscalationLevel(level + 1);
+                    studentRepository.save(student);
                 }
             });
 

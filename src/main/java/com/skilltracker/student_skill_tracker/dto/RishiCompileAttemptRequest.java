@@ -21,4 +21,5 @@ public class RishiCompileAttemptRequest {
     private String expectedOutput;
     private String actualOutput;
     private String stackTraceSnippet;
+    private String sourceCode;
 }

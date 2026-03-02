@@ -48,4 +48,8 @@ export class QuestionBankService {
   getDailyChallenge(): Observable<LeetCodeQuestion> {
     return this.http.get<LeetCodeQuestion>(`${this.apiUrl}/daily-challenge`);
   }
+
+  getSmartPick(): Observable<LeetCodeQuestion> {
+    return this.http.get<LeetCodeQuestion>(`${this.apiUrl}/smart-pick`);
+  }
 }

@@ -5,7 +5,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,16 +25,19 @@ public class RishiMemoryService {
         this.objectMapper = objectMapper;
     }
 
-    public record MemoryMessage(String role, String content, String type, String timestamp) {}
-    
+    public record MemoryMessage(String role, String content, String type, String timestamp) {
+    }
+
     public static class ChatThread {
         public String id;
         public String title;
         public String preview;
         public String updatedAt;
         public List<MemoryMessage> messages = new ArrayList<>();
-        
-        public ChatThread() {}
+
+        public ChatThread() {
+        }
+
         public ChatThread(String id, String title, String preview, String updatedAt) {
             this.id = id;
             this.title = title;
@@ -59,13 +61,16 @@ public class RishiMemoryService {
             if (json.startsWith("{")) {
                 MemoryStore store = objectMapper.readValue(json, MemoryStore.class);
                 return store == null ? new MemoryStore() : store;
-            } 
+            }
             // Fallback for legacy data (just a list of messages)
             else if (json.startsWith("[")) {
-                List<MemoryMessage> legacyMessages = objectMapper.readValue(json, new TypeReference<List<MemoryMessage>>() {});
+                List<MemoryMessage> legacyMessages = objectMapper.readValue(json,
+                        new TypeReference<List<MemoryMessage>>() {
+                        });
                 MemoryStore store = new MemoryStore();
                 if (legacyMessages != null && !legacyMessages.isEmpty()) {
-                    ChatThread legacyThread = new ChatThread(UUID.randomUUID().toString(), "Legacy Chat", extractPreview(legacyMessages.get(0).content()), LocalDateTime.now().toString());
+                    ChatThread legacyThread = new ChatThread(UUID.randomUUID().toString(), "Legacy Chat",
+                            extractPreview(legacyMessages.get(0).content()), LocalDateTime.now().toString());
                     legacyThread.messages.addAll(legacyMessages);
                     store.threads.add(legacyThread);
                 }
@@ -95,20 +100,22 @@ public class RishiMemoryService {
     public List<MemoryMessage> getMemory(Student student) {
         // Legacy accessor, returns messages from the most recent thread or empty
         List<ChatThread> threads = getAllThreads(student);
-        if (threads.isEmpty()) return new ArrayList<>();
+        if (threads.isEmpty())
+            return new ArrayList<>();
         return threads.get(0).messages;
     }
 
-    public String appendExchange(Student student, String threadId, String userMessage, String userType, String assistantMessage, String assistantType) {
+    public String appendExchange(Student student, String threadId, String userMessage, String userType,
+            String assistantMessage, String assistantType) {
         MemoryStore store = getStore(student);
         String now = LocalDateTime.now().toString();
-        
+
         ChatThread targetThread = null;
         if (threadId != null && !threadId.isBlank()) {
             targetThread = store.threads.stream()
-                .filter(t -> t.id.equals(threadId))
-                .findFirst()
-                .orElse(null);
+                    .filter(t -> t.id.equals(threadId))
+                    .findFirst()
+                    .orElse(null);
         }
 
         if (targetThread == null) {
@@ -122,13 +129,13 @@ public class RishiMemoryService {
 
         targetThread.updatedAt = now;
         targetThread.preview = extractPreview(userMessage);
-        
+
         targetThread.messages.add(new MemoryMessage("user", safe(userMessage), safeType(userType), now));
         targetThread.messages.add(new MemoryMessage("assistant", safe(assistantMessage), safeType(assistantType), now));
-        
+
         trim(targetThread.messages);
         persist(student, store);
-        
+
         return targetThread.id;
     }
 
@@ -136,7 +143,7 @@ public class RishiMemoryService {
         // Clears EVERYTHING (if needed)
         student.setRishiMemoryJson("{}");
     }
-    
+
     public void deleteThread(Student student, String threadId) {
         MemoryStore store = getStore(student);
         store.threads.removeIf(t -> t.id.equals(threadId));
@@ -160,7 +167,13 @@ public class RishiMemoryService {
             if (!"user".equals(role) && !"assistant".equals(role)) {
                 continue;
             }
-            context.add(Map.of("role", role, "content", m.content().trim()));
+            // Truncate old messages to save tokens — only need enough for context
+            // continuity
+            String content = m.content().trim();
+            if (content.length() > 300) {
+                content = content.substring(0, 297) + "...";
+            }
+            context.add(Map.of("role", role, "content", content));
         }
         return context;
     }
@@ -182,17 +195,21 @@ public class RishiMemoryService {
     }
 
     private String generateTitle(String firstMessage) {
-        if (firstMessage == null) return "New Conversation";
+        if (firstMessage == null)
+            return "New Conversation";
         String clean = firstMessage.trim();
-        if (clean.length() <= 25) return clean;
+        if (clean.length() <= 25)
+            return clean;
         return clean.substring(0, 25) + "...";
     }
 
     private String extractPreview(String message) {
-        if (message == null) return "";
+        if (message == null)
+            return "";
         String clean = message.replaceAll("(?s)```.*?```", "[Code]");
         clean = clean.replaceAll("<[^>]*>", "");
-        if (clean.length() <= 40) return clean;
+        if (clean.length() <= 40)
+            return clean;
         return clean.substring(0, 40) + "...";
     }
 

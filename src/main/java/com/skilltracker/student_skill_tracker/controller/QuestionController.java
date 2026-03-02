@@ -16,9 +16,16 @@ import com.skilltracker.student_skill_tracker.service.QuestionService;
 public class QuestionController {
 
     private final QuestionService questionService;
+    private final com.skilltracker.student_skill_tracker.service.SmartQuestionRouter smartQuestionRouter;
+    private final com.skilltracker.student_skill_tracker.repository.StudentRepository studentRepository;
 
-    public QuestionController(QuestionService questionService) {
+    public QuestionController(
+            QuestionService questionService,
+            com.skilltracker.student_skill_tracker.service.SmartQuestionRouter smartQuestionRouter,
+            com.skilltracker.student_skill_tracker.repository.StudentRepository studentRepository) {
         this.questionService = questionService;
+        this.smartQuestionRouter = smartQuestionRouter;
+        this.studentRepository = studentRepository;
     }
 
     /**
@@ -75,5 +82,26 @@ public class QuestionController {
     @GetMapping("/daily-challenge")
     public ResponseEntity<Map<String, Object>> getDailyChallenge() {
         return ResponseEntity.ok(questionService.getDailyChallenge());
+    }
+
+    /**
+     * Smart Pick — Rishi's personalized question recommendation.
+     * Uses SM-2 decay + mistake patterns + easiness factor to pick the optimal next
+     * question.
+     */
+    @GetMapping("/smart-pick")
+    public ResponseEntity<Map<String, Object>> getSmartPick(
+            org.springframework.security.core.Authentication authentication) {
+        if (authentication == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Authentication required"));
+        }
+        return studentRepository.findByEmailIgnoreCase(authentication.getName())
+                .map(student -> {
+                    Map<String, Object> recommendation = smartQuestionRouter.recommendNext(student);
+                    return recommendation != null
+                            ? ResponseEntity.ok(recommendation)
+                            : ResponseEntity.ok(questionService.getDailyChallenge());
+                })
+                .orElse(ResponseEntity.status(404).body(Map.of("error", "Student not found")));
     }
 }

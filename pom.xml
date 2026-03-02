@@ -119,6 +119,18 @@
             <artifactId>bcprov-jdk18on</artifactId>
             <version>1.80</version>
         </dependency>
+
+        <!-- LangChain4j: Core + Mistral AI for Tool Calling / ReAct Agent -->
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j</artifactId>
+            <version>1.11.0</version>
+        </dependency>
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-mistral-ai</artifactId>
+            <version>1.11.0</version>
+        </dependency>
     </dependencies>
 
     <build>

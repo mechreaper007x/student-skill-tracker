@@ -7,13 +7,13 @@ import { LucideAngularModule } from 'lucide-angular';
 import { MonacoEditorModule } from 'ngx-monaco-editor-v2';
 import { Subscription } from 'rxjs';
 import {
-  CompilationResult,
-  CompilerInfo,
-  CompilerService,
-  LeetCodeSubmissionResponse,
-  RishiCodeChangeEvent,
-  RishiCompileAttemptAnalysisResponse,
-  RishiCompileAttemptRequest
+    CompilationResult,
+    CompilerInfo,
+    CompilerService,
+    LeetCodeSubmissionResponse,
+    RishiCodeChangeEvent,
+    RishiCompileAttemptAnalysisResponse,
+    RishiCompileAttemptRequest
 } from '../core/compiler.service';
 import { LeetCodeQuestion, QuestionBankService } from '../core/question-bank.service';
 
@@ -43,6 +43,7 @@ export class BattleStationComponent implements OnInit, OnDestroy {
   private editorCursorDisposable: { dispose: () => void } | null = null;
   private telemetryFlushHandle: ReturnType<typeof setInterval> | null = null;
   private activityTimerHandle: ReturnType<typeof setInterval> | null = null;
+  private compilerLockTimerHandle: ReturnType<typeof setInterval> | null = null;
   private telemetryBuffer: RishiCodeChangeEvent[] = [];
   private telemetrySessionStartMs = 0;
   private sessionActiveDurationMs = 0;
@@ -98,6 +99,10 @@ export class BattleStationComponent implements OnInit, OnDestroy {
   rishiSessionState = signal<RishiSessionState>('WAITING');
   rishiSessionIdle = signal(true);
 
+  // Compiler lock state (set by Rishi agent)
+  isCompilerLocked = signal(false);
+  compilerLockReason = signal<string | null>(null);
+  compilerLockRemainingSeconds = signal(0);
 
 
   // Question state
@@ -167,6 +172,9 @@ export class BattleStationComponent implements OnInit, OnDestroy {
     );
   });
   submitGateReason = computed(() => {
+    if (this.isCompilerLocked()) {
+      return `🔒 Compiler locked: ${this.compilerLockReason() || 'Agent intervention'} (${this.compilerLockRemainingSeconds()}s)`;
+    }
     if (this.isSubmittingLeetCode()) {
       return 'Submitting to LeetCode...';
     }
@@ -279,8 +287,36 @@ public:
       clearInterval(this.activityTimerHandle);
       this.activityTimerHandle = null;
     }
+    if (this.compilerLockTimerHandle) {
+      clearInterval(this.compilerLockTimerHandle);
+      this.compilerLockTimerHandle = null;
+    }
     this.unregisterRishiPresenceTracking();
     this.endRishiCodingSession('battle_station_closed');
+  }
+
+  private activateCompilerLock(reason: string, remainingSeconds: number) {
+    this.isCompilerLocked.set(true);
+    this.compilerLockReason.set(reason);
+    this.compilerLockRemainingSeconds.set(Math.max(0, Math.floor(remainingSeconds)));
+
+    if (this.compilerLockTimerHandle) {
+      clearInterval(this.compilerLockTimerHandle);
+    }
+    this.compilerLockTimerHandle = setInterval(() => {
+      const remaining = this.compilerLockRemainingSeconds() - 1;
+      if (remaining <= 0) {
+        this.isCompilerLocked.set(false);
+        this.compilerLockReason.set(null);
+        this.compilerLockRemainingSeconds.set(0);
+        if (this.compilerLockTimerHandle) {
+          clearInterval(this.compilerLockTimerHandle);
+          this.compilerLockTimerHandle = null;
+        }
+      } else {
+        this.compilerLockRemainingSeconds.set(remaining);
+      }
+    }, 1000);
   }
 
   private loadAvailableLanguages() {
@@ -632,6 +668,14 @@ public:
   }
 
   executeCode() {
+    if (this.isCompilerLocked()) {
+      this.result.set({
+        success: false, output: '',
+        error: `🔒 Compiler locked by Rishi: ${this.compilerLockReason() || 'Agent intervention'}. Unlocks in ${this.compilerLockRemainingSeconds()}s.`,
+        executionTime: '0ms', language: this.selectedLanguage(), timestamp: new Date().toISOString()
+      });
+      return;
+    }
     if (this.isExecuting() || !this.sourceCode().trim()) {
       return;
     }
@@ -660,10 +704,19 @@ public:
         this.isExecuting.set(false);
       },
       error: (err) => {
+        // Handle 423 Locked from Rishi agent
+        if (err?.status === 423) {
+          this.activateCompilerLock(
+            err?.error?.reason || 'Agent intervention',
+            err?.error?.remainingSeconds ?? 300
+          );
+        }
         const failedResult: CompilationResult = {
           success: false,
           output: '',
-          error: err?.error?.error || 'Execution failed. Compiler service unavailable.',
+          error: err?.status === 423
+            ? `🔒 Compiler locked by Rishi: ${err?.error?.reason || 'Agent intervention'}. Unlocks in ${err?.error?.remainingSeconds ?? '?'}s.`
+            : (err?.error?.error || 'Execution failed. Compiler service unavailable.'),
           executionTime: '0ms',
           language: this.selectedLanguage(),
           timestamp: new Date().toISOString()
@@ -682,6 +735,10 @@ public:
   }
 
   submitToLeetCode() {
+    if (this.isCompilerLocked()) {
+      this.submissionError.set(`🔒 Compiler locked by Rishi: ${this.compilerLockReason() || 'Agent intervention'}. Unlocks in ${this.compilerLockRemainingSeconds()}s.`);
+      return;
+    }
     if (this.isSubmittingLeetCode()) {
       return;
     }

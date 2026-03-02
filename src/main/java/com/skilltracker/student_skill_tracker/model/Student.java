@@ -207,6 +207,29 @@ public class Student {
     @ToString.Exclude
     private String emotionLogJson;
 
+    @Column(name = "consecutive_compiler_failures")
+    @Builder.Default
+    private Integer consecutiveCompilerFailures = 0;
+
+    @Column(name = "lock_escalation_level")
+    @Builder.Default
+    private Integer lockEscalationLevel = 0;
+
+    // --- Agent Authority State ---
+
+    @Column(name = "compiler_locked_until")
+    private LocalDateTime compilerLockedUntil;
+
+    @Column(name = "compiler_lock_reason")
+    private String compilerLockReason;
+
+    @Column(name = "agent_last_intervention_at")
+    private LocalDateTime agentLastInterventionAt;
+
+    public boolean isCompilerLocked() {
+        return compilerLockedUntil != null && LocalDateTime.now().isBefore(compilerLockedUntil);
+    }
+
     public void levelUp() {
         this.level++;
         this.xp = 0;

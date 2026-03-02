@@ -1,15 +1,18 @@
 package com.skilltracker.student_skill_tracker.service;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class DuelServiceTest {
 
     @Test
     void bloomLevelForRound_returnsCorrectValues() throws Exception {
-        java.lang.reflect.Method method = DuelService.class.getDeclaredMethod("bloomLevelForRound", int.class, String.class);
+        java.lang.reflect.Method method = DuelService.class.getDeclaredMethod("bloomLevelForRound", int.class,
+                String.class);
         method.setAccessible(true);
-        DuelService service = new DuelService(null, null, null, null, null, null, null);
+        // Corrected constructor call with 6 null arguments
+        DuelService service = new DuelService(null, null, null, null, null, null);
 
         assertEquals(6, method.invoke(service, 5, "CODING"));
         assertEquals(1, method.invoke(service, 1, "MCQ"));

@@ -11,6 +11,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
@@ -98,6 +99,10 @@ public class RishiCompileAttemptLog {
 
     @Column(name = "stack_trace_snippet", length = 2000)
     private String stackTraceSnippet;
+
+    @Lob
+    @Column(name = "source_code_snapshot")
+    private String sourceCodeSnapshot;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

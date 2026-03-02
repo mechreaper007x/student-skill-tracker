@@ -46,8 +46,10 @@ public class RishiAgentController {
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
         } catch (Exception ex) {
-            return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
-                    .body(Map.of("error", "Agent request failed. Check integrations and try again."));
+            org.slf4j.LoggerFactory.getLogger(RishiAgentController.class)
+                    .error("Agent execute failed: {}", ex.getMessage(), ex);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Agent request failed: " + ex.getMessage()));
         }
     }
 
@@ -58,4 +60,3 @@ public class RishiAgentController {
         return studentRepository.findByEmailIgnoreCase(auth.getName());
     }
 }
-

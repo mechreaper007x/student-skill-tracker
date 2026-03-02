@@ -7,9 +7,9 @@ import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.LinkedHashMap;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -20,14 +20,14 @@ import java.util.StringJoiner;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.skilltracker.student_skill_tracker.dto.RishiAttemptCategoryTrendDto;
+import com.skilltracker.student_skill_tracker.dto.RishiActivityBreakdownResponse;
+import com.skilltracker.student_skill_tracker.dto.RishiActivityDailyTrendDto;
 import com.skilltracker.student_skill_tracker.dto.RishiAttemptCategoryHeatmapDto;
+import com.skilltracker.student_skill_tracker.dto.RishiAttemptCategoryTrendDto;
 import com.skilltracker.student_skill_tracker.dto.RishiAttemptDailyTrendDto;
 import com.skilltracker.student_skill_tracker.dto.RishiAttemptHistoryResponse;
 import com.skilltracker.student_skill_tracker.dto.RishiAttemptRecordDto;
 import com.skilltracker.student_skill_tracker.dto.RishiAttemptSourceBreakdownDto;
-import com.skilltracker.student_skill_tracker.dto.RishiActivityBreakdownResponse;
-import com.skilltracker.student_skill_tracker.dto.RishiActivityDailyTrendDto;
 import com.skilltracker.student_skill_tracker.dto.RishiCodeChangeBatchRequest;
 import com.skilltracker.student_skill_tracker.dto.RishiCodeChangeEventDto;
 import com.skilltracker.student_skill_tracker.dto.RishiCompileAttemptAnalysisResponse;
@@ -42,8 +42,8 @@ import com.skilltracker.student_skill_tracker.model.RishiCodingSession;
 import com.skilltracker.student_skill_tracker.model.RishiCompileAttemptLog;
 import com.skilltracker.student_skill_tracker.model.Student;
 import com.skilltracker.student_skill_tracker.repository.RishiCodeChangeEventRepository;
-import com.skilltracker.student_skill_tracker.repository.RishiCompileAttemptLogRepository;
 import com.skilltracker.student_skill_tracker.repository.RishiCodingSessionRepository;
+import com.skilltracker.student_skill_tracker.repository.RishiCompileAttemptLogRepository;
 
 @Service
 public class RishiCodingTelemetryService {
@@ -162,7 +162,8 @@ public class RishiCodingTelemetryService {
     }
 
     @Transactional
-    public RishiCompileAttemptAnalysisResponse recordCompileAttempt(Student student, Long sessionId, RishiCompileAttemptRequest request) {
+    public RishiCompileAttemptAnalysisResponse recordCompileAttempt(Student student, Long sessionId,
+            RishiCompileAttemptRequest request) {
         RishiCodingSession session = getOwnedSession(student, sessionId);
         if (session.getEndedAt() != null) {
             return RishiCompileAttemptAnalysisResponse.builder()
@@ -245,6 +246,7 @@ public class RishiCodingTelemetryService {
                 .expectedOutputSnippet(expectedOutputSnippet)
                 .actualOutputSnippet(actualOutputSnippet)
                 .stackTraceSnippet(stackTraceSnippet)
+                .sourceCodeSnapshot(safeText(request != null ? request.getSourceCode() : null, 10000))
                 .build();
         compileAttemptLogRepository.save(attemptLog);
 
@@ -288,6 +290,37 @@ public class RishiCodingTelemetryService {
         session.setActiveDurationMs(stateDurations.activeMs());
 
         sessionRepository.save(session);
+        sendSessionDebrief(student, session);
+    }
+
+    private void sendSessionDebrief(Student student, RishiCodingSession session) {
+        String problemSlug = "general-coding";
+        String topMistake = "None";
+
+        List<RishiCompileAttemptLog> recentLogs = compileLogRepository
+                .findTop5BySessionStudentOrderByAttemptedAtDesc(student);
+        if (!recentLogs.isEmpty()) {
+            problemSlug = recentLogs.get(0).getProblemSlug();
+            topMistake = recentLogs.stream()
+                    .filter(log -> !log.isSuccess() && log.getMistakeCategory() != null)
+                    .map(RishiCompileAttemptLog::getMistakeCategory)
+                    .findFirst()
+                    .orElse("Syntax errors");
+        }
+
+        Map<String, Object> nextPick = smartQuestionRouter.recommendNext(student);
+        String nextTopic = nextPick != null && nextPick.containsKey("title")
+                ? String.valueOf(nextPick.get("title"))
+                : "Daily Challenge";
+
+        messagingTemplate.convertAndSend(
+                "/topic/agent/" + student.getId(),
+                Map.of(
+                        "type", "SESSION_DEBRIEF",
+                        "practiced", problemSlug,
+                        "struggled", topMistake,
+                        "nextUp", nextTopic,
+                        "timestamp", LocalDateTime.now().toString()));
     }
 
     @Transactional(readOnly = true)
@@ -297,7 +330,8 @@ public class RishiCodingTelemetryService {
         LocalDateTime currentStart = now.minusDays(safeDays);
         LocalDateTime previousStart = currentStart.minusDays(safeDays);
 
-        List<RishiCodingSession> sessions = sessionRepository.findByStudentAndStartedAtBetween(student, previousStart, now);
+        List<RishiCodingSession> sessions = sessionRepository.findByStudentAndStartedAtBetween(student, previousStart,
+                now);
 
         List<RishiCodingSession> current = new ArrayList<>();
         List<RishiCodingSession> previous = new ArrayList<>();
@@ -318,8 +352,10 @@ public class RishiCodingTelemetryService {
                 .days(safeDays)
                 .current(currentMetrics)
                 .previous(previousMetrics)
-                .codingMinutesGrowthPct(growthPct(currentMetrics.getTotalCodingMinutes(), previousMetrics.getTotalCodingMinutes()))
-                .successRateGrowthPct(growthPct(currentMetrics.getCompileSuccessRate(), previousMetrics.getCompileSuccessRate()))
+                .codingMinutesGrowthPct(
+                        growthPct(currentMetrics.getTotalCodingMinutes(), previousMetrics.getTotalCodingMinutes()))
+                .successRateGrowthPct(
+                        growthPct(currentMetrics.getCompileSuccessRate(), previousMetrics.getCompileSuccessRate()))
                 .firstSuccessSpeedGrowthPct(reverseGrowthPct(
                         currentMetrics.getAverageFirstSuccessSeconds(),
                         previousMetrics.getAverageFirstSuccessSeconds()))
@@ -374,7 +410,8 @@ public class RishiCodingTelemetryService {
         List<RishiAttemptRecordDto> recentAttempts = new ArrayList<>(recentCount);
         for (int i = 0; i < recentCount; i++) {
             RishiCompileAttemptLog log = currentLogs.get(i);
-            double accuracy = log.getAccuracyPct() != null ? round2(log.getAccuracyPct()) : (log.isSuccess() ? 100.0 : 0.0);
+            double accuracy = log.getAccuracyPct() != null ? round2(log.getAccuracyPct())
+                    : (log.isSuccess() ? 100.0 : 0.0);
             String category = normalizeCategory(log.getMistakeCategory(), log.isSuccess());
             String failureBucket = normalizeFailureBucket(log.getFailureBucket(), log.isSuccess(), category);
             String summary = (log.getAnalysisSummary() == null || log.getAnalysisSummary().isBlank())
@@ -502,7 +539,8 @@ public class RishiCodingTelemetryService {
                     csvValue(safeSource(log.getAttemptSource())),
                     csvValue(Boolean.toString(log.isSuccess())),
                     csvValue(bucket),
-                    csvValue(Double.toString(round2(log.getAccuracyPct() == null ? (log.isSuccess() ? 100.0 : 0.0) : log.getAccuracyPct()))),
+                    csvValue(Double.toString(round2(
+                            log.getAccuracyPct() == null ? (log.isSuccess() ? 100.0 : 0.0) : log.getAccuracyPct()))),
                     csvValue(category),
                     csvValue(log.getAnalysisSummary()),
                     csvValue(log.getNextStep1()),
@@ -722,7 +760,8 @@ public class RishiCodingTelemetryService {
         if (status.contains("wrong answer") || haystack.contains("wrong answer")) {
             return "WRONG_ANSWER";
         }
-        if (status.contains("time limit exceeded") || haystack.contains("time limit exceeded") || haystack.contains("timeout")) {
+        if (status.contains("time limit exceeded") || haystack.contains("time limit exceeded")
+                || haystack.contains("timeout")) {
             return "TIME_LIMIT_EXCEEDED";
         }
         if (status.contains("memory limit exceeded") || haystack.contains("memory limit exceeded")) {
@@ -741,7 +780,8 @@ public class RishiCodingTelemetryService {
         return "LOGIC_OR_EDGE_CASE";
     }
 
-    private static String buildAttemptSummary(String source, boolean success, String mistakeCategory, double accuracyPct) {
+    private static String buildAttemptSummary(String source, boolean success, String mistakeCategory,
+            double accuracyPct) {
         if (success) {
             if (accuracyPct >= 100.0) {
                 return source.equals(SOURCE_LEETCODE_SUBMIT)
@@ -755,13 +795,15 @@ public class RishiCodingTelemetryService {
             case "COMPILATION_ERROR" -> "Build failed before execution. There are syntax or type issues to fix first.";
             case "RUNTIME_ERROR" -> "Code crashed at runtime. Input handling or edge-case guards are missing.";
             case "TIME_LIMIT_EXCEEDED" -> "Execution exceeded time limits. Algorithmic complexity must be reduced.";
-            case "MEMORY_LIMIT_EXCEEDED" -> "Execution exceeded memory limits. Data structures or allocations are too heavy.";
+            case "MEMORY_LIMIT_EXCEEDED" ->
+                "Execution exceeded memory limits. Data structures or allocations are too heavy.";
             case "WRONG_ANSWER" -> "Program ran but produced incorrect output. Logic and edge cases need correction.";
             default -> "Attempt failed due to logic/edge-case issues. Validate assumptions against tricky inputs.";
         };
     }
 
-    private static List<String> buildNextSteps(String source, boolean success, String mistakeCategory, double accuracyPct) {
+    private static List<String> buildNextSteps(String source, boolean success, String mistakeCategory,
+            double accuracyPct) {
         if (success && accuracyPct >= 100.0) {
             if (SOURCE_LEETCODE_SUBMIT.equals(source)) {
                 return List.of(
@@ -851,7 +893,8 @@ public class RishiCodingTelemetryService {
     }
 
     private long resolveActiveDurationMs(RishiCodingSession session, Long requestedActiveMs, long estimatedActiveMs) {
-        int totalChangeEvents = session.getTotalChangeEvents() == null ? 0 : Math.max(0, session.getTotalChangeEvents());
+        int totalChangeEvents = session.getTotalChangeEvents() == null ? 0
+                : Math.max(0, session.getTotalChangeEvents());
         if (totalChangeEvents == 0) {
             return 0L;
         }
@@ -878,7 +921,8 @@ public class RishiCodingTelemetryService {
             return activeDurationMs;
         }
 
-        int totalChangeEvents = session.getTotalChangeEvents() == null ? 0 : Math.max(0, session.getTotalChangeEvents());
+        int totalChangeEvents = session.getTotalChangeEvents() == null ? 0
+                : Math.max(0, session.getTotalChangeEvents());
         if (totalChangeEvents == 0) {
             return 0L;
         }
@@ -970,7 +1014,8 @@ public class RishiCodingTelemetryService {
                 .toList();
     }
 
-    private static StateDurations resolveStateDurations(Long totalDurationMsRaw, RishiSessionEndRequest request, long activeDurationMs) {
+    private static StateDurations resolveStateDurations(Long totalDurationMsRaw, RishiSessionEndRequest request,
+            long activeDurationMs) {
         long totalDurationMs = safeDurationMs(totalDurationMsRaw);
         long typingMs = safeDurationMs(request != null ? request.getTypingDurationMs() : null);
         long cursorIdleMs = safeDurationMs(request != null ? request.getCursorIdleDurationMs() : null);

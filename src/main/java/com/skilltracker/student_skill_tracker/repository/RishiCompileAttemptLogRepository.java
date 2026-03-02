@@ -18,4 +18,9 @@ public interface RishiCompileAttemptLogRepository extends JpaRepository<RishiCom
             Student student,
             LocalDateTime start,
             LocalDateTime end);
+
+    List<RishiCompileAttemptLog> findTop5BySessionStudentOrderByAttemptedAtDesc(Student student);
+
+    List<RishiCompileAttemptLog> findBySessionStudentAndAttemptedAtAfterAndSuccessFalse(
+            Student student, LocalDateTime since);
 }

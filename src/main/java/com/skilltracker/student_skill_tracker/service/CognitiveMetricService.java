@@ -72,20 +72,29 @@ public class CognitiveMetricService {
                             List.of("DFS", "BFS", "Dijkstra only", "Floyd-Warshall only"),
                             1)));
 
-    public CognitiveMetricService(StudentRepository studentRepository, ObjectMapper objectMapper, RestTemplate restTemplate) {
+    public CognitiveMetricService(StudentRepository studentRepository, ObjectMapper objectMapper,
+            RestTemplate restTemplate) {
         this.studentRepository = studentRepository;
         this.objectMapper = objectMapper;
         this.restTemplate = restTemplate;
     }
 
     @Transactional
-    public void recordCompilation(Student student, boolean success) {
+    public Integer recordCompilation(Student student, boolean success) {
         student.setTotalCompilations(student.getTotalCompilations() + 1);
+        int currentFailures = student.getConsecutiveCompilerFailures() != null
+                ? student.getConsecutiveCompilerFailures()
+                : 0;
         if (success) {
             student.setSuccessfulCompilations(student.getSuccessfulCompilations() + 1);
+            student.setConsecutiveCompilerFailures(0);
+        } else {
+            student.setConsecutiveCompilerFailures(currentFailures + 1);
         }
         studentRepository.save(student);
-        logger.debug("Recorded compilation for {}: success={}", student.getEmail(), success);
+        logger.debug("Recorded compilation for {}: success={}, consecutiveFailures={}",
+                student.getEmail(), success, student.getConsecutiveCompilerFailures());
+        return student.getConsecutiveCompilerFailures();
     }
 
     @Transactional
@@ -110,7 +119,8 @@ public class CognitiveMetricService {
 
     @Transactional
     public void trackPlanningTime(Student student, String slug) {
-        if (slug == null || !slug.equals(student.getLastSelectedQuestionSlug()) || student.getQuestionSelectionTimestamp() == null) {
+        if (slug == null || !slug.equals(student.getLastSelectedQuestionSlug())
+                || student.getQuestionSelectionTimestamp() == null) {
             return;
         }
 
@@ -238,15 +248,12 @@ public class CognitiveMetricService {
                     new SprintQuestion("Which algorithm is most optimal for finding strongly connected components?",
                             List.of("Tarjan's", "Kruskal's", "Bellman-Ford", "Prim's"), 0),
                     new SprintQuestion("What is the time complexity of Tarjan's algorithm?",
-                            List.of("O(V + E)", "O(V^2)", "O(E log V)", "O(V^3)"), 0)
-            ),
+                            List.of("O(V + E)", "O(V^2)", "O(E log V)", "O(V^3)"), 0)),
             new SprintQuestionPair(
                     new SprintQuestion("In a Red-Black tree, what is the max height?",
                             List.of("2 log(n+1)", "log n", "1.44 log n", "n"), 0),
                     new SprintQuestion("Which operation is faster in a Fibonacci heap compared to a Binary heap?",
-                            List.of("Decrease Key", "Extract Min", "Insert", "Delete"), 0)
-            )
-    );
+                            List.of("Decrease Key", "Extract Min", "Insert", "Delete"), 0)));
 
     private SprintQuestionPair generateSprintQuestionsWithFallback(Student student) {
         try {
@@ -256,9 +263,10 @@ public class CognitiveMetricService {
             return new SprintQuestionPair(roundA, roundB);
         } catch (Exception ex) {
             logger.warn("Falling back to static sprint question set: {}", ex.getMessage());
-            int index = Math.floorMod((student.getId() == null ? 0 : student.getId().intValue()) + LocalDateTime.now().getSecond(), 
-                sprintFallbackBank.size());
-            
+            int index = Math.floorMod(
+                    (student.getId() == null ? 0 : student.getId().intValue()) + LocalDateTime.now().getSecond(),
+                    sprintFallbackBank.size());
+
             // Fix (5.6): Stratify fallback questions based on student level
             if (student.getLevel() != null && student.getLevel() >= 5) {
                 index = Math.floorMod(index, advancedFallbackBank.size());
@@ -296,7 +304,8 @@ public class CognitiveMetricService {
         JsonNode optionsNode = node.path("options");
         int correctIndex = node.path("correctIndex").asInt(-1);
 
-        if (prompt.isBlank() || !optionsNode.isArray() || optionsNode.size() != 4 || correctIndex < 0 || correctIndex > 3) {
+        if (prompt.isBlank() || !optionsNode.isArray() || optionsNode.size() != 4 || correctIndex < 0
+                || correctIndex > 3) {
             throw new IllegalArgumentException("Invalid sprint question format.");
         }
 
