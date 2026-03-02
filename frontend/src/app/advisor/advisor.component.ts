@@ -1,6 +1,6 @@
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { Component, OnInit, PLATFORM_ID, Pipe, PipeTransform, inject, signal, computed, effect } from '@angular/core';
+import { Component, OnInit, PLATFORM_ID, Pipe, PipeTransform, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { LucideAngularModule } from 'lucide-angular';
@@ -409,7 +409,7 @@ interface TogglFocusSyncRequest {
 
       <!-- MAIN CHAT AREA -->
       <main class="flex-1 flex flex-col bg-noir-950 relative">
-        <header class="h-20 border-b border-noir-800 bg-noir-950/80 backdrop-blur-md flex items-center justify-between px-8 z-20">
+        <header class="min-h-20 flex-wrap py-4 border-b border-noir-800 bg-noir-950/80 backdrop-blur-md flex items-center justify-between px-4 md:px-8 gap-4 z-20">
           <div class="flex items-center gap-4">
             <div class="p-2.5 rounded-xl bg-crimson-600 text-white shadow-lg shadow-crimson-900/20">
               <lucide-icon name="Brain" class="w-6 h-6"></lucide-icon>
@@ -420,8 +420,8 @@ interface TogglFocusSyncRequest {
             </div>
           </div>
 
-          <div class="flex items-center gap-3">
-            <div class="flex items-center gap-1 p-1 border border-noir-800 rounded-xl bg-noir-900">
+          <div class="flex flex-wrap items-center gap-2 md:gap-3">
+            <div class="flex flex-wrap items-center gap-1 p-1 border border-noir-800 rounded-xl bg-noir-900 hidden sm:flex">
               <button
                 (click)="setMode('chat')"
                 class="px-3 py-1.5 text-[9px] font-black uppercase tracking-widest rounded-lg transition-all"
@@ -458,13 +458,13 @@ interface TogglFocusSyncRequest {
               <lucide-icon name="ChevronDown" class="w-3 h-3 absolute right-3 top-1/2 -translate-y-1/2 text-noir-500 pointer-events-none"></lucide-icon>
             </div>
 
-            <button (click)="toggleSettingsPanel()" class="p-2.5 rounded-xl border border-noir-800 bg-noir-900 text-noir-400 hover:text-white hover:border-crimson-500/40 transition-all">
+            <button (click)="toggleSettingsPanel()" class="p-2 md:p-2.5 rounded-xl border border-noir-800 bg-noir-900 text-noir-400 hover:text-white hover:border-crimson-500/40 transition-all">
               <lucide-icon name="Settings" class="w-5 h-5"></lucide-icon>
             </button>
           </div>
         </header>
 
-        <div class="advisor-chat-scroll flex-1 overflow-y-auto px-6 md:px-12 py-12 space-y-12 scroll-smooth">
+        <div class="advisor-chat-scroll flex-1 overflow-y-auto px-4 md:px-12 py-6 md:py-12 space-y-8 md:space-y-12 scroll-smooth">
           @if (showSettings()) {
             <div class="max-w-3xl mx-auto noir-card p-8 space-y-6 animate-fade-in border-crimson-500/20 bg-noir-900/30 mb-8">
               <div class="flex items-center justify-between">
@@ -1126,8 +1126,8 @@ interface TogglFocusSyncRequest {
                 @else { <lucide-icon name="Bot" class="w-5 h-5 text-white"></lucide-icon> }
               </div>
 
-              <div class="group relative space-y-2" [class.text-right]="msg.role === 'user'">
-                <div class="inline-block text-left max-w-2xl rounded-3xl p-6 transition-all"
+              <div class="group relative space-y-2 min-w-0" [class.text-right]="msg.role === 'user'">
+                <div class="inline-block text-left max-w-[85vw] md:max-w-2xl rounded-2xl md:rounded-3xl p-4 md:p-6 transition-all"
                   [class.bg-noir-900]="msg.role === 'user'" [class.text-noir-100]="msg.role === 'user'" [class.rounded-tr-none]="msg.role === 'user'"
                   [class.bg-noir-900/40]="msg.role === 'assistant'" [class.text-noir-200]="msg.role === 'assistant'"
                   [class.border]="msg.role === 'assistant'" [class.border-noir-800]="msg.role === 'assistant'" [class.rounded-tl-none]="msg.role === 'assistant'">
@@ -1160,7 +1160,7 @@ interface TogglFocusSyncRequest {
           }
         </div>
 
-        <footer class="p-8 md:p-12 z-20">
+        <footer class="p-4 md:p-8 z-20">
           <div class="max-w-4xl mx-auto relative group">
             <div class="absolute -inset-1 bg-gradient-to-r from-crimson-600/20 to-noir-900/20 rounded-3xl blur opacity-0 group-focus-within:opacity-100 transition duration-500"></div>
             

@@ -7,14 +7,14 @@
   <div class="relative z-10 p-6 md:p-16 lg:p-24 space-y-32">
     
     <!-- PHASE 1: TYPOGRAPHIC DOMINANCE -->
-    <header class="relative">
-      <div class="absolute -top-12 -left-8 md:-top-20 md:-left-12 text-[12vw] font-black text-noir-800/10 select-none pointer-events-none uppercase italic leading-none">
+    <header class="relative w-full max-w-full overflow-hidden sm:overflow-visible">
+      <div class="absolute -top-12 -left-8 md:-top-20 md:-left-12 text-[clamp(4rem,20vw,15rem)] font-black text-noir-800/10 select-none pointer-events-none uppercase italic leading-none truncate w-full">
         Evolution
       </div>
-      <div class="max-w-4xl space-y-6">
-        <h1 class="text-7xl md:text-9xl lg:text-[12rem] text-display transition-all duration-700 hover:tracking-[-0.05em] group">
+      <div class="max-w-full space-y-6">
+        <h1 class="text-[clamp(3rem,12vw,9rem)] w-full break-words text-display transition-all duration-700 hover:tracking-[-0.05em] group">
           {{ greeting() }},<br/>
-          <span class="text-crimson-500 group-hover:animate-glitch inline-block">{{ student().username }}</span>
+          <span class="text-crimson-500 group-hover:animate-glitch inline-block break-all sm:break-words">{{ student().username }}</span>
         </h1>
         <div class="flex items-center gap-4 text-mono-technical animate-reveal">
           <span class="w-12 h-[1px] bg-crimson-500"></span>
@@ -159,10 +159,10 @@
       </div>
 
       <!-- RIGHT: SKILLS ARCHIVE (EXTREME ASYMMETRY) -->
-      <div class="lg:col-span-8 space-y-12 order-1 lg:order-2 lg:mt-[-10rem]">
-        <div class="flex items-baseline justify-between border-b border-noir-800 pb-4">
-          <h2 class="text-4xl md:text-6xl font-black uppercase tracking-tighter italic">Active_Sectors</h2>
-          <span class="text-mono-technical">Total: {{ skills().length }}</span>
+      <div class="lg:col-span-8 space-y-12 order-1 lg:order-2 lg:-mt-8 xl:-mt-16 relative z-20">
+        <div class="flex flex-col sm:flex-row items-baseline justify-between border-b border-noir-800 pb-4 gap-4">
+          <h2 class="text-3xl sm:text-4xl md:text-6xl font-black uppercase tracking-tighter italic break-words w-full">Active_Sectors</h2>
+          <span class="text-mono-technical whitespace-nowrap">Total: {{ skills().length }}</span>
         </div>
 
         @if (skills().length > 0) {

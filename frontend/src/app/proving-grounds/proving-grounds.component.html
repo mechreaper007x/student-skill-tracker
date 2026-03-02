@@ -91,47 +91,49 @@
   </div>
 
   <!-- Questions Table -->
-  <div class="noir-card">
-    <!-- Header Row -->
-    <div class="grid grid-cols-12 gap-2 px-6 py-3 border-b border-noir-800 text-[8px] font-mono text-noir-500 uppercase tracking-widest">
-      <div class="col-span-1">#</div>
-      <div class="col-span-5">Title</div>
-      <div class="col-span-2">Difficulty</div>
-      <div class="col-span-3">Tags</div>
-      <div class="col-span-1 text-right">Action</div>
-    </div>
-
-    <!-- Loading Skeleton -->
-    <div *ngIf="isLoading()" class="p-6 text-center text-noir-500 font-mono text-sm animate-pulse">
-      LOADING COMBAT_DATA...
-    </div>
-
-    <!-- Empty State -->
-    <div *ngIf="!isLoading() && filteredQuestions().length === 0" class="p-12 text-center">
-      <lucide-icon name="SearchX" class="w-10 h-10 text-noir-600 mx-auto mb-4"></lucide-icon>
-      <p class="text-noir-500 font-mono text-sm">NO_RESULTS_FOUND</p>
-    </div>
-
-    <!-- Question Rows -->
-    <div *ngFor="let q of paginatedQuestions(); let i = index"
-      class="grid grid-cols-12 gap-2 px-6 py-4 border-b border-noir-800/50 hover:bg-noir-900/50 transition-all group items-center">
-      <div class="col-span-1 text-noir-600 font-mono text-xs">{{ (currentPage() - 1) * pageSize + i + 1 }}</div>
-      <div class="col-span-5 text-sm font-bold text-noir-200 group-hover:text-white transition-colors truncate">{{ q.title }}</div>
-      <div class="col-span-2">
-        <span class="text-[9px] font-black uppercase border px-2 py-0.5" [ngClass]="getDifficultyClass(q.difficulty)">
-          {{ q.difficulty }}
-        </span>
+  <div class="noir-card overflow-x-auto">
+    <div class="min-w-[800px]">
+      <!-- Header Row -->
+      <div class="grid grid-cols-12 gap-2 px-6 py-3 border-b border-noir-800 text-[8px] font-mono text-noir-500 uppercase tracking-widest">
+        <div class="col-span-1">#</div>
+        <div class="col-span-5">Title</div>
+        <div class="col-span-2">Difficulty</div>
+        <div class="col-span-3">Tags</div>
+        <div class="col-span-1 text-right">Action</div>
       </div>
-      <div class="col-span-3 flex gap-1 flex-wrap">
-        <span *ngFor="let tag of q.tags.slice(0, 2)"
-          class="text-[7px] font-mono text-noir-500 border border-noir-800 px-1.5 py-0.5 truncate max-w-[80px]">
-          {{ tag }}
-        </span>
+
+      <!-- Loading Skeleton -->
+      <div *ngIf="isLoading()" class="p-6 text-center text-noir-500 font-mono text-sm animate-pulse">
+        LOADING COMBAT_DATA...
       </div>
-      <div class="col-span-1 text-right">
-        <button (click)="openQuestionInCompiler(q)" class="text-[9px] font-black uppercase tracking-widest text-crimson-400 border border-crimson-500/30 px-2 py-1 hover:bg-crimson-600 hover:text-white transition-all opacity-0 group-hover:opacity-100">
-          SOLVE
-        </button>
+
+      <!-- Empty State -->
+      <div *ngIf="!isLoading() && filteredQuestions().length === 0" class="p-12 text-center">
+        <lucide-icon name="SearchX" class="w-10 h-10 text-noir-600 mx-auto mb-4"></lucide-icon>
+        <p class="text-noir-500 font-mono text-sm">NO_RESULTS_FOUND</p>
+      </div>
+
+      <!-- Question Rows -->
+      <div *ngFor="let q of paginatedQuestions(); let i = index"
+        class="grid grid-cols-12 gap-2 px-6 py-4 border-b border-noir-800/50 hover:bg-noir-900/50 transition-all group items-center">
+        <div class="col-span-1 text-noir-600 font-mono text-xs">{{ (currentPage() - 1) * pageSize + i + 1 }}</div>
+        <div class="col-span-5 text-sm font-bold text-noir-200 group-hover:text-white transition-colors truncate">{{ q.title }}</div>
+        <div class="col-span-2">
+          <span class="text-[9px] font-black uppercase border px-2 py-0.5" [ngClass]="getDifficultyClass(q.difficulty)">
+            {{ q.difficulty }}
+          </span>
+        </div>
+        <div class="col-span-3 flex gap-1 flex-wrap">
+          <span *ngFor="let tag of q.tags.slice(0, 2)"
+            class="text-[7px] font-mono text-noir-500 border border-noir-800 px-1.5 py-0.5 truncate max-w-[80px]">
+            {{ tag }}
+          </span>
+        </div>
+        <div class="col-span-1 text-right">
+          <button (click)="openQuestionInCompiler(q)" class="text-[9px] font-black uppercase tracking-widest text-crimson-400 border border-crimson-500/30 px-2 py-1 hover:bg-crimson-600 hover:text-white transition-all opacity-0 group-hover:opacity-100 xl:opacity-0">
+            SOLVE
+          </button>
+        </div>
       </div>
     </div>
   </div>

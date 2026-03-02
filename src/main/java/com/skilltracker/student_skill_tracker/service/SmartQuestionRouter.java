@@ -60,7 +60,7 @@ public class SmartQuestionRouter {
             targetTag = overdue.getTopicSlug();
             difficultyHint = overdue.getEasinessFactor() > 2.0 ? "Medium" : "Easy";
             long daysSince = java.time.Duration.between(
-                    overdue.getLastReviewedAt() != null ? overdue.getLastReviewedAt().atStartOfDay()
+                    overdue.getLastReviewedAt() != null ? overdue.getLastReviewedAt()
                             : overdue.getNextReviewDate(),
                     LocalDateTime.now()).toDays();
             reason = "SM-2 decay: '" + humanize(targetTag) + "' overdue by " + daysSince + " days (EF=" +

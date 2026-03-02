@@ -65,14 +65,20 @@ public class RishiCodingTelemetryService {
     private final RishiCodingSessionRepository sessionRepository;
     private final RishiCodeChangeEventRepository changeEventRepository;
     private final RishiCompileAttemptLogRepository compileAttemptLogRepository;
+    private final SmartQuestionRouter smartQuestionRouter;
+    private final org.springframework.messaging.simp.SimpMessagingTemplate messagingTemplate;
 
     public RishiCodingTelemetryService(
             RishiCodingSessionRepository sessionRepository,
             RishiCodeChangeEventRepository changeEventRepository,
-            RishiCompileAttemptLogRepository compileAttemptLogRepository) {
+            RishiCompileAttemptLogRepository compileAttemptLogRepository,
+            SmartQuestionRouter smartQuestionRouter,
+            org.springframework.messaging.simp.SimpMessagingTemplate messagingTemplate) {
         this.sessionRepository = sessionRepository;
         this.changeEventRepository = changeEventRepository;
         this.compileAttemptLogRepository = compileAttemptLogRepository;
+        this.smartQuestionRouter = smartQuestionRouter;
+        this.messagingTemplate = messagingTemplate;
     }
 
     @Transactional
@@ -297,7 +303,7 @@ public class RishiCodingTelemetryService {
         String problemSlug = "general-coding";
         String topMistake = "None";
 
-        List<RishiCompileAttemptLog> recentLogs = compileLogRepository
+        List<RishiCompileAttemptLog> recentLogs = compileAttemptLogRepository
                 .findTop5BySessionStudentOrderByAttemptedAtDesc(student);
         if (!recentLogs.isEmpty()) {
             problemSlug = recentLogs.get(0).getProblemSlug();

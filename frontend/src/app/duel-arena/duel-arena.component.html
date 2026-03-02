@@ -273,9 +273,9 @@
       </div>
 
       <!-- 3-Column Layout for Coding Round -->
-      <div class="flex-1 grid grid-cols-4 overflow-hidden">
+      <div class="flex-1 flex flex-col xl:grid xl:grid-cols-4 overflow-y-auto xl:overflow-hidden">
         <!-- Left: Your Editor + Terminal -->
-        <div class="col-span-1 flex flex-col border-r border-noir-800 min-w-0">
+        <div class="col-span-1 flex flex-col border-b xl:border-b-0 xl:border-r border-noir-800 min-h-[500px] xl:min-h-0 min-w-0">
           <div class="flex items-center gap-2 px-3 py-1.5 border-b border-noir-800 bg-noir-900/50">
             <div class="w-1.5 h-1.5 bg-emerald-400 rounded-full"></div>
             <span class="text-[8px] font-mono text-noir-400 uppercase tracking-widest">YOUR CODE</span>
@@ -306,7 +306,7 @@
         </div>
 
         <!-- Center: Problem + Scoreboard -->
-        <div class="col-span-2 flex flex-col border-r border-noir-800 min-w-0">
+        <div class="col-span-2 flex flex-col border-b xl:border-b-0 xl:border-r border-noir-800 min-h-[400px] xl:min-h-0 min-w-0">
           <div class="flex items-center gap-2 px-4 py-1.5 border-b border-noir-800 bg-noir-900/30">
             <lucide-icon name="FileText" class="w-3.5 h-3.5 text-noir-500"></lucide-icon>
             <span class="text-[8px] font-mono text-noir-400 uppercase tracking-widest">PROBLEM // {{ currentRoundData()?.title }}</span>
@@ -330,7 +330,7 @@
         </div>
 
         <!-- Right: Opponent Editor + Terminal -->
-        <div class="col-span-1 flex flex-col min-w-0">
+        <div class="col-span-1 flex flex-col min-h-[400px] xl:min-h-0 min-w-0">
           <div class="flex items-center gap-2 px-3 py-1.5 border-b border-noir-800 bg-noir-900/50">
             <div class="w-1.5 h-1.5 bg-crimson-500 rounded-full"></div>
             <span class="text-[8px] font-mono text-noir-400 uppercase tracking-widest">{{ opponent() }}'s CODE</span>
