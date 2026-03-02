@@ -31,9 +31,11 @@ public class JDoodleCompilerService {
             @Value("${jdoodle.client.id:}") String clientId,
             @Value("${jdoodle.client.secret:}") String clientSecret) {
         this.apiUrl = apiUrl;
-        this.clientId = clientId;
-        this.clientSecret = clientSecret;
+        this.clientId = resolveCredential(clientId, "JDOODLE_CLIENT_ID", "jdoodle.client.id");
+        this.clientSecret = resolveCredential(clientSecret, "JDOODLE_CLIENT_SECRET", "jdoodle.client.secret");
         this.restClient = RestClient.create();
+        logger.info("JDoodle credential presence at startup: clientIdPresent={}, clientSecretPresent={}",
+                StringUtils.hasText(this.clientId), StringUtils.hasText(this.clientSecret));
     }
 
     public CompilationResult executeRemotely(CodeExecutionRequest request) {
@@ -123,6 +125,24 @@ public class JDoodleCompilerService {
                 && !result.isSuccess()
                 && result.getError() != null
                 && result.getError().startsWith(AUTH_FAILURE_PREFIX);
+    }
+
+    private String resolveCredential(String configuredValue, String uppercaseEnvKey, String lowercaseEnvKey) {
+        if (StringUtils.hasText(configuredValue)) {
+            return configuredValue.trim();
+        }
+
+        String upperEnv = System.getenv(uppercaseEnvKey);
+        if (StringUtils.hasText(upperEnv)) {
+            return upperEnv.trim();
+        }
+
+        String lowerEnv = System.getenv(lowercaseEnvKey);
+        if (StringUtils.hasText(lowerEnv)) {
+            return lowerEnv.trim();
+        }
+
+        return "";
     }
 
     private String mapLanguageToJDoodleKey(String language) {
