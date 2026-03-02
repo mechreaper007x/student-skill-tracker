@@ -39,22 +39,32 @@ public class JwtUtils {
 
     @PostConstruct
     void validateSecretConfiguration() {
+        boolean usingDefaultSecret = INSECURE_DEFAULT_SECRET.equals(secret);
+        int secretLength = (secret != null) ? secret.length() : 0;
+
+        logger.info("JWT Configuration: length={}, usingDefault={}", secretLength, usingDefaultSecret);
+
         if (secret == null || secret.isBlank()) {
+            logger.error("CRITICAL: jwt.secret is null or blank!");
             throw new IllegalStateException("jwt.secret must be configured");
         }
         if (secret.length() < MIN_SECRET_LENGTH) {
+            logger.error("CRITICAL: jwt.secret is too short ({} chars), min is {}", secret.length(), MIN_SECRET_LENGTH);
             throw new IllegalStateException("jwt.secret must be at least 32 characters long");
         }
 
-        boolean usingDefaultSecret = INSECURE_DEFAULT_SECRET.equals(secret);
         boolean prodProfileActive = Arrays.stream(environment.getActiveProfiles())
                 .anyMatch(profile -> "prod".equalsIgnoreCase(profile) || "production".equalsIgnoreCase(profile));
 
         if (usingDefaultSecret && prodProfileActive) {
+            logger.error("CRITICAL: Insecure default jwt.secret detected while 'prod' profile is active!");
             throw new IllegalStateException("Insecure default jwt.secret is not allowed in production profiles");
         }
+        
         if (usingDefaultSecret) {
             logger.warn("Using development default jwt.secret. Configure JWT_SECRET before production deployment.");
+        } else {
+            logger.info("JWT secret successfully configured from external source.");
         }
     }
 

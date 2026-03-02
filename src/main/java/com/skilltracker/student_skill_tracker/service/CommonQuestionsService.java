@@ -1,6 +1,5 @@
 package com.skilltracker.student_skill_tracker.service;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -12,67 +11,30 @@ import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.skilltracker.student_skill_tracker.model.SkillData;
-
-import jakarta.annotation.PostConstruct;
 
 @Service
 public class CommonQuestionsService {
 
     private static final Logger logger = LoggerFactory.getLogger(CommonQuestionsService.class);
 
-    private final ObjectMapper mapper;
+    private final QuestionService questionService;
 
-    private List<Map<String, Object>> questions = Collections.emptyList();
-    private List<Map<String, Object>> trendingQuestions = Collections.emptyList();
-    private List<Map<String, Object>> topTierQuestions = Collections.emptyList();
-
-    public CommonQuestionsService(ObjectMapper mapper) {
-        this.mapper = mapper;
-    }
-
-    @PostConstruct
-    public void init() {
-        try {
-            ClassPathResource r = new ClassPathResource("common_questions.json");
-            this.questions = mapper.readValue(r.getInputStream(), new TypeReference<List<Map<String, Object>>>() {});
-            logger.info("Loaded {} common questions from resource", questions.size());
-        } catch (IOException e) {
-            logger.warn("Failed to load common questions resource, continuing with empty list", e);
-            this.questions = Collections.emptyList();
-        }
-        try {
-            ClassPathResource r2 = new ClassPathResource("trending_questions.json");
-            this.trendingQuestions = mapper.readValue(r2.getInputStream(), new TypeReference<List<Map<String, Object>>>() {});
-            logger.info("Loaded {} trending questions from resource", trendingQuestions.size());
-        } catch (IOException e) {
-            logger.warn("Failed to load trending questions resource, continuing with empty list", e);
-            this.trendingQuestions = Collections.emptyList();
-        }
-        try {
-            ClassPathResource r3 = new ClassPathResource("top_tier_questions.json");
-            this.topTierQuestions = mapper.readValue(r3.getInputStream(), new TypeReference<List<Map<String, Object>>>() {});
-            logger.info("Loaded {} top tier questions from resource", topTierQuestions.size());
-        } catch (IOException e) {
-            logger.warn("Failed to load top tier questions resource, continuing with empty list", e);
-            this.topTierQuestions = Collections.emptyList();
-        }
+    public CommonQuestionsService(QuestionService questionService) {
+        this.questionService = questionService;
     }
 
     /**
      * Return curated list of common questions. For now this is global and not personalized.
      */
     public List<Map<String, Object>> getCommonQuestionsForStudent(Long studentId) {
-        return questions;
+        return questionService.getCommonQuestions();
     }
 
     public List<Map<String, Object>> getTrendingQuestionsForStudent(Long studentId) {
-        return trendingQuestions;
+        return questionService.getTrendingQuestions();
     }
 
     /**
@@ -86,6 +48,7 @@ public class CommonQuestionsService {
         if (inputQuestions == null || inputQuestions.isEmpty()) return Collections.emptyList();
         if (skillData == null) return new ArrayList<>(inputQuestions);
 
+        List<Map<String, Object>> topTierQuestions = questionService.getTopTierQuestions();
         Set<String> topTierTitles = topTierQuestions != null ? topTierQuestions.stream()
             .map(q -> q != null ? (String) q.get("title") : null)
             .filter(Objects::nonNull)

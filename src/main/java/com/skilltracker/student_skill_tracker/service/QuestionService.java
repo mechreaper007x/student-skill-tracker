@@ -33,7 +33,11 @@ public class QuestionService {
     private List<Map<String, Object>> topTierQuestions = new ArrayList<>();
     private List<Map<String, Object>> trendingQuestions = new ArrayList<>();
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper;
+
+    public QuestionService(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
+    }
 
     @PostConstruct
     public void init() {
