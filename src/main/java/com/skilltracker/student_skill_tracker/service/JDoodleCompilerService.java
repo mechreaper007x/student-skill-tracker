@@ -6,7 +6,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientResponseException;
 
 import com.skilltracker.student_skill_tracker.compiler.CompilationResult;
 import com.skilltracker.student_skill_tracker.dto.CodeExecutionRequest;
@@ -17,6 +19,7 @@ import com.skilltracker.student_skill_tracker.dto.jdoodle.JDoodleResponse;
 public class JDoodleCompilerService {
 
     private static final Logger logger = LoggerFactory.getLogger(JDoodleCompilerService.class);
+    private static final String AUTH_FAILURE_PREFIX = "JDoodle authorization failed";
 
     private final RestClient restClient;
     private final String apiUrl;
@@ -35,6 +38,13 @@ public class JDoodleCompilerService {
 
     public CompilationResult executeRemotely(CodeExecutionRequest request) {
         logger.info("Executing code remotely via JDoodle API for language: {}", request.getLanguage());
+        if (!isConfigured()) {
+            return CompilationResult.builder()
+                    .success(false)
+                    .error("JDoodle credentials are missing on server (JDOODLE_CLIENT_ID/JDOODLE_CLIENT_SECRET).")
+                    .timestamp(LocalDateTime.now())
+                    .build();
+        }
 
         // 1. Map request to JDoodleRequest DTO
         JDoodleRequest jdoodleReq = JDoodleRequest.builder()
@@ -75,6 +85,25 @@ public class JDoodleCompilerService {
                     .timestamp(LocalDateTime.now())
                     .build();
 
+        } catch (RestClientResponseException e) {
+            int status = e.getStatusCode().value();
+            if (status == 401 || status == 403) {
+                logger.error("JDoodle returned unauthorized status {}. Verify credentials in environment variables.",
+                        status);
+                return CompilationResult.builder()
+                        .success(false)
+                        .error(AUTH_FAILURE_PREFIX + " (HTTP " + status
+                                + "). Check JDOODLE_CLIENT_ID/JDOODLE_CLIENT_SECRET on Render.")
+                        .timestamp(LocalDateTime.now())
+                        .build();
+            }
+
+            logger.error("JDoodle remote execution failed with HTTP status {}", status, e);
+            return CompilationResult.builder()
+                    .success(false)
+                    .error("Remote execution failed: JDoodle HTTP " + status)
+                    .timestamp(LocalDateTime.now())
+                    .build();
         } catch (Exception e) {
             logger.error("JDoodle remote execution failed", e);
             return CompilationResult.builder()
@@ -83,6 +112,17 @@ public class JDoodleCompilerService {
                     .timestamp(LocalDateTime.now())
                     .build();
         }
+    }
+
+    public boolean isConfigured() {
+        return StringUtils.hasText(clientId) && StringUtils.hasText(clientSecret);
+    }
+
+    public boolean isAuthorizationFailure(CompilationResult result) {
+        return result != null
+                && !result.isSuccess()
+                && result.getError() != null
+                && result.getError().startsWith(AUTH_FAILURE_PREFIX);
     }
 
     private String mapLanguageToJDoodleKey(String language) {

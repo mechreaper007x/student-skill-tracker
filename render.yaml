@@ -34,6 +34,12 @@ services:
         sync: false
       - key: UPSTASH_REDIS_SSL
         value: true
+      - key: JDOODLE_API_URL
+        value: https://api.jdoodle.com/v1/execute
+      - key: JDOODLE_CLIENT_ID
+        sync: false
+      - key: JDOODLE_CLIENT_SECRET
+        sync: false
 
   - type: web
     name: student-skill-tracker-frontend

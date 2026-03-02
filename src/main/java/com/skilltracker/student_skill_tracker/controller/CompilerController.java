@@ -140,8 +140,10 @@ public class CompilerController {
         try {
             long startTime = System.currentTimeMillis();
 
-            // --- Direct service call requested by user ---
             CompilationResult result = jdoodleCompilerService.executeRemotely(request);
+            if (jdoodleCompilerService.isAuthorizationFailure(result)) {
+                logger.warn("JDoodle authorization failed for language {}", request.getLanguage());
+            }
 
             long elapsed = System.currentTimeMillis() - startTime;
             result.setExecutionTime(elapsed + "ms");
