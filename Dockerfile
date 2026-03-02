@@ -14,5 +14,8 @@ COPY --from=build /app/target/*.jar app.jar
 # Expose the port
 EXPOSE 8080
 
-# Run the application
-ENTRYPOINT ["java", "-jar", "app.jar"]
+# Enable Generational ZGC for ultra-low latency and strict memory management on 512MB RAM
+ENV JAVA_OPTS="-XX:+UseZGC -XX:+ZGenerational -Xmx400m"
+
+# Run the application with JAVA_OPTS
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
