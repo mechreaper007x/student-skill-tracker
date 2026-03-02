@@ -22,6 +22,10 @@ services:
         generateValue: true
       - key: JAVA_OPTS
         value: "-XX:+UseSerialGC -Xmx256m -XX:MaxMetaspaceSize=128m -XX:ReservedCodeCacheSize=64m -Xss512k"
+      - key: SPRING_CACHE_TYPE
+        value: simple
+      - key: REDIS_HEALTH_ENABLED
+        value: false
 
   - type: web
     name: student-skill-tracker-frontend
