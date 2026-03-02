@@ -11,8 +11,8 @@ class DuelServiceTest {
         java.lang.reflect.Method method = DuelService.class.getDeclaredMethod("bloomLevelForRound", int.class,
                 String.class);
         method.setAccessible(true);
-        // Corrected constructor call with 6 null arguments
-        DuelService service = new DuelService(null, null, null, null, null, null);
+        // Corrected constructor call with 7 null arguments
+        DuelService service = new DuelService(null, null, null, null, null, null, null);
 
         assertEquals(6, method.invoke(service, 5, "CODING"));
         assertEquals(1, method.invoke(service, 1, "MCQ"));
