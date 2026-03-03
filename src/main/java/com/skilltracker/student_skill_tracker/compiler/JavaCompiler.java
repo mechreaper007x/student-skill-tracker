@@ -11,9 +11,9 @@ public class JavaCompiler implements ProgrammingLanguageCompiler {
 
     private static final String LANGUAGE_NAME = "Java";
     private static final Pattern PUBLIC_CLASS_PATTERN = Pattern
-            .compile("\\bpublic\\s+class\\s+([A-Za-z_$][A-Za-z\\d_$]*)");
+            .compile("\\bpublic\\s+((?:abstract|final)\\s+)?class\\s+([A-Za-z_$][A-Za-z\\d_$]*)");
     private static final Pattern CLASS_PATTERN = Pattern
-            .compile("\\bclass\\s+([A-Za-z_$][A-Za-z\\d_$]*)");
+            .compile("\\b(?:public\\s+)?(?:abstract\\s+|final\\s+)?class\\s+([A-Za-z_$][A-Za-z\\d_$]*)");
     private static final Pattern MAIN_METHOD_PATTERN = Pattern
             .compile("\\b(?:public\\s+)?static\\s+void\\s+main\\s*\\(");
 
@@ -33,7 +33,10 @@ public class JavaCompiler implements ProgrammingLanguageCompiler {
             String modifiedSource = sourceCode;
             Matcher publicClassMatcher = PUBLIC_CLASS_PATTERN.matcher(sourceCode);
             if (publicClassMatcher.find()) {
-                modifiedSource = publicClassMatcher.replaceFirst("public class " + generatedClassName);
+                String classModifiers = publicClassMatcher.group(1);
+                String normalizedModifiers = classModifiers == null ? "" : classModifiers;
+                modifiedSource = publicClassMatcher
+                        .replaceFirst("public " + normalizedModifiers + "class " + generatedClassName);
                 runClassName = generatedClassName;
             } else {
                 Matcher classMatcher = CLASS_PATTERN.matcher(sourceCode);

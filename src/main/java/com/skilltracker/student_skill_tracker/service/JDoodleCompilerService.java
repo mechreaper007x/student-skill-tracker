@@ -1,6 +1,8 @@
 package com.skilltracker.student_skill_tracker.service;
 
 import java.time.LocalDateTime;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,6 +22,13 @@ public class JDoodleCompilerService {
 
     private static final Logger logger = LoggerFactory.getLogger(JDoodleCompilerService.class);
     private static final String AUTH_FAILURE_PREFIX = "JDoodle authorization failed";
+    private static final String JAVA_LANGUAGE_KEY = "java";
+    private static final Pattern JAVA_MAIN_METHOD_PATTERN = Pattern
+            .compile("\\b(?:public\\s+)?static\\s+void\\s+main\\s*\\(");
+    private static final Pattern JAVA_PUBLIC_CLASS_PATTERN = Pattern
+            .compile("\\bpublic\\s+(?:abstract\\s+|final\\s+)?class\\s+[A-Za-z_$][A-Za-z\\d_$]*");
+    private static final Pattern JAVA_NON_PUBLIC_CLASS_PATTERN = Pattern
+            .compile("\\b(?:(abstract|final)\\s+)?class\\s+([A-Za-z_$][A-Za-z\\d_$]*)");
 
     private final RestClient restClient;
     private final String apiUrl;
@@ -48,11 +57,20 @@ public class JDoodleCompilerService {
                     .build();
         }
 
+        String script = request.getSourceCode();
+        if (isJava(request.getLanguage())) {
+            JavaRemotePreparation preparation = prepareJavaForRemoteExecution(script);
+            if (!preparation.shouldExecuteRemotely()) {
+                return buildNoMainGuidanceResult(request.getLanguage());
+            }
+            script = preparation.script();
+        }
+
         // 1. Map request to JDoodleRequest DTO
         JDoodleRequest jdoodleReq = JDoodleRequest.builder()
                 .clientId(clientId)
                 .clientSecret(clientSecret)
-                .script(request.getSourceCode())
+                .script(script)
                 .language(mapLanguageToJDoodleKey(request.getLanguage()))
                 .versionIndex(mapVersionIndex(request.getLanguage()))
                 .stdin(request.getInput())
@@ -77,6 +95,9 @@ public class JDoodleCompilerService {
 
             // 3. Map JDoodleResponse back to your CompilationResult
             boolean success = response.getStatusCode() == 200;
+            if (isJava(request.getLanguage()) && looksLikeMissingJavaEntrypoint(response.getOutput())) {
+                return buildNoMainGuidanceResult(request.getLanguage());
+            }
 
             return CompilationResult.builder()
                     .success(success)
@@ -143,6 +164,51 @@ public class JDoodleCompilerService {
         }
 
         return "";
+    }
+
+    private boolean isJava(String language) {
+        return JAVA_LANGUAGE_KEY.equalsIgnoreCase(language);
+    }
+
+    private JavaRemotePreparation prepareJavaForRemoteExecution(String sourceCode) {
+        if (!JAVA_MAIN_METHOD_PATTERN.matcher(sourceCode).find()) {
+            return new JavaRemotePreparation(sourceCode, false);
+        }
+
+        if (JAVA_PUBLIC_CLASS_PATTERN.matcher(sourceCode).find()) {
+            return new JavaRemotePreparation(sourceCode, true);
+        }
+
+        Matcher nonPublicClassMatcher = JAVA_NON_PUBLIC_CLASS_PATTERN.matcher(sourceCode);
+        if (!nonPublicClassMatcher.find()) {
+            return new JavaRemotePreparation(sourceCode, true);
+        }
+
+        String classModifier = nonPublicClassMatcher.group(1);
+        String replacement = StringUtils.hasText(classModifier)
+                ? "public " + classModifier + "class Main"
+                : "public class Main";
+        String normalizedSource = nonPublicClassMatcher.replaceFirst(replacement);
+        return new JavaRemotePreparation(normalizedSource, true);
+    }
+
+    private boolean looksLikeMissingJavaEntrypoint(String output) {
+        return StringUtils.hasText(output)
+                && output.toLowerCase().contains("no \"public class\" found to execute");
+    }
+
+    private CompilationResult buildNoMainGuidanceResult(String language) {
+        return CompilationResult.builder()
+                .success(true)
+                .output("Compilation successful. No main() method detected, so there is nothing to run locally.\n"
+                        + "This is expected for LeetCode-style class-only solutions. Use Submit To LeetCode to execute against test cases.")
+                .error("")
+                .language(language)
+                .timestamp(LocalDateTime.now())
+                .build();
+    }
+
+    private record JavaRemotePreparation(String script, boolean shouldExecuteRemotely) {
     }
 
     private String mapLanguageToJDoodleKey(String language) {
