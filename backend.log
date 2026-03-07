@@ -1,0 +1,128 @@
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::staticFieldBase has been called by com.google.inject.internal.aop.HiddenClassDefiner (file:/C:/Users/nchou/.m2/wrapper/dists/apache-maven-3.9.11/03d7e36a140982eea48e22c1dcac01d8862b2550b2939e09a0809bbc5182a5bc/lib/guice-5.1.0-classes.jar)
+WARNING: Please consider reporting this to the maintainers of class com.google.inject.internal.aop.HiddenClassDefiner
+WARNING: sun.misc.Unsafe::staticFieldBase will be removed in a future release
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ---------------< com.skilltracker:student-skill-tracker >---------------
+[INFO] Building student-skill-tracker 0.0.1-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] >>> spring-boot:3.4.11:run (default-cli) > test-compile @ student-skill-tracker >>>
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ student-skill-tracker ---
+[INFO] Copying 2 resources from src\main\resources to target\classes
+[INFO] Copying 4 resources from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ student-skill-tracker ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ student-skill-tracker ---
+[INFO] skip non existing resourceDirectory C:\Users\nchou\Desktop\major_project\student-skill-tracker-main\src\test\resources
+[INFO] 
+[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ student-skill-tracker ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] <<< spring-boot:3.4.11:run (default-cli) < test-compile @ student-skill-tracker <<<
+[INFO] 
+[INFO] 
+[INFO] --- spring-boot:3.4.11:run (default-cli) @ student-skill-tracker ---
+[INFO] Attaching agents: []
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::               (v3.4.11)
+
+2026-02-28T12:44:34.424+05:30  INFO 20796 --- [student-skill-tracker] [  restartedMain] c.s.s.StudentSkillTrackerApplication     : Starting StudentSkillTrackerApplication using Java 25.0.2 with PID 20796 (C:\Users\nchou\Desktop\major_project\student-skill-tracker-main\target\classes started by nchou in C:\Users\nchou\Desktop\major_project\student-skill-tracker-main)
+2026-02-28T12:44:34.427+05:30 DEBUG 20796 --- [student-skill-tracker] [  restartedMain] c.s.s.StudentSkillTrackerApplication     : Running with Spring Boot v3.4.11, Spring v6.2.12
+2026-02-28T12:44:34.427+05:30  INFO 20796 --- [student-skill-tracker] [  restartedMain] c.s.s.StudentSkillTrackerApplication     : No active profile set, falling back to 1 default profile: "default"
+2026-02-28T12:44:34.498+05:30  INFO 20796 --- [student-skill-tracker] [  restartedMain] .e.DevToolsPropertyDefaultsPostProcessor : Devtools property defaults active! Set 'spring.devtools.add-properties' to 'false' to disable
+2026-02-28T12:44:34.498+05:30  INFO 20796 --- [student-skill-tracker] [  restartedMain] .e.DevToolsPropertyDefaultsPostProcessor : For additional web related logging consider setting the 'logging.level.web' property to 'DEBUG'
+2026-02-28T12:44:36.919+05:30  INFO 20796 --- [student-skill-tracker] [  restartedMain] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-02-28T12:44:37.209+05:30  INFO 20796 --- [student-skill-tracker] [  restartedMain] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 257 ms. Found 6 JPA repository interfaces.
+2026-02-28T12:44:39.429+05:30  INFO 20796 --- [student-skill-tracker] [  restartedMain] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 8082 (http)
+2026-02-28T12:44:39.473+05:30  INFO 20796 --- [student-skill-tracker] [  restartedMain] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-02-28T12:44:39.475+05:30  INFO 20796 --- [student-skill-tracker] [  restartedMain] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.48]
+2026-02-28T12:44:39.622+05:30  INFO 20796 --- [student-skill-tracker] [  restartedMain] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2026-02-28T12:44:39.624+05:30  INFO 20796 --- [student-skill-tracker] [  restartedMain] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 5125 ms
+2026-02-28T12:44:40.706+05:30  INFO 20796 --- [student-skill-tracker] [  restartedMain] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-02-28T12:44:41.261+05:30  INFO 20796 --- [student-skill-tracker] [  restartedMain] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection conn0: url=jdbc:h2:mem:testdb user=SA
+2026-02-28T12:44:41.267+05:30  INFO 20796 --- [student-skill-tracker] [  restartedMain] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-02-28T12:44:41.410+05:30  INFO 20796 --- [student-skill-tracker] [  restartedMain] org.flywaydb.core.FlywayExecutor         : Database: jdbc:h2:mem:testdb (H2 2.3)
+2026-02-28T12:44:41.423+05:30  WARN 20796 --- [student-skill-tracker] [  restartedMain] o.f.c.internal.database.base.Database    : Flyway upgrade recommended: H2 2.3.232 is newer than this version of Flyway and support has not been tested. The latest supported version of H2 is 2.2.224.
+2026-02-28T12:44:41.478+05:30  INFO 20796 --- [student-skill-tracker] [  restartedMain] o.f.c.i.s.JdbcTableSchemaHistory         : Schema history table "PUBLIC"."flyway_schema_history" does not exist yet
+2026-02-28T12:44:41.483+05:30  INFO 20796 --- [student-skill-tracker] [  restartedMain] o.f.core.internal.command.DbValidate     : Successfully validated 0 migrations (execution time 00:00.023s)
+2026-02-28T12:44:41.484+05:30  WARN 20796 --- [student-skill-tracker] [  restartedMain] o.f.core.internal.command.DbValidate     : No migrations found. Are your locations set up correctly?
+2026-02-28T12:44:41.504+05:30  INFO 20796 --- [student-skill-tracker] [  restartedMain] o.f.c.i.s.JdbcTableSchemaHistory         : Creating Schema History table "PUBLIC"."flyway_schema_history" ...
+2026-02-28T12:44:41.593+05:30  INFO 20796 --- [student-skill-tracker] [  restartedMain] o.f.core.internal.command.DbMigrate      : Current version of schema "PUBLIC": << Empty Schema >>
+2026-02-28T12:44:41.602+05:30  INFO 20796 --- [student-skill-tracker] [  restartedMain] o.f.core.internal.command.DbMigrate      : Schema "PUBLIC" is up to date. No migration necessary.
+2026-02-28T12:44:41.897+05:30  INFO 20796 --- [student-skill-tracker] [  restartedMain] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2026-02-28T12:44:42.073+05:30  INFO 20796 --- [student-skill-tracker] [  restartedMain] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.6.33.Final
+2026-02-28T12:44:42.186+05:30  INFO 20796 --- [student-skill-tracker] [  restartedMain] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2026-02-28T12:44:43.203+05:30  INFO 20796 --- [student-skill-tracker] [  restartedMain] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-02-28T12:44:43.401+05:30  WARN 20796 --- [student-skill-tracker] [  restartedMain] org.hibernate.orm.deprecation            : HHH90000025: H2Dialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+2026-02-28T12:44:43.440+05:30  INFO 20796 --- [student-skill-tracker] [  restartedMain] org.hibernate.orm.connections.pooling    : HHH10001005: Database info:
+	Database JDBC URL [Connecting through datasource 'HikariDataSource (HikariPool-1)']
+	Database driver: undefined/unknown
+	Database version: 2.3.232
+	Autocommit mode: undefined/unknown
+	Isolation level: undefined/unknown
+	Minimum pool size: undefined/unknown
+	Maximum pool size: undefined/unknown
+2026-02-28T12:44:46.622+05:30  INFO 20796 --- [student-skill-tracker] [  restartedMain] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2026-02-28T12:44:46.829+05:30  INFO 20796 --- [student-skill-tracker] [  restartedMain] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-02-28T12:44:47.835+05:30 DEBUG 20796 --- [student-skill-tracker] [  restartedMain] c.s.s.security.JwtAuthenticationFilter   : Filter 'jwtAuthenticationFilter' configured for use
+2026-02-28T12:44:48.104+05:30  INFO 20796 --- [student-skill-tracker] [  restartedMain] c.s.s.service.CommonQuestionsService     : Loaded 500 common questions from resource
+2026-02-28T12:44:48.109+05:30  INFO 20796 --- [student-skill-tracker] [  restartedMain] c.s.s.service.CommonQuestionsService     : Loaded 500 trending questions from resource
+2026-02-28T12:44:48.114+05:30  INFO 20796 --- [student-skill-tracker] [  restartedMain] c.s.s.service.CommonQuestionsService     : Loaded 500 top tier questions from resource
+2026-02-28T12:44:48.222+05:30  INFO 20796 --- [student-skill-tracker] [  restartedMain] c.s.s.service.AiAdvisorService           : Loaded advice content from resource
+2026-02-28T12:44:48.416+05:30  INFO 20796 --- [student-skill-tracker] [  restartedMain] r$InitializeUserDetailsManagerConfigurer : Global AuthenticationManager configured with UserDetailsService bean with name userDetailsServiceImpl
+2026-02-28T12:44:48.628+05:30  INFO 20796 --- [student-skill-tracker] [  restartedMain] o.s.d.j.r.query.QueryEnhancerFactory     : Hibernate is in classpath; If applicable, HQL parser will be used.
+2026-02-28T12:44:48.908+05:30  INFO 20796 --- [student-skill-tracker] [  restartedMain] c.s.s.service.QuestionService            : Question source common normalized: kept=500, skipped=0
+2026-02-28T12:44:48.930+05:30  INFO 20796 --- [student-skill-tracker] [  restartedMain] c.s.s.service.QuestionService            : Question source top-tier normalized: kept=500, skipped=0
+2026-02-28T12:44:48.951+05:30  INFO 20796 --- [student-skill-tracker] [  restartedMain] c.s.s.service.QuestionService            : Question source trending normalized: kept=500, skipped=0
+2026-02-28T12:44:48.952+05:30  INFO 20796 --- [student-skill-tracker] [  restartedMain] c.s.s.service.QuestionService            : Loaded questions — Common: 500, Top-Tier: 500, Trending: 500
+2026-02-28T12:44:50.180+05:30  WARN 20796 --- [student-skill-tracker] [  restartedMain] JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2026-02-28T12:44:51.229+05:30  INFO 20796 --- [student-skill-tracker] [  restartedMain] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 1 endpoint beneath base path '/actuator'
+2026-02-28T12:44:52.271+05:30  INFO 20796 --- [student-skill-tracker] [  restartedMain] o.s.b.a.h2.H2ConsoleAutoConfiguration    : H2 console available at '/h2-console'. Database available at 'jdbc:h2:mem:testdb'
+2026-02-28T12:44:52.412+05:30  WARN 20796 --- [student-skill-tracker] [  restartedMain] o.s.b.d.a.OptionalLiveReloadServer       : Unable to start LiveReload server
+2026-02-28T12:44:52.592+05:30  INFO 20796 --- [student-skill-tracker] [  restartedMain] o.s.m.s.b.SimpleBrokerMessageHandler     : Starting...
+2026-02-28T12:44:52.594+05:30  INFO 20796 --- [student-skill-tracker] [  restartedMain] o.s.m.s.b.SimpleBrokerMessageHandler     : BrokerAvailabilityEvent[available=true, SimpleBrokerMessageHandler [org.springframework.messaging.simp.broker.DefaultSubscriptionRegistry@ac0f969]]
+2026-02-28T12:44:52.597+05:30  INFO 20796 --- [student-skill-tracker] [  restartedMain] o.s.m.s.b.SimpleBrokerMessageHandler     : Started.
+2026-02-28T12:44:52.618+05:30  INFO 20796 --- [student-skill-tracker] [  restartedMain] o.s.m.s.b.SimpleBrokerMessageHandler     : Stopping...
+2026-02-28T12:44:52.622+05:30  INFO 20796 --- [student-skill-tracker] [  restartedMain] o.s.m.s.b.SimpleBrokerMessageHandler     : BrokerAvailabilityEvent[available=false, SimpleBrokerMessageHandler [org.springframework.messaging.simp.broker.DefaultSubscriptionRegistry@ac0f969]]
+2026-02-28T12:44:52.623+05:30  INFO 20796 --- [student-skill-tracker] [  restartedMain] o.s.m.s.b.SimpleBrokerMessageHandler     : Stopped.
+2026-02-28T12:44:52.624+05:30  WARN 20796 --- [student-skill-tracker] [  restartedMain] ConfigServletWebServerApplicationContext : Exception encountered during context initialization - cancelling refresh attempt: org.springframework.context.ApplicationContextException: Failed to start bean 'webServerStartStop'
+2026-02-28T12:44:52.638+05:30  INFO 20796 --- [student-skill-tracker] [  restartedMain] j.LocalContainerEntityManagerFactoryBean : Closing JPA EntityManagerFactory for persistence unit 'default'
+2026-02-28T12:44:52.670+05:30  WARN 20796 --- [student-skill-tracker] [  restartedMain] o.s.b.f.support.DisposableBeanAdapter    : Invocation of destroy method failed on bean with name 'inMemoryDatabaseShutdownExecutor': org.h2.jdbc.JdbcSQLNonTransientConnectionException: Database is already closed (to disable automatic closing at VM shutdown, add ";DB_CLOSE_ON_EXIT=FALSE" to the db URL) [90121-232]
+2026-02-28T12:44:52.671+05:30  INFO 20796 --- [student-skill-tracker] [  restartedMain] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown initiated...
+2026-02-28T12:44:52.676+05:30  INFO 20796 --- [student-skill-tracker] [  restartedMain] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown completed.
+2026-02-28T12:44:52.714+05:30  INFO 20796 --- [student-skill-tracker] [  restartedMain] .s.b.a.l.ConditionEvaluationReportLogger : 
+
+Error starting ApplicationContext. To display the condition evaluation report re-run your application with 'debug' enabled.
+2026-02-28T12:44:52.779+05:30 ERROR 20796 --- [student-skill-tracker] [  restartedMain] o.s.b.d.LoggingFailureAnalysisReporter   : 
+
+***************************
+APPLICATION FAILED TO START
+***************************
+
+Description:
+
+Web server failed to start. Port 8082 was already in use.
+
+Action:
+
+Identify and stop the process that's listening on port 8082 or configure this application to listen on another port.
+
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  27.109 s
+[INFO] Finished at: 2026-02-28T12:44:52+05:30
+[INFO] ------------------------------------------------------------------------
