@@ -14,5 +14,8 @@ public interface RishiCodingSessionRepository extends JpaRepository<RishiCodingS
     Optional<RishiCodingSession> findByIdAndStudent(Long id, Student student);
 
     List<RishiCodingSession> findByStudentAndStartedAtBetween(Student student, LocalDateTime start, LocalDateTime end);
-}
 
+    List<RishiCodingSession> findByStudentAndStartedAtAfter(Student student, LocalDateTime start);
+
+    Optional<RishiCodingSession> findTopByStudentOrderByLastActivityAtDesc(Student student);
+}

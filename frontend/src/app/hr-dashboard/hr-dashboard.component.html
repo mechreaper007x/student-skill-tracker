@@ -1,0 +1,82 @@
+<div class="min-h-screen bg-black text-noir-100 p-6 md:p-10 space-y-6">
+  <header class="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+    <div>
+      <h1 class="text-3xl font-black uppercase">HR / Interviewer Dashboard</h1>
+      <p class="text-sm text-noir-400">Decision intelligence for candidate shortlisting and interview planning.</p>
+    </div>
+    <div class="flex gap-2">
+      <input
+        type="text"
+        [(ngModel)]="search"
+        placeholder="Search by name/email/leetcode"
+        class="bg-noir-900 border border-noir-700 px-3 py-2 text-sm w-72"
+      />
+      <button
+        (click)="loadCandidates()"
+        class="px-4 py-2 bg-crimson-600 border border-crimson-500 text-xs uppercase font-bold"
+      >
+        Search
+      </button>
+    </div>
+  </header>
+
+  <p *ngIf="error()" class="text-red-400 text-sm">{{ error() }}</p>
+
+  <section class="grid lg:grid-cols-[380px_1fr] gap-5">
+    <div class="noir-card border border-noir-800 overflow-hidden">
+      <div class="px-4 py-3 border-b border-noir-800 text-xs uppercase text-noir-400 font-bold">
+        Candidates
+      </div>
+      <div class="max-h-[70vh] overflow-y-auto">
+        <button
+          *ngFor="let candidate of candidates()"
+          (click)="openCandidate(candidate.candidateId)"
+          class="block w-full text-left px-4 py-4 border-b border-noir-900 hover:bg-noir-900 transition-colors"
+        >
+          <div class="flex justify-between items-start gap-2">
+            <div>
+              <div class="text-sm font-bold text-white">{{ candidate.name }}</div>
+              <div class="text-xs text-noir-400">{{ candidate.email }}</div>
+              <div class="text-[11px] text-noir-500">{{ candidate.recommendationBand }} | {{ candidate.trend }}</div>
+            </div>
+            <div class="text-right">
+              <div class="text-xl font-black text-crimson-400">{{ candidate.overallReadinessScore | number: '1.0-0' }}</div>
+              <div class="text-[10px] text-noir-500">readiness</div>
+            </div>
+          </div>
+        </button>
+        <div *ngIf="!loading() && candidates().length === 0" class="p-4 text-sm text-noir-500">
+          No candidates found.
+        </div>
+        <div *ngIf="loading()" class="p-4 text-sm text-noir-500">Loading...</div>
+      </div>
+    </div>
+
+    <div class="space-y-5">
+      <div *ngIf="summaryLoading()" class="noir-card p-6 text-sm text-noir-400">Loading candidate summary...</div>
+
+      <ng-container *ngIf="selectedSummary() as summary">
+        <app-candidate-summary-card [summary]="summary"></app-candidate-summary-card>
+        <app-skill-radar [radar]="summary.radar"></app-skill-radar>
+        <app-risk-flags-panel [riskFlags]="summary.riskFlags" [positiveSignals]="summary.positiveSignals"></app-risk-flags-panel>
+
+        <section class="noir-card p-5">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-sm font-black uppercase">Interviewer Actions</h3>
+            <a
+              [routerLink]="['/interviewer-workbench', summary.candidateId]"
+              class="text-xs font-bold uppercase px-3 py-2 bg-noir-900 border border-noir-700 hover:border-crimson-500"
+            >
+              Open Workbench
+            </a>
+          </div>
+          <p class="text-sm text-noir-400">Use workbench to review behavioral signals and submit rubric-based feedback.</p>
+        </section>
+      </ng-container>
+
+      <section *ngIf="!summaryLoading() && !selectedSummary()" class="noir-card p-6 text-sm text-noir-500">
+        Select a candidate to view summary, risk flags, and interview planning details.
+      </section>
+    </div>
+  </section>
+</div>

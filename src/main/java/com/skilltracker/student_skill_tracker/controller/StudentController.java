@@ -78,7 +78,6 @@ public class StudentController {
     }
 
     @PostMapping("/register")
-    @Transactional
     public ResponseEntity<?> register(@RequestBody Student student) {
         try {
             if (student == null || student.getName() == null || student.getName().isBlank()
@@ -133,9 +132,14 @@ public class StudentController {
 
             Student savedStudent = studentRepository.save(student);
             
-            // Trigger asynchronous updates using the saved object
-            skillService.updateSkillData(savedStudent);
-            skillService.updateLanguageSkills(savedStudent);
+            // Trigger post-registration enrichment; never block registration on external sync.
+            try {
+                skillService.updateSkillData(savedStudent);
+                skillService.updateLanguageSkills(savedStudent);
+            } catch (Exception enrichmentEx) {
+                logger.warn("Post-registration skill enrichment failed for {}: {}",
+                        savedStudent.getEmail(), enrichmentEx.getMessage());
+            }
 
             return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
                 "message", "Registration successful",
@@ -157,6 +161,7 @@ public class StudentController {
 
     @GetMapping("/dashboard/{id}")
     @PreAuthorize("isAuthenticated()")
+    @Transactional(readOnly = true)
     public ResponseEntity<?> showDashboard(@PathVariable Long id) {
         if (!isOwner(id)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
@@ -171,6 +176,7 @@ public class StudentController {
     }
 
     @GetMapping("/me/dashboard")
+    @Transactional(readOnly = true)
     public ResponseEntity<?> showMyDashboard() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         if (email == null) {
@@ -183,6 +189,7 @@ public class StudentController {
     }
 
     @GetMapping("/me/language-skills")
+    @Transactional(readOnly = true)
     public ResponseEntity<List<Map<String, Object>>> getMyLanguageSkills() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         if (email == null) {
@@ -266,6 +273,7 @@ public class StudentController {
     }
 
     @GetMapping("/me/common-questions")
+    @Transactional(readOnly = true)
     public ResponseEntity<?> getMyCommonQuestions() {
         Optional<Student> studentOpt = getCurrentStudentFromContext();
         if (studentOpt.isEmpty()) {
@@ -278,6 +286,7 @@ public class StudentController {
     }
 
     @GetMapping("/me/trending-questions")
+    @Transactional(readOnly = true)
     public ResponseEntity<?> getMyTrendingQuestions() {
         Optional<Student> studentOpt = getCurrentStudentFromContext();
         if (studentOpt.isEmpty()) {
@@ -344,6 +353,7 @@ public class StudentController {
 
     @GetMapping("/{id}/common-questions")
     @PreAuthorize("isAuthenticated()")
+    @Transactional(readOnly = true)
     public ResponseEntity<?> getCommonQuestions(@PathVariable Long id) {
         if (!isOwner(id)) {
             Map<String, Object> resp = new HashMap<>();
@@ -380,6 +390,7 @@ public class StudentController {
 
     @GetMapping("/{id}/trending-questions")
     @PreAuthorize("isAuthenticated()")
+    @Transactional(readOnly = true)
     public ResponseEntity<?> getTrendingQuestions(@PathVariable Long id) {
         if (!isOwner(id)) {
             Map<String, Object> resp = new HashMap<>();

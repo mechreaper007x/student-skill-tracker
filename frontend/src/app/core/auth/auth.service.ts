@@ -47,7 +47,7 @@ export class AuthService {
               xp: response.xp || 0,
               duelWins: response.duelWins || 0,
               highestBloomLevel: response.highestBloomLevel || 1,
-              roles: 'USER',
+              roles: response.roles || 'ROLE_USER',
               skillData: undefined
             });
           }
@@ -100,7 +100,7 @@ export class AuthService {
           xp: response.xp || 0,
           duelWins: response.duelWins || 0,
           highestBloomLevel: response.highestBloomLevel || 1,
-          roles: 'USER',
+          roles: response.roles || 'ROLE_USER',
           skillData: undefined
         };
         this.currentUser.set(user);
@@ -117,5 +117,22 @@ export class AuthService {
         return of(null);
       })
     );
+  }
+
+  hasAnyRole(requiredRoles: string[]): boolean {
+    const current = this.currentUser();
+    if (!current || !current.roles) {
+      return false;
+    }
+
+    const normalizedCurrentRoles = current.roles
+      .split(',')
+      .map(role => role.trim().replace(/^ROLE_/, '').toUpperCase())
+      .filter(Boolean);
+    const normalizedRequiredRoles = requiredRoles.map(role =>
+      role.trim().replace(/^ROLE_/, '').toUpperCase()
+    );
+
+    return normalizedRequiredRoles.some(role => normalizedCurrentRoles.includes(role));
   }
 }

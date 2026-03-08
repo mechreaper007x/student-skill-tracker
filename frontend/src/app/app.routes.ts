@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/auth/auth.guard';
+import { roleGuard } from './core/auth/role.guard';
 import { ShellComponent } from './layout/shell/shell.component';
 
 export const routes: Routes = [
@@ -56,6 +57,19 @@ export const routes: Routes = [
       {
         path: 'settings',
         loadComponent: () => import('./settings/settings.component').then(m => m.SettingsComponent)
+      },
+      {
+        path: 'hr-dashboard',
+        canActivate: [roleGuard],
+        data: { roles: ['HR', 'INTERVIEWER', 'ADMIN'] },
+        loadComponent: () => import('./hr-dashboard/hr-dashboard.component').then(m => m.HrDashboardComponent)
+      },
+      {
+        path: 'interviewer-workbench/:candidateId',
+        canActivate: [roleGuard],
+        data: { roles: ['INTERVIEWER', 'HR', 'ADMIN'] },
+        loadComponent: () => import('./interviewer-workbench/interviewer-workbench.component')
+          .then(m => m.InterviewerWorkbenchComponent)
       },
       {
         path: 'battle-station',

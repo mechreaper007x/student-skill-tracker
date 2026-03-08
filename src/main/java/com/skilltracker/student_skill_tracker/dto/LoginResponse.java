@@ -13,8 +13,10 @@ public class LoginResponse {
     private String token;
     private String email;
     private String name;
+    private String roles;
     private String leetcodeUsername;
     private String githubUsername;
+    private String codeforcesHandle;
     private boolean leetcodeSubmitConnected;
     private Integer level;
     private Integer xp;

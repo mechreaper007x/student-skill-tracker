@@ -1,0 +1,52 @@
+<div class="min-h-screen bg-black text-noir-100 p-6 md:p-10 space-y-5">
+  <div class="flex items-center justify-between">
+    <h1 class="text-3xl font-black uppercase">Interviewer Workbench</h1>
+    <a routerLink="/hr-dashboard" class="text-xs uppercase font-bold px-3 py-2 border border-noir-700 hover:border-crimson-500">
+      Back to Dashboard
+    </a>
+  </div>
+
+  <p *ngIf="error()" class="text-red-400 text-sm">{{ error() }}</p>
+  <p *ngIf="success()" class="text-emerald-400 text-sm">{{ success() }}</p>
+
+  <div *ngIf="loading()" class="noir-card p-6 text-sm text-noir-400">Loading candidate workbench...</div>
+
+  <ng-container *ngIf="!loading() && summary() as summary">
+    <app-candidate-summary-card [summary]="summary"></app-candidate-summary-card>
+    <app-risk-flags-panel [riskFlags]="summary.riskFlags" [positiveSignals]="summary.positiveSignals"></app-risk-flags-panel>
+
+    <section *ngIf="insights() as insights" class="noir-card p-5 space-y-4">
+      <h2 class="text-sm font-black uppercase">Interview Briefing</h2>
+      <p class="text-sm text-noir-300">{{ insights.briefing }}</p>
+
+      <div class="grid md:grid-cols-2 gap-4">
+        <div>
+          <h3 class="text-xs uppercase text-noir-400 mb-2">Behavioral Signals</h3>
+          <div class="space-y-2">
+            <div *ngFor="let metric of insights.behavioralScores | keyvalue" class="flex items-center gap-3">
+              <span class="text-xs w-44 text-noir-400">{{ metric.key }}</span>
+              <div class="h-2 bg-noir-800 flex-1">
+                <div class="h-2 bg-crimson-600" [style.width.%]="metric.value"></div>
+              </div>
+              <span class="text-xs w-12 text-right">{{ metric.value | number: '1.0-1' }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <h3 class="text-xs uppercase text-noir-400 mb-2">Recommended Focus Areas</h3>
+          <ul class="space-y-2 text-sm text-noir-200">
+            <li *ngFor="let item of insights.recommendedFocusAreas">- {{ item }}</li>
+          </ul>
+
+          <h3 class="text-xs uppercase text-noir-400 mt-4 mb-2">Suggested Follow-up Questions</h3>
+          <ul class="space-y-2 text-sm text-noir-200">
+            <li *ngFor="let q of insights.suggestedQuestions">- {{ q }}</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <app-interview-rubric-form [saving]="saving()" (save)="submitFeedback($event)"></app-interview-rubric-form>
+  </ng-container>
+</div>

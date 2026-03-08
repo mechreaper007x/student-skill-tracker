@@ -31,7 +31,7 @@
     <!-- Navigation -->
     <nav class="p-4 space-y-1">
       <a 
-        *ngFor="let item of navItems" 
+        *ngFor="let item of navItems()" 
         [routerLink]="item.route" 
         routerLinkActive="bg-noir-900 border-l-4 border-l-crimson-500 text-white !opacity-100"
         [routerLinkActiveOptions]="{exact: false}"
