@@ -424,16 +424,22 @@ public class LeetCodeService {
 
     @SuppressWarnings("unchecked")
     private Map<String, Object> getCachedQuestionPayload(String slug, String slugFromUrl, String titleKey) {
-        Cache cache = cacheManager.getCache("leetcodeQuestionDetails");
-        if (cache == null)
+        Cache cache = getQuestionDetailsCache();
+        if (cache == null) {
             return null;
-
-        for (String key : buildQuestionCacheKeys(slug, slugFromUrl, titleKey)) {
-            Map<String, Object> entry = cache.get(key, Map.class);
-            if (entry != null) {
-                return entry;
-            }
         }
+
+        try {
+            for (String key : buildQuestionCacheKeys(slug, slugFromUrl, titleKey)) {
+                Map<String, Object> entry = cache.get(key, Map.class);
+                if (entry != null) {
+                    return entry;
+                }
+            }
+        } catch (Exception ex) {
+            logger.warn("LeetCode question detail cache read failed: {}", ex.getMessage());
+        }
+
         return null;
     }
 
@@ -442,9 +448,10 @@ public class LeetCodeService {
             return;
         }
 
-        Cache cache = cacheManager.getCache("leetcodeQuestionDetails");
-        if (cache == null)
+        Cache cache = getQuestionDetailsCache();
+        if (cache == null) {
             return;
+        }
 
         Map<String, Object> data = asMap(payload.get("data"));
         Map<String, Object> question = asMap(data == null ? null : data.get("question"));
@@ -453,8 +460,21 @@ public class LeetCodeService {
         String cacheSlug = !resolvedSlug.isBlank() ? resolvedSlug : normalizeSlug(slugHint);
         String cacheTitleKey = titleKeyHint == null ? "" : titleKeyHint;
 
-        for (String key : buildQuestionCacheKeys(cacheSlug, "", cacheTitleKey)) {
-            cache.put(key, payload);
+        try {
+            for (String key : buildQuestionCacheKeys(cacheSlug, "", cacheTitleKey)) {
+                cache.put(key, payload);
+            }
+        } catch (Exception ex) {
+            logger.warn("LeetCode question detail cache write failed: {}", ex.getMessage());
+        }
+    }
+
+    private Cache getQuestionDetailsCache() {
+        try {
+            return cacheManager.getCache("leetcodeQuestionDetails");
+        } catch (Exception ex) {
+            logger.warn("LeetCode question detail cache unavailable: {}", ex.getMessage());
+            return null;
         }
     }
 
@@ -544,6 +564,9 @@ public class LeetCodeService {
         String raw = titleHint == null ? "" : titleHint.trim();
         if (raw.isBlank()) {
             return List.of();
+        }
+        if (raw.length() > 200) {
+            raw = raw.substring(0, 200);
         }
 
         List<String> variants = new ArrayList<>();
