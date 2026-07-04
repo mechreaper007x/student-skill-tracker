@@ -33,47 +33,55 @@ function normalizeBackendUrl(rawValue: string): string {
 
 const BACKEND_URL = normalizeBackendUrl(process.env['BACKEND_URL'] || 'http://localhost:8082');
 
-/**
- * Proxy /api requests to the Spring Boot backend
- */
-app.use('/api', async (req, res) => {
-  const targetUrl = `${BACKEND_URL}/api${req.url}`;
-  const headers = { ...req.headers } as Record<string, string | string[] | undefined>;
-  delete headers['host'];
-  headers['accept-encoding'] = 'identity';
+function proxyToBackend(prefix: string) {
+  return async (req: express.Request, res: express.Response) => {
+    const targetUrl = `${BACKEND_URL}${prefix}${req.url}`;
+    const headers = { ...req.headers } as Record<string, string | string[] | undefined>;
+    delete headers['host'];
+    delete headers['origin'];
+    headers['accept-encoding'] = 'identity';
 
-  const requestInit: RequestInit & { duplex?: 'half' } = {
-    method: req.method,
-    headers: headers as HeadersInit,
+    const requestInit: RequestInit & { duplex?: 'half' } = {
+      method: req.method,
+      headers: headers as HeadersInit,
+    };
+
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      requestInit.body = req as unknown as BodyInit;
+      requestInit.duplex = 'half';
+    }
+
+    try {
+      const backendRes = await fetch(targetUrl, requestInit);
+      res.status(backendRes.status);
+      backendRes.headers.forEach((value, key) => {
+        const lowerKey = key.toLowerCase();
+        if (
+          lowerKey === 'content-encoding' ||
+          lowerKey === 'content-length' ||
+          lowerKey === 'transfer-encoding' ||
+          lowerKey === 'connection'
+        ) {
+          return;
+        }
+        res.header(key, value);
+      });
+      const data = await backendRes.arrayBuffer();
+      res.send(Buffer.from(data));
+    } catch (err) {
+      console.error(`Proxy error for ${prefix}:`, err);
+      res.status(502).send('Internal Backend Error');
+    }
   };
+}
 
-  if (req.method !== 'GET' && req.method !== 'HEAD') {
-    requestInit.body = req as unknown as BodyInit;
-    requestInit.duplex = 'half';
-  }
-
-  try {
-    const backendRes = await fetch(targetUrl, requestInit);
-    res.status(backendRes.status);
-    backendRes.headers.forEach((value, key) => {
-      const lowerKey = key.toLowerCase();
-      if (
-        lowerKey === 'content-encoding' ||
-        lowerKey === 'content-length' ||
-        lowerKey === 'transfer-encoding' ||
-        lowerKey === 'connection'
-      ) {
-        return;
-      }
-      res.header(key, value);
-    });
-    const data = await backendRes.arrayBuffer();
-    res.send(Buffer.from(data));
-  } catch (err) {
-    console.error('Proxy error:', err);
-    res.status(502).send('Internal Backend Error');
-  }
-});
+/**
+ * Proxy backend requests to the Spring Boot backend.
+ */
+app.use('/api', proxyToBackend('/api'));
+app.use('/ws', proxyToBackend('/ws'));
+app.use('/login', proxyToBackend('/login'));
+app.use('/logout', proxyToBackend('/logout'));
 
 /**
  * Example Express Rest API endpoints can be defined here.

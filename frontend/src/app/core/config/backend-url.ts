@@ -8,6 +8,10 @@ function isLocalHost(hostname: string): boolean {
   return hostname === 'localhost' || hostname === '127.0.0.1';
 }
 
+function isLocalTunnelHost(hostname: string): boolean {
+  return hostname.endsWith('.loca.lt');
+}
+
 export function resolveBackendBaseUrl(): string {
   if (typeof window === 'undefined') {
     return '';
@@ -21,10 +25,10 @@ export function resolveBackendBaseUrl(): string {
     return sanitizeBaseUrl(runtimeConfigured);
   }
 
-  if (isLocalHost(window.location.hostname.toLowerCase())) {
+  const hostname = window.location.hostname.toLowerCase();
+  if (isLocalHost(hostname) || isLocalTunnelHost(hostname)) {
     return '';
   }
 
   return DEFAULT_PROD_BACKEND_URL;
 }
-
