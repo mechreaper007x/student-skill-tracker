@@ -472,7 +472,7 @@ public class AdvisorController {
                     auth.getName(), ex.getMessage());
             return ResponseEntity.status(HttpStatus.GATEWAY_TIMEOUT).body(Map.of(
                     "error",
-                    "The AI provider did not respond within 120 seconds. Your model was reached, but generation took too long or the connection stalled. Retry, or choose a faster model."));
+                    "The AI provider request timed out after 120 seconds. This is a generation timeout, not proof that your API key or model ID is invalid. Retry, or choose a faster model."));
         } catch (Exception ex) {
             logger.error("Rishi learn request failed for {}: {}", auth.getName(), ex.getMessage(), ex);
             return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
