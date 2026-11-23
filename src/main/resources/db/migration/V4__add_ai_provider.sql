@@ -1,0 +1,2 @@
+ALTER TABLE students
+    ADD COLUMN IF NOT EXISTS ai_provider VARCHAR(40);
