@@ -11,7 +11,6 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
@@ -70,8 +69,7 @@ public class RishiCodeChangeEvent {
     @Column(name = "document_visible")
     private Boolean documentVisible;
 
-    @Lob
-    @Column(name = "meta_json")
+    @Column(name = "meta_json", columnDefinition = "TEXT")
     private String metaJson;
 
     @CreationTimestamp
