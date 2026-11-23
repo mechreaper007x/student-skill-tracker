@@ -103,8 +103,10 @@ public class AiGatewayClient {
             throw new IllegalArgumentException("AI API key is required.");
         }
 
+        String userCatalogUrl = AiGatewayUrlValidator.userModelsUrl(baseUrl);
+        int userCatalogPageSize = 1000;
         String nextPage = userFilteredCatalog
-                ? AiGatewayUrlValidator.userModelsUrl(baseUrl)
+                ? userCatalogUrl + "?offset=0&limit=" + userCatalogPageSize
                 : AiGatewayUrlValidator.modelsUrl(baseUrl);
         Set<String> visitedPages = new HashSet<>();
         Set<String> modelIds = new LinkedHashSet<>();
@@ -140,7 +142,15 @@ public class AiGatewayClient {
                 }
             }
 
-            nextPage = resolveNextPage(body, nextPage);
+            String responseNextPage = resolveNextPage(body, nextPage);
+            if (responseNextPage != null) {
+                nextPage = responseNextPage;
+            } else if (userFilteredCatalog && models.size() == userCatalogPageSize) {
+                int nextOffset = (page + 1) * userCatalogPageSize;
+                nextPage = userCatalogUrl + "?offset=" + nextOffset + "&limit=" + userCatalogPageSize;
+            } else {
+                nextPage = null;
+            }
         }
 
         return new ArrayList<>(modelIds);
