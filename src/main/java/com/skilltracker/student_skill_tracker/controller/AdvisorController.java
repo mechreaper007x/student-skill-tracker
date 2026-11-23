@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -466,6 +467,12 @@ public class AdvisorController {
                     "memoryCount", count));
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        } catch (ResourceAccessException ex) {
+            logger.warn("Rishi provider request timed out or lost its connection for {}: {}",
+                    auth.getName(), ex.getMessage());
+            return ResponseEntity.status(HttpStatus.GATEWAY_TIMEOUT).body(Map.of(
+                    "error",
+                    "The AI provider did not respond within 120 seconds. Your model was reached, but generation took too long or the connection stalled. Retry, or choose a faster model."));
         } catch (Exception ex) {
             logger.error("Rishi learn request failed for {}: {}", auth.getName(), ex.getMessage(), ex);
             return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
