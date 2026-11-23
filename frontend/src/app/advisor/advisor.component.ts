@@ -63,6 +63,12 @@ interface GenAiConfigResponse {
   maskedApiKey: string;
 }
 
+interface GenAiModelsResponse {
+  provider: string;
+  selectedModel: string;
+  models: string[];
+}
+
 interface LearnResponse {
   reply: string;
   provider: string;
@@ -495,15 +501,38 @@ interface TogglFocusSyncRequest {
                 </div>
 
                 <div class="space-y-2">
-                  <label class="text-[10px] font-bold text-noir-500 uppercase tracking-widest">Model ID <span class="normal-case text-noir-600">(optional override)</span></label>
+                  <div class="flex items-center justify-between gap-3">
+                    <label class="text-[10px] font-bold text-noir-500 uppercase tracking-widest">Model ID</label>
+                    <button
+                      type="button"
+                      (click)="loadModels()"
+                      [disabled]="!hasApiKey() || isLoadingModels()"
+                      class="text-[9px] font-black uppercase tracking-widest text-crimson-300 hover:text-white disabled:opacity-40"
+                    >{{ isLoadingModels() ? 'Fetching…' : 'Fetch models' }}</button>
+                  </div>
                   <input
                     type="text"
+                    list="rishi-model-options"
                     [value]="model()"
                     (input)="updateModel($event)"
-                    placeholder="Leave blank to use the provider default"
+                    placeholder="Choose a fetched model or enter an ID"
                     class="w-full bg-black border border-noir-800 rounded-xl px-4 py-3 text-xs font-mono text-white focus:border-crimson-500/50 outline-none"
                   >
-                  <p class="text-[10px] text-noir-600">Example: muse-spark-1.3-contributor. Leave blank to let Rishi choose the provider's default model.</p>
+                  <datalist id="rishi-model-options">
+                    @for (modelId of availableModels(); track modelId) {
+                      <option [value]="modelId"></option>
+                    }
+                  </datalist>
+                  <p class="text-[10px] text-noir-600">
+                    @if (availableModels().length > 0) {
+                      {{ availableModels().length }} model IDs returned by this API. You can also enter an ID manually.
+                    } @else {
+                      Fetch the model IDs exposed by this API key, or enter an ID manually.
+                    }
+                  </p>
+                  @if (modelDiscoveryStatus()) {
+                    <p class="text-[10px] text-noir-500">{{ modelDiscoveryStatus() }}</p>
+                  }
                 </div>
 
                 <details class="rounded-xl border border-noir-800 bg-black/20 p-3">
@@ -1287,6 +1316,9 @@ export class AdvisorComponent implements OnInit {
   model = signal('');
   baseUrlInput = signal('');
   providerName = signal('Not connected');
+  availableModels = signal<string[]>([]);
+  isLoadingModels = signal(false);
+  modelDiscoveryStatus = signal('');
   apiKeyInput = signal('');
   maskedApiKey = signal('');
   hasApiKey = signal(false);
@@ -1507,6 +1539,9 @@ export class AdvisorComponent implements OnInit {
         this.hasApiKey.set(!!config.hasApiKey);
         this.maskedApiKey.set(config.maskedApiKey || '');
         this.updateStatus();
+        if (config.hasApiKey) {
+          this.loadModels();
+        }
       },
       error: () => this.updateStatus()
     });
@@ -1981,12 +2016,44 @@ export class AdvisorComponent implements OnInit {
     const input = event.target as HTMLInputElement;
     const value = input.value;
     if (value.trim()) {
-      // A new key may belong to a different provider: discard the old model
-      // and custom URL so the backend can resolve the new key cleanly.
+      // A new key may belong to a different provider: discard the old model,
+      // custom URL, and model catalogue so discovery is repeated for that key.
       this.model.set('');
       this.baseUrlInput.set('');
+      this.availableModels.set([]);
+      this.modelDiscoveryStatus.set('');
     }
     this.apiKeyInput.set(value);
+  }
+
+  loadModels() {
+    if (!this.hasApiKey() || this.isLoadingModels()) {
+      return;
+    }
+
+    this.isLoadingModels.set(true);
+    this.modelDiscoveryStatus.set('Querying the configured API…');
+    this.http.get<GenAiModelsResponse>('/api/advice/me/genai-models').subscribe({
+      next: (response) => {
+        const models = Array.isArray(response?.models) ? response.models : [];
+        this.availableModels.set(models);
+        this.providerName.set(response?.provider || this.providerName());
+        this.modelDiscoveryStatus.set(
+          models.length
+            ? `Fetched ${models.length} model IDs directly from ${response?.provider || 'the configured API'}.`
+            : 'The API returned an empty model list. You can enter a model ID manually.'
+        );
+        this.isLoadingModels.set(false);
+      },
+      error: (err: HttpErrorResponse) => {
+        this.availableModels.set([]);
+        this.modelDiscoveryStatus.set(this.extractError(
+          err,
+          'This API did not expose a compatible model-list endpoint. You can still enter a model ID manually.'
+        ));
+        this.isLoadingModels.set(false);
+      }
+    });
   }
 
   updateBaseUrl(event: Event) {
@@ -2188,6 +2255,7 @@ export class AdvisorComponent implements OnInit {
         this.isSavingConfig.set(false);
         this.updateStatus();
         options.onSuccess();
+        this.loadModels();
       },
       error: (err: HttpErrorResponse) => {
         this.isSavingConfig.set(false);
