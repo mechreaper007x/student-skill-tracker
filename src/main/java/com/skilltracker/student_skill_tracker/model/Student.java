@@ -67,6 +67,9 @@ public class Student {
     @ToString.Exclude
     private String leetcodeCsrfTokenEncrypted;
 
+    @Column(name = "ai_provider", length = 40)
+    private String aiProvider;
+
     @Column(name = "ai_model")
     private String aiModel;
 
