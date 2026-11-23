@@ -10,7 +10,11 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.web.servlet.MockMvc;
 
-@SpringBootTest(properties = "app.frontend.base-url=http://localhost:4200")
+@SpringBootTest(properties = {
+        "app.frontend.base-url=http://localhost:4200",
+        "spring.flyway.enabled=false",
+        "spring.jpa.hibernate.ddl-auto=create-drop"
+})
 @AutoConfigureMockMvc
 class FrontendRouteControllerTest {
 
