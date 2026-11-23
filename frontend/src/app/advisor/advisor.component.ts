@@ -512,22 +512,47 @@ interface TogglFocusSyncRequest {
                   </div>
                   <input
                     type="text"
-                    list="rishi-model-options"
                     [value]="model()"
                     (input)="updateModel($event)"
-                    placeholder="Choose a fetched model or enter an ID"
+                    placeholder="Selected model ID (or enter one manually)"
+                    autocomplete="off"
                     class="w-full bg-black border border-noir-800 rounded-xl px-4 py-3 text-xs font-mono text-white focus:border-crimson-500/50 outline-none"
                   >
-                  <datalist id="rishi-model-options">
-                    @for (modelId of availableModels(); track modelId) {
-                      <option [value]="modelId"></option>
-                    }
-                  </datalist>
+                  @if (availableModels().length > 0) {
+                    <div class="rounded-xl border border-noir-800 bg-black/40 overflow-hidden">
+                      <div class="flex items-center justify-between gap-3 px-3 py-2 border-b border-noir-800">
+                        <span class="text-[9px] font-black uppercase tracking-widest text-noir-400">Models returned by your API</span>
+                        <span class="text-[9px] font-mono text-emerald-300">{{ availableModels().length }} total</span>
+                      </div>
+                      <input
+                        type="search"
+                        [value]="modelSearch()"
+                        (input)="updateModelSearch($event)"
+                        placeholder="Search the returned model IDs…"
+                        class="w-full bg-black/60 border-b border-noir-800 px-3 py-2 text-[11px] font-mono text-white placeholder:text-noir-600 outline-none focus:border-crimson-500/50"
+                      >
+                      <div class="max-h-56 overflow-y-auto custom-scrollbar p-1">
+                        @for (modelId of filteredAvailableModels(); track modelId) {
+                          <button
+                            type="button"
+                            (click)="selectFetchedModel(modelId)"
+                            class="w-full text-left rounded-lg px-3 py-2 text-[11px] font-mono transition-colors"
+                            [class.bg-crimson-500/15]="model() === modelId"
+                            [class.text-crimson-200]="model() === modelId"
+                            [class.text-noir-300]="model() !== modelId"
+                            [class.hover:bg-noir-800]="model() !== modelId"
+                          >{{ modelId }}</button>
+                        } @empty {
+                          <p class="px-3 py-4 text-[10px] text-noir-500">No matching model IDs. Clear the search to see the full list.</p>
+                        }
+                      </div>
+                    </div>
+                  }
                   <p class="text-[10px] text-noir-600">
                     @if (availableModels().length > 0) {
-                      {{ availableModels().length }} model IDs returned by this API. You can also enter an ID manually.
+                      Click any model above to select it. All {{ availableModels().length }} IDs returned by your API are available in this list; the selected ID remains editable.
                     } @else {
-                      Fetch the model IDs exposed by this API key, or enter an ID manually.
+                      Fetch the model IDs exposed to this API key, or enter a model ID manually.
                     }
                   </p>
                   @if (modelDiscoveryStatus()) {
@@ -1317,6 +1342,12 @@ export class AdvisorComponent implements OnInit {
   baseUrlInput = signal('');
   providerName = signal('Not connected');
   availableModels = signal<string[]>([]);
+  modelSearch = signal('');
+  filteredAvailableModels = computed(() => {
+    const query = this.modelSearch().trim().toLowerCase();
+    const models = this.availableModels();
+    return query ? models.filter((modelId) => modelId.toLowerCase().includes(query)) : models;
+  });
   isLoadingModels = signal(false);
   modelDiscoveryStatus = signal('');
   apiKeyInput = signal('');
@@ -2021,6 +2052,7 @@ export class AdvisorComponent implements OnInit {
       this.model.set('');
       this.baseUrlInput.set('');
       this.availableModels.set([]);
+      this.modelSearch.set('');
       this.modelDiscoveryStatus.set('');
     }
     this.apiKeyInput.set(value);
@@ -2037,6 +2069,7 @@ export class AdvisorComponent implements OnInit {
       next: (response) => {
         const models = Array.isArray(response?.models) ? response.models : [];
         this.availableModels.set(models);
+        this.modelSearch.set('');
         this.providerName.set(response?.provider || this.providerName());
         this.modelDiscoveryStatus.set(
           models.length
@@ -2054,6 +2087,15 @@ export class AdvisorComponent implements OnInit {
         this.isLoadingModels.set(false);
       }
     });
+  }
+
+  updateModelSearch(event: Event) {
+    const input = event.target as HTMLInputElement;
+    this.modelSearch.set(input.value);
+  }
+
+  selectFetchedModel(modelId: string) {
+    this.model.set(modelId);
   }
 
   updateBaseUrl(event: Event) {
