@@ -25,7 +25,6 @@ import com.skilltracker.student_skill_tracker.repository.TopicMasteryRepository;
 @Service
 public class RishiAgentService {
 
-        private static final String DEFAULT_PROVIDER = "gateway";
         private static final int MAX_CONTEXT_MESSAGES = 6;
 
         private final RishiGenAiService rishiGenAiService;
@@ -89,7 +88,7 @@ public class RishiAgentService {
                                 ? (isBlank(student.getAiModel()) ? aiGatewayDefaults.model() : student.getAiModel())
                                 : request.getModel().trim();
                 String baseUrl = isBlank(student.getAiBaseUrl()) ? aiGatewayDefaults.baseUrl() : student.getAiBaseUrl();
-                String provider = isBlank(student.getAiProvider()) ? DEFAULT_PROVIDER : student.getAiProvider();
+                String provider = "gateway";
 
                 List<RishiMemoryService.MemoryMessage> memory = List.of();
                 String threadId = request.getThreadId();
