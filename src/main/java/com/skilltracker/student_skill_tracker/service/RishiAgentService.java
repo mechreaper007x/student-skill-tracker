@@ -120,9 +120,9 @@ public class RishiAgentService {
                                 // Their tool-call adapters are separate from the OpenAI-compatible tool bridge.
                                 reply = rishiGenAiService.generateLearningResponse(
                                                 apiKey, model, baseUrl, protocol,
-                                                "AGENT MODE REQUEST:\\n" + request.getMessage().trim(),
+                                                "AGENT MODE REQUEST:\n" + request.getMessage().trim(),
                                                 context,
-                                                studentSnapshot + "\\n\\n" + agentContext,
+                                                studentSnapshot + "\n\n" + agentContext,
                                                 student.getLastEmotionAfterFailure());
                         }
                 } catch (Exception gatewayEx) {
@@ -131,9 +131,9 @@ public class RishiAgentService {
                                                         gatewayEx.getMessage());
                         reply = rishiGenAiService.generateLearningResponse(
                                         apiKey, model, baseUrl, protocol,
-                                        "AGENT MODE REQUEST:\\n" + request.getMessage().trim(),
+                                        "AGENT MODE REQUEST:\n" + request.getMessage().trim(),
                                         context,
-                                        studentSnapshot + "\\n\\n" + agentContext,
+                                        studentSnapshot + "\n\n" + agentContext,
                                         student.getLastEmotionAfterFailure());
                         toolCallsUsed = false;
                 }
