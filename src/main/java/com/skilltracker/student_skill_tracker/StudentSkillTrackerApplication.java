@@ -26,4 +26,12 @@ public class StudentSkillTrackerApplication {
                 .setReadTimeout(Duration.ofSeconds(20))
                 .build();
     }
+
+    @Bean(name = "aiGatewayRestTemplate")
+    public RestTemplate aiGatewayRestTemplate(RestTemplateBuilder builder) {
+        return builder
+                .setConnectTimeout(Duration.ofSeconds(10))
+                .setReadTimeout(Duration.ofSeconds(120))
+                .build();
+    }
 }
