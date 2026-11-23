@@ -27,6 +27,7 @@ import com.skilltracker.student_skill_tracker.repository.SkillDataRepository;
 import com.skilltracker.student_skill_tracker.repository.StudentRepository;
 import com.skilltracker.student_skill_tracker.repository.TopicMasteryRepository;
 import com.skilltracker.student_skill_tracker.service.AiAdvisorService;
+import com.skilltracker.student_skill_tracker.service.AiGatewayClient;
 import com.skilltracker.student_skill_tracker.service.AiGatewayDefaults;
 import com.skilltracker.student_skill_tracker.service.AiGatewayUrlValidator;
 import com.skilltracker.student_skill_tracker.service.AiProviderRegistry;
@@ -54,6 +55,7 @@ public class AdvisorController {
     private final TopicMasteryRepository topicMasteryRepository;
     private final AiGatewayDefaults gatewayDefaults;
     private final AiProviderRegistry aiProviderRegistry;
+    private final AiGatewayClient aiGatewayClient;
 
     @GetMapping("/me")
     public ResponseEntity<AdvisorResult> myAdvice(Authentication auth) {
@@ -106,6 +108,34 @@ public class AdvisorController {
                 "baseUrl", baseUrl,
                 "hasApiKey", hasApiKey,
                 "maskedApiKey", maskedApiKey));
+    }
+
+    @GetMapping("/me/genai-models")
+    public ResponseEntity<?> listMyGenAiModels(Authentication auth) {
+        Optional<Student> studentOpt = getCurrentStudent(auth);
+        if (studentOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Student not found"));
+        }
+
+        Student student = studentOpt.get();
+        if (isBlank(student.getAiApiKeyEncrypted())) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Connect an API key before fetching models."));
+        }
+
+        try {
+            String apiKey = tokenCryptoService.decrypt(student.getAiApiKeyEncrypted());
+            String baseUrl = isBlank(student.getAiBaseUrl()) ? gatewayDefaults.baseUrl() : student.getAiBaseUrl();
+            List<String> models = aiGatewayClient.listModels(apiKey, baseUrl);
+            return ResponseEntity.ok(Map.of(
+                    "provider", aiProviderRegistry.displayName(student.getAiProvider(), baseUrl),
+                    "selectedModel", isBlank(student.getAiModel()) ? "" : student.getAiModel(),
+                    "models", models));
+        } catch (Exception ex) {
+            logger.warn("Rishi model discovery failed for {}: {}", auth.getName(), ex.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(Map.of(
+                    "error",
+                    "Could not fetch the model list from this API. You can still enter a model ID manually."));
+        }
     }
 
     @PostMapping("/me/genai-config")
