@@ -27,6 +27,9 @@ import com.skilltracker.student_skill_tracker.repository.SkillDataRepository;
 import com.skilltracker.student_skill_tracker.repository.StudentRepository;
 import com.skilltracker.student_skill_tracker.repository.TopicMasteryRepository;
 import com.skilltracker.student_skill_tracker.service.AiAdvisorService;
+import com.skilltracker.student_skill_tracker.service.AiGatewayDefaults;
+import com.skilltracker.student_skill_tracker.service.AiGatewayProtocol;
+import com.skilltracker.student_skill_tracker.service.AiGatewayUrlValidator;
 import com.skilltracker.student_skill_tracker.service.RishiGenAiService;
 import com.skilltracker.student_skill_tracker.service.RishiMemoryService;
 import com.skilltracker.student_skill_tracker.service.TokenCryptoService;
@@ -51,6 +54,7 @@ public class AdvisorController {
     private final RishiMemoryService rishiMemoryService;
     private final TokenCryptoService tokenCryptoService;
     private final TopicMasteryRepository topicMasteryRepository;
+    private final AiGatewayDefaults gatewayDefaults;
 
     @GetMapping("/me")
     public ResponseEntity<AdvisorResult> myAdvice(Authentication auth) {
@@ -82,16 +86,19 @@ public class AdvisorController {
 
         Student student = studentOpt.get();
         String provider = isBlank(student.getAiProvider()) ? DEFAULT_PROVIDER : student.getAiProvider();
-        String model = isBlank(student.getAiModel()) ? DEFAULT_MODEL : student.getAiModel();
-        String encryptedKey = student.getAiApiKeyEncrypted();
-        boolean hasApiKey = !isBlank(encryptedKey);
-        
+        String model = isBlank(student.getAiModel()) ? gatewayDefaults.model() : student.getAiModel();
+        String baseUrl = isBlank(student.getAiBaseUrl())
+                ? gatewayDefaults.baseUrl()
+                : AiGatewayUrlValidator.normalizeBaseUrl(student.getAiBaseUrl());
+        String protocol = AiGatewayProtocol.from(
+                isBlank(student.getAiProtocol()) ? gatewayDefaults.protocol() : student.getAiProtocol()).wireName();
+
         String maskedApiKey = "";
+        boolean hasApiKey = !isBlank(student.getAiApiKeyEncrypted());
         if (hasApiKey) {
             try {
-                String plainKey = tokenCryptoService.decrypt(encryptedKey);
-                maskedApiKey = maskKey(plainKey);
-            } catch (Exception e) {
+                maskedApiKey = maskKey(tokenCryptoService.decrypt(student.getAiApiKeyEncrypted()));
+            } catch (Exception ex) {
                 maskedApiKey = "INVALID_KEY";
             }
         }
@@ -99,6 +106,8 @@ public class AdvisorController {
         return ResponseEntity.ok(Map.of(
                 "provider", provider,
                 "model", model,
+                "baseUrl", baseUrl,
+                "protocol", protocol,
                 "hasApiKey", hasApiKey,
                 "maskedApiKey", maskedApiKey));
     }
@@ -111,32 +120,65 @@ public class AdvisorController {
         }
 
         Student student = studentOpt.get();
-
         String provider = payload.get("provider");
         if (isBlank(provider)) {
-            provider = DEFAULT_PROVIDER;
+            provider = isBlank(student.getAiProvider()) ? DEFAULT_PROVIDER : student.getAiProvider();
         }
 
         String model = payload.get("model");
         if (isBlank(model)) {
-            model = DEFAULT_MODEL;
+            model = isBlank(student.getAiModel()) ? gatewayDefaults.model() : student.getAiModel();
+        }
+
+        String rawBaseUrl = payload.get("baseUrl");
+        if (isBlank(rawBaseUrl)) {
+            rawBaseUrl = isBlank(student.getAiBaseUrl()) ? gatewayDefaults.baseUrl() : student.getAiBaseUrl();
+        }
+
+        String rawProtocol = payload.get("protocol");
+        if (isBlank(rawProtocol)) {
+            rawProtocol = isBlank(student.getAiProtocol()) ? gatewayDefaults.protocol() : student.getAiProtocol();
+        }
+
+        final String baseUrl;
+        final String protocol;
+        try {
+            baseUrl = AiGatewayUrlValidator.normalizeBaseUrl(rawBaseUrl);
+            protocol = AiGatewayProtocol.from(rawProtocol).wireName();
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        }
+
+        if (isBlank(model)) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Model ID is required."));
+        }
+        if (model.trim().length() > 200) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Model ID must be 200 characters or fewer."));
         }
 
         String apiKey = payload.get("apiKey");
-
         student.setAiProvider(provider.trim().toLowerCase());
         student.setAiModel(model.trim());
+        student.setAiBaseUrl(baseUrl);
+        student.setAiProtocol(protocol);
         if (!isBlank(apiKey)) {
             student.setAiApiKeyEncrypted(tokenCryptoService.encrypt(apiKey.trim()));
         }
         studentRepo.save(student);
 
+        String maskedApiKey = "";
+        if (!isBlank(student.getAiApiKeyEncrypted())) {
+            maskedApiKey = maskKey(tokenCryptoService.decrypt(student.getAiApiKeyEncrypted()));
+        }
+
         return ResponseEntity.ok(Map.of(
-                "message", "GenAI config saved",
+                "message", "AI gateway configuration saved",
                 "provider", student.getAiProvider(),
                 "model", student.getAiModel(),
+                "baseUrl", student.getAiBaseUrl(),
+                "protocol", student.getAiProtocol(),
                 "hasApiKey", !isBlank(student.getAiApiKeyEncrypted()),
-                "maskedApiKey", maskKey(apiKey)));
+                "maskedApiKey", maskedApiKey));
     }
 
     // Chat History Endpoints
@@ -230,11 +272,9 @@ public class AdvisorController {
         }
 
         String apiKey = tokenCryptoService.decrypt(encryptedKey);
+        String baseUrl = isBlank(student.getAiBaseUrl()) ? gatewayDefaults.baseUrl() : student.getAiBaseUrl();
+        String protocol = isBlank(student.getAiProtocol()) ? gatewayDefaults.protocol() : student.getAiProtocol();
         String provider = isBlank(student.getAiProvider()) ? DEFAULT_PROVIDER : student.getAiProvider();
-        if (!DEFAULT_PROVIDER.equalsIgnoreCase(provider)) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(Map.of("error", "Unsupported provider. Use mistral for now."));
-        }
 
         String topic = asString(payload.get("topic"));
         if (isBlank(topic)) {
@@ -253,7 +293,7 @@ public class AdvisorController {
         String skillSnapshot = buildSkillSnapshot(student);
 
         try {
-            String plan = rishiGenAiService.generateStudyPlan(apiKey, model, topic, goals, durationDays, skillSnapshot, context);
+            String plan = rishiGenAiService.generateStudyPlan(apiKey, model, baseUrl, protocol, topic, goals, durationDays, skillSnapshot, context);
             student.setRishiStudyPlan(plan);
             student.setRishiStudyTopic(topic.trim());
             student.setRishiStudyDays(durationDays);
@@ -268,7 +308,8 @@ public class AdvisorController {
             studentRepo.save(student);
 
             Map<String, Object> response = toStudyPlanResponse(student);
-            response.put("provider", DEFAULT_PROVIDER);
+            response.put("provider", provider);
+            response.put("protocol", protocol);
             response.put("model", model);
             return ResponseEntity.ok(response);
         } catch (IllegalArgumentException ex) {
@@ -276,7 +317,7 @@ public class AdvisorController {
         } catch (Exception ex) {
             logger.error("Rishi study plan generation failed for {}: {}", auth.getName(), ex.getMessage(), ex);
             return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
-                    .body(Map.of("error", "Failed to generate study plan from Mixtral. Check API key/model and retry."));
+                    .body(Map.of("error", "AI gateway request failed. Verify the base URL, protocol, API key, and model ID."));
         }
     }
 
@@ -335,7 +376,9 @@ public class AdvisorController {
         String studentContext = buildSkillSnapshot(student);
 
         try {
-            String reply = rishiGenAiService.generateLearningResponse(apiKey, model, message, context, studentContext);
+            String baseUrl = isBlank(student.getAiBaseUrl()) ? gatewayDefaults.baseUrl() : student.getAiBaseUrl();
+            String protocol = isBlank(student.getAiProtocol()) ? gatewayDefaults.protocol() : student.getAiProtocol();
+            String reply = rishiGenAiService.generateLearningResponse(apiKey, model, baseUrl, protocol, message, context, studentContext);
             String newOrExistingThreadId = rishiMemoryService.appendExchange(student, threadId, message, "text", reply, responseType);
             studentRepo.save(student);
 
@@ -344,7 +387,8 @@ public class AdvisorController {
 
             return ResponseEntity.ok(Map.of(
                     "reply", reply,
-                    "provider", DEFAULT_PROVIDER,
+                    "provider", provider,
+                    "protocol", protocol,
                     "model", model,
                     "threadId", newOrExistingThreadId,
                     "memoryCount", count));
@@ -353,7 +397,7 @@ public class AdvisorController {
         } catch (Exception ex) {
             logger.error("Rishi learn request failed for {}: {}", auth.getName(), ex.getMessage(), ex);
             return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
-                    .body(Map.of("error", "Failed to get response from Mixtral. Check API key/model and try again."));
+                    .body(Map.of("error", "AI gateway request failed. Verify the base URL, protocol, API key, and model ID."));
         }
     }
 
