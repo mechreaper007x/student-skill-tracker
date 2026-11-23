@@ -533,6 +533,15 @@ interface TogglFocusSyncRequest {
                   <input type="text" [(ngModel)]="planTopic" class="w-full bg-black border border-noir-800 rounded-xl px-4 py-2.5 text-xs font-mono text-white focus:border-crimson-500/50 outline-none">
                 </div>
               </div>
+              @if (configStatus()) {
+                <div class="rounded-xl border p-3 text-[10px] font-mono"
+                  [class.border-emerald-500/30]="configStatus()?.success"
+                  [class.text-emerald-300]="configStatus()?.success"
+                  [class.border-crimson-500/30]="!configStatus()?.success"
+                  [class.text-crimson-300]="!configStatus()?.success">
+                  {{ configStatus()?.message }}
+                </div>
+              }
 
               <div class="border border-noir-800 rounded-xl p-4 space-y-4 bg-black/30">
                 <div class="flex items-center justify-between">
@@ -1241,7 +1250,7 @@ interface TogglFocusSyncRequest {
                 <lucide-icon name="ShieldCheck" class="w-3 h-3"></lucide-icon> Private Context
               </span>
               <span class="text-[9px] text-noir-600 uppercase tracking-widest font-bold flex items-center gap-2">
-                <lucide-icon name="Cpu" class="w-3 h-3"></lucide-icon> Distributed Mixtral
+                <lucide-icon name="Cpu" class="w-3 h-3"></lucide-icon> Configurable AI Gateway
               </span>
             </div>
           </div>
@@ -2059,7 +2068,7 @@ export class AdvisorComponent implements OnInit {
 
   private askRishi(message: string, responseType: 'text' | 'strategy') {
     if (!this.hasApiKey() && !this.apiKeyInput().trim()) {
-      this.addAssistantMessage('Attach your neural access key (Mistral API Key) in settings to initialize the interface.', 'text');
+      this.addAssistantMessage('Save your AI gateway URL, protocol, model ID, and API key in settings before using Rishi.', 'text');
       this.scrollToBottom();
       return;
     }
