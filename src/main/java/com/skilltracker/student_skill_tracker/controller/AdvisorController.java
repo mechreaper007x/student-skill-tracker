@@ -129,10 +129,37 @@ public class AdvisorController {
             // account's provider preferences, privacy settings, and guardrails.
             boolean userFilteredCatalog = "openrouter".equalsIgnoreCase(student.getAiProvider());
             List<String> models = aiGatewayClient.listModels(apiKey, baseUrl, userFilteredCatalog);
-            return ResponseEntity.ok(Map.of(
-                    "provider", aiProviderRegistry.displayName(student.getAiProvider(), baseUrl),
-                    "selectedModel", isBlank(student.getAiModel()) ? "" : student.getAiModel(),
-                    "models", models));
+            String selectedModel = isBlank(student.getAiModel())
+                    ? aiProviderRegistry.findById(student.getAiProvider())
+                            .map(AiProviderRegistry.ProviderProfile::defaultModel)
+                            .orElse(gatewayDefaults.model())
+                    : student.getAiModel();
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("provider", aiProviderRegistry.displayName(student.getAiProvider(), baseUrl));
+            result.put("selectedModel", selectedModel);
+            result.put("models", models);
+
+            if (models.isEmpty() && "meta".equalsIgnoreCase(student.getAiProvider())) {
+                AiGatewayClient.ModelAvailability availability =
+                        aiGatewayClient.checkModelAvailability(apiKey, baseUrl, selectedModel);
+                result.put("catalogStatus", "empty");
+                result.put("selectedModelAvailability", availability.name().toLowerCase());
+                result.put("catalogMessage", switch (availability) {
+                    case AVAILABLE -> "Meta returned an empty model catalogue, but the selected model is independently confirmed as available. This points to a catalogue response issue, not an invalid API key.";
+                    case UNAUTHORIZED -> "Meta returned an empty catalogue and rejected the selected-model check with 401. Check that the saved key is active and copied in full.";
+                    case FORBIDDEN -> "Meta returned an empty catalogue and denied access to the selected model. Check your Meta team permissions and model access.";
+                    case NOT_FOUND -> "Meta returned an empty catalogue and could not find the selected model for this key.";
+                    case UPSTREAM_ERROR -> "Meta returned an empty catalogue and the selected-model check could not be completed. Retry; the provider may be temporarily unable to resolve its model registry.";
+                });
+            } else {
+                result.put("catalogStatus", models.isEmpty() ? "empty" : "available");
+                result.put("selectedModelAvailability", "not_checked");
+                result.put("catalogMessage", models.isEmpty()
+                        ? "The configured API returned an empty model catalogue. You can still enter a model ID manually."
+                        : "Model IDs were returned by the configured API.");
+            }
+            return ResponseEntity.ok(result);
         } catch (Exception ex) {
             logger.warn("Rishi model discovery failed for {}: {}", auth.getName(), ex.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(Map.of(
