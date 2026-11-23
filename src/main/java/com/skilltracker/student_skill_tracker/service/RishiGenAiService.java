@@ -4,23 +4,17 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 
 @Service
 public class RishiGenAiService {
 
-    private static final String DEFAULT_MODEL = "mistral-small-latest";
+    private final AiGatewayClient gatewayClient;
+    private final AiGatewayDefaults gatewayDefaults;
 
-    private final RestTemplate restTemplate;
-
-    public RishiGenAiService(RestTemplate restTemplate) {
-        this.restTemplate = restTemplate;
+    public RishiGenAiService(AiGatewayClient gatewayClient, AiGatewayDefaults gatewayDefaults) {
+        this.gatewayClient = gatewayClient;
+        this.gatewayDefaults = gatewayDefaults;
     }
 
     public String generateLearningResponse(String apiKey, String model, String userMessage,
@@ -30,17 +24,18 @@ public class RishiGenAiService {
 
     public String generateLearningResponse(String apiKey, String model, String userMessage,
             List<Map<String, String>> memoryContext, String studentContextStr, String emotion) {
-        return generateLearningResponse(apiKey, model, AiGatewayUrlValidator.DEFAULT_BASE_URL,
+        return generateLearningResponse(apiKey, model, gatewayDefaults.baseUrl(), gatewayDefaults.protocol(),
                 userMessage, memoryContext, studentContextStr, emotion);
     }
 
-    public String generateLearningResponse(String apiKey, String model, String baseUrl, String userMessage,
-            List<Map<String, String>> memoryContext, String studentContextStr) {
-        return generateLearningResponse(apiKey, model, baseUrl, userMessage, memoryContext, studentContextStr, null);
+    public String generateLearningResponse(String apiKey, String model, String baseUrl, String protocol,
+            String userMessage, List<Map<String, String>> memoryContext, String studentContextStr) {
+        return generateLearningResponse(apiKey, model, baseUrl, protocol, userMessage, memoryContext,
+                studentContextStr, null);
     }
 
-    public String generateLearningResponse(String apiKey, String model, String baseUrl, String userMessage,
-            List<Map<String, String>> memoryContext, String studentContextStr, String emotion) {
+    public String generateLearningResponse(String apiKey, String model, String baseUrl, String protocol,
+            String userMessage, List<Map<String, String>> memoryContext, String studentContextStr, String emotion) {
         validate(apiKey, userMessage);
 
         String systemPrompt = """
@@ -60,7 +55,6 @@ public class RishiGenAiService {
                 .formatted(studentContextStr == null || studentContextStr.isBlank() ? "No profile data."
                         : studentContextStr);
 
-        // Emotion-adaptive tone
         if (emotion != null && !emotion.isBlank()) {
             String toneDirective = switch (emotion.toLowerCase().trim()) {
                 case "frustrated", "angry", "overwhelmed" ->
@@ -80,34 +74,31 @@ public class RishiGenAiService {
         messages.add(Map.of("role", "system", "content", systemPrompt));
 
         if (memoryContext != null) {
-            for (Map<String, String> m : memoryContext) {
-                if (m == null)
-                    continue;
-                String role = m.get("role");
-                String content = m.get("content");
-                if (isBlank(role) || isBlank(content))
-                    continue;
-
+            for (Map<String, String> message : memoryContext) {
+                if (message == null) continue;
+                String role = message.get("role");
+                String content = message.get("content");
+                if (isBlank(role) || isBlank(content)) continue;
                 String normalizedRole = role.trim().toLowerCase();
-                if (!"user".equals(normalizedRole) && !"assistant".equals(normalizedRole)) {
-                    continue;
-                }
+                if (!"user".equals(normalizedRole) && !"assistant".equals(normalizedRole)) continue;
                 messages.add(Map.of("role", normalizedRole, "content", content.trim()));
             }
         }
 
-        messages.add(Map.of("role", "user", "content", "<user_input>\n" + userMessage.trim() + "\n</user_input>"));
-        return callGateway(apiKey, model, baseUrl, messages, 0.7, 600);
+        messages.add(Map.of("role", "user",
+                "content", "<user_input>\n" + userMessage.trim() + "\n</user_input>"));
+        return gatewayClient.complete(apiKey, effectiveModel(model), baseUrl, protocol, messages, 0.7, 900);
     }
 
     public String generateStudyPlan(String apiKey, String model, String topic, String goals, Integer durationDays,
             String skillSnapshot, List<Map<String, String>> memoryContext) {
-        return generateStudyPlan(apiKey, model, AiGatewayUrlValidator.DEFAULT_BASE_URL, topic, goals,
-                durationDays, skillSnapshot, memoryContext);
+        return generateStudyPlan(apiKey, model, gatewayDefaults.baseUrl(), gatewayDefaults.protocol(),
+                topic, goals, durationDays, skillSnapshot, memoryContext);
     }
 
-    public String generateStudyPlan(String apiKey, String model, String baseUrl, String topic, String goals,
-            Integer durationDays, String skillSnapshot, List<Map<String, String>> memoryContext) {
+    public String generateStudyPlan(String apiKey, String model, String baseUrl, String protocol,
+            String topic, String goals, Integer durationDays, String skillSnapshot,
+            List<Map<String, String>> memoryContext) {
         if (isBlank(topic)) {
             throw new IllegalArgumentException("Topic is required for study plan generation.");
         }
@@ -133,74 +124,22 @@ public class RishiGenAiService {
                 Keep it practical and specific.
                 """.formatted(safeDuration, topic.trim(), safeGoals, safeSkillSnapshot, safeDuration);
 
-        return generateLearningResponse(apiKey, model, baseUrl, prompt, memoryContext, safeSkillSnapshot);
+        return generateLearningResponse(apiKey, effectiveModel(model), baseUrl, protocol,
+                prompt, memoryContext, safeSkillSnapshot);
     }
 
-    @SuppressWarnings("unchecked")
-    private String callGateway(String apiKey, String model, String baseUrl,
-            List<Map<String, String>> messages, double temperature, int maxTokens) {
-        String selectedModel = isBlank(model) ? DEFAULT_MODEL : model.trim();
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.setAccept(List.of(MediaType.APPLICATION_JSON));
-        headers.setBearerAuth(apiKey.trim());
-
-        Map<String, Object> body = Map.of(
-                "model", selectedModel,
-                "temperature", temperature,
-                "max_tokens", maxTokens,
-                "messages", messages);
-
-        String chatCompletionsUrl = AiGatewayUrlValidator.chatCompletionsUrl(baseUrl);
-        ResponseEntity<Map> response = restTemplate.exchange(
-                chatCompletionsUrl,
-                HttpMethod.POST,
-                new HttpEntity<>(body, headers),
-                Map.class);
-
-        Map<String, Object> responseBody = response.getBody();
-        if (responseBody == null) {
-            throw new IllegalStateException("Empty response from GenAI provider.");
-        }
-
-        Object choicesObj = responseBody.get("choices");
-        if (!(choicesObj instanceof List<?> choices) || choices.isEmpty()) {
-            throw new IllegalStateException("Invalid response from GenAI provider.");
-        }
-
-        Object firstChoiceObj = choices.get(0);
-        if (!(firstChoiceObj instanceof Map<?, ?> firstChoice)) {
-            throw new IllegalStateException("Invalid choice format from GenAI provider.");
-        }
-
-        Object messageObj = firstChoice.get("message");
-        if (!(messageObj instanceof Map<?, ?> messageMap)) {
-            throw new IllegalStateException("Invalid message format from GenAI provider.");
-        }
-
-        Object contentObj = messageMap.get("content");
-        if (contentObj == null) {
-            throw new IllegalStateException("No content in GenAI response.");
-        }
-
-        return String.valueOf(contentObj).trim();
+    private String effectiveModel(String model) {
+        return isBlank(model) ? gatewayDefaults.model() : model.trim();
     }
 
     private int sanitizeDurationDays(Integer durationDays) {
-        if (durationDays == null || durationDays < 1) {
-            return 7;
-        }
+        if (durationDays == null || durationDays < 1) return 7;
         return Math.min(durationDays, 60);
     }
 
     private void validate(String apiKey, String userMessage) {
-        if (isBlank(apiKey)) {
-            throw new IllegalArgumentException("GenAI API key is required.");
-        }
-        if (isBlank(userMessage)) {
-            throw new IllegalArgumentException("Message is required.");
-        }
+        if (isBlank(apiKey)) throw new IllegalArgumentException("GenAI API key is required.");
+        if (isBlank(userMessage)) throw new IllegalArgumentException("Message is required.");
     }
 
     private boolean isBlank(String value) {
