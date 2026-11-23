@@ -19,23 +19,24 @@ public class RishiGenAiService {
 
     public String generateLearningResponse(String apiKey, String model, String userMessage,
             List<Map<String, String>> memoryContext, String studentContextStr) {
-        return generateLearningResponse(apiKey, model, userMessage, memoryContext, studentContextStr, null);
+        return generateLearningResponse(apiKey, model, gatewayDefaults.baseUrl(),
+                userMessage, memoryContext, studentContextStr, null);
     }
 
     public String generateLearningResponse(String apiKey, String model, String userMessage,
             List<Map<String, String>> memoryContext, String studentContextStr, String emotion) {
-        return generateLearningResponse(apiKey, model, gatewayDefaults.baseUrl(), gatewayDefaults.protocol(),
+        return generateLearningResponse(apiKey, model, gatewayDefaults.baseUrl(),
                 userMessage, memoryContext, studentContextStr, emotion);
     }
 
-    public String generateLearningResponse(String apiKey, String model, String baseUrl, String protocol,
-            String userMessage, List<Map<String, String>> memoryContext, String studentContextStr) {
-        return generateLearningResponse(apiKey, model, baseUrl, protocol, userMessage, memoryContext,
-                studentContextStr, null);
+    public String generateLearningResponse(String apiKey, String model, String baseUrl, String userMessage,
+            List<Map<String, String>> memoryContext, String studentContextStr) {
+        return generateLearningResponse(apiKey, model, baseUrl, userMessage,
+                memoryContext, studentContextStr, null);
     }
 
-    public String generateLearningResponse(String apiKey, String model, String baseUrl, String protocol,
-            String userMessage, List<Map<String, String>> memoryContext, String studentContextStr, String emotion) {
+    public String generateLearningResponse(String apiKey, String model, String baseUrl, String userMessage,
+            List<Map<String, String>> memoryContext, String studentContextStr, String emotion) {
         validate(apiKey, userMessage);
 
         String systemPrompt = """
@@ -89,18 +90,17 @@ public class RishiGenAiService {
 
         messages.add(Map.of("role", "user",
                 "content", "<user_input>\n" + userMessage.trim() + "\n</user_input>"));
-        return gatewayClient.complete(apiKey, effectiveModel(model), baseUrl, protocol, messages, 0.7, 900);
+        return gatewayClient.complete(apiKey, effectiveModel(model), baseUrl, messages, 0.7, 900);
     }
 
     public String generateStudyPlan(String apiKey, String model, String topic, String goals, Integer durationDays,
             String skillSnapshot, List<Map<String, String>> memoryContext) {
-        return generateStudyPlan(apiKey, model, gatewayDefaults.baseUrl(), gatewayDefaults.protocol(),
+        return generateStudyPlan(apiKey, model, gatewayDefaults.baseUrl(),
                 topic, goals, durationDays, skillSnapshot, memoryContext);
     }
 
-    public String generateStudyPlan(String apiKey, String model, String baseUrl, String protocol,
-            String topic, String goals, Integer durationDays, String skillSnapshot,
-            List<Map<String, String>> memoryContext) {
+    public String generateStudyPlan(String apiKey, String model, String baseUrl, String topic, String goals,
+            Integer durationDays, String skillSnapshot, List<Map<String, String>> memoryContext) {
         if (isBlank(topic)) {
             throw new IllegalArgumentException("Topic is required for study plan generation.");
         }
@@ -126,7 +126,7 @@ public class RishiGenAiService {
                 Keep it practical and specific.
                 """.formatted(safeDuration, topic.trim(), safeGoals, safeSkillSnapshot, safeDuration);
 
-        return generateLearningResponse(apiKey, effectiveModel(model), baseUrl, protocol,
+        return generateLearningResponse(apiKey, effectiveModel(model), baseUrl,
                 prompt, memoryContext, safeSkillSnapshot);
     }
 
