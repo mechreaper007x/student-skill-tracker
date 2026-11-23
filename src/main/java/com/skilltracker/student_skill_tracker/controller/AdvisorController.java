@@ -154,17 +154,21 @@ public class AdvisorController {
             return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
         }
 
-        if (detectedProfile == null && isBlank(providerId)) {
+        if (replacingKey && detectedProfile == null) {
+            // A new opaque key must never inherit the previous provider's URL or label.
+            detectedProfile = aiProviderRegistry.findByBaseUrl(baseUrl).orElse(null);
+            providerId = detectedProfile == null ? "custom" : detectedProfile.id();
+            if (isBlank(model) && detectedProfile != null) {
+                model = detectedProfile.defaultModel();
+            }
+        } else if (!isBlank(payload.get("baseUrl")) && detectedProfile == null) {
             providerId = aiProviderRegistry.findByBaseUrl(baseUrl)
                     .map(AiProviderRegistry.ProviderProfile::id)
                     .orElse("custom");
-        }
-        if (replacingKey && detectedProfile == null && isBlank(model)) {
-            detectedProfile = aiProviderRegistry.findByBaseUrl(baseUrl).orElse(null);
-            if (detectedProfile != null) {
-                providerId = detectedProfile.id();
-                model = detectedProfile.defaultModel();
-            }
+        } else if (isBlank(providerId)) {
+            providerId = aiProviderRegistry.findByBaseUrl(baseUrl)
+                    .map(AiProviderRegistry.ProviderProfile::id)
+                    .orElse("custom");
         }
         if (isBlank(model)) {
             model = isBlank(student.getAiModel()) ? gatewayDefaults.model() : student.getAiModel();
