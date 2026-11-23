@@ -96,4 +96,9 @@ public final class AiGatewayUrlValidator {
         String normalized = normalizeBaseUrl(baseUrl);
         return normalized + "/models";
     }
+
+    public static String userModelsUrl(String baseUrl) {
+        String normalized = normalizeBaseUrl(baseUrl);
+        return normalized + "/models/user";
+    }
 }
