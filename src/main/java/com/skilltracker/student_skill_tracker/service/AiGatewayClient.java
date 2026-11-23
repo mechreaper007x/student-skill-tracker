@@ -95,11 +95,17 @@ public class AiGatewayClient {
      */
     @SuppressWarnings("unchecked")
     public List<String> listModels(String apiKey, String baseUrl) {
+        return listModels(apiKey, baseUrl, false);
+    }
+
+    public List<String> listModels(String apiKey, String baseUrl, boolean userFilteredCatalog) {
         if (apiKey == null || apiKey.isBlank()) {
             throw new IllegalArgumentException("AI API key is required.");
         }
 
-        String nextPage = AiGatewayUrlValidator.modelsUrl(baseUrl);
+        String nextPage = userFilteredCatalog
+                ? AiGatewayUrlValidator.userModelsUrl(baseUrl)
+                : AiGatewayUrlValidator.modelsUrl(baseUrl);
         Set<String> visitedPages = new HashSet<>();
         Set<String> modelIds = new LinkedHashSet<>();
 
