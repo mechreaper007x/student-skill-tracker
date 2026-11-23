@@ -66,6 +66,14 @@ public final class AiGatewayUrlValidator {
         if (path.contains("/../") || path.endsWith("/..") || path.contains("/./")) {
             throw new IllegalArgumentException("Gateway URL path is invalid.");
         }
+
+        // Accept a pasted API endpoint as well as a base URL, then normalize
+        // it to the base expected by the selected protocol adapter.
+        if (path.endsWith("/chat/completions")) {
+            path = path.substring(0, path.length() - "/chat/completions".length());
+        } else if (path.endsWith("/messages")) {
+            path = path.substring(0, path.length() - "/messages".length());
+        }
         while (path.endsWith("/") && !path.isEmpty()) {
             path = path.substring(0, path.length() - 1);
         }
