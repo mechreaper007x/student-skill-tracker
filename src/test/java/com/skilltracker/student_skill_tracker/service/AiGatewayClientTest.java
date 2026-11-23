@@ -118,7 +118,7 @@ class AiGatewayClientTest {
     @Test
     @SuppressWarnings({ "rawtypes", "unchecked" })
     void usesOpenRouterUserFilteredModelCatalogWhenRequested() {
-        String endpoint = "https://1.1.1.1/v1/models/user";
+        String endpoint = "https://1.1.1.1/v1/models/user?offset=0&limit=1000";
         Map<String, Object> responseBody = Map.of(
                 "data", List.of(Map.of("id", "provider/model-allowed")));
 
