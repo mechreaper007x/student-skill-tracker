@@ -535,9 +535,9 @@ interface TogglFocusSyncRequest {
               </div>
               @if (configStatus()) {
                 <div class="rounded-xl border p-3 text-[10px] font-mono"
-                  [class.border-emerald-500/30]="configStatus()?.success"
+                  [class.border-emerald-500]="configStatus()?.success"
                   [class.text-emerald-300]="configStatus()?.success"
-                  [class.border-crimson-500/30]="!configStatus()?.success"
+                  [class.border-crimson-500]="!configStatus()?.success"
                   [class.text-crimson-300]="!configStatus()?.success">
                   {{ configStatus()?.message }}
                 </div>
@@ -2107,7 +2107,7 @@ export class AdvisorComponent implements OnInit {
 
   private askAgent(message: string, responseType: 'text' | 'strategy') {
     if (!this.hasApiKey() && !this.apiKeyInput().trim()) {
-      this.addAssistantMessage('Attach your neural access key (Mistral API Key) in settings to initialize the interface.', 'text');
+      this.addAssistantMessage('Save your AI gateway URL, protocol, model ID, and API key in settings before using Rishi.', 'text');
       this.scrollToBottom();
       return;
     }
@@ -2274,7 +2274,7 @@ export class AdvisorComponent implements OnInit {
 
   private updateStatus() {
     if (this.hasApiKey()) {
-      this.statusText.set(`AI Status: ${this.provider().toUpperCase()} linked (${this.model()})`);
+      this.statusText.set(`AI Status: Gateway linked (${this.model()})`);
     } else {
       this.statusText.set('AI Status: Key required');
     }
