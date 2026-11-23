@@ -114,4 +114,19 @@ class AiGatewayClientTest {
                 gatewayClient.listModels("test-key", "https://1.1.1.1/v1"));
     }
 
+    @Test
+    @SuppressWarnings({ "rawtypes", "unchecked" })
+    void usesOpenRouterUserFilteredModelCatalogWhenRequested() {
+        String endpoint = "https://1.1.1.1/v1/models/user";
+        Map<String, Object> responseBody = Map.of(
+                "data", List.of(Map.of("id", "provider/model-allowed")));
+
+        when(restTemplate.exchange(
+                eq(endpoint), eq(HttpMethod.GET), any(HttpEntity.class), eq(Map.class)))
+                .thenReturn((ResponseEntity) ResponseEntity.ok(responseBody));
+
+        assertEquals(List.of("provider/model-allowed"),
+                gatewayClient.listModels("test-key", "https://1.1.1.1/v1", true));
+    }
+
 }
