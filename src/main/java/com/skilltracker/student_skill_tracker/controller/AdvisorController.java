@@ -125,7 +125,10 @@ public class AdvisorController {
         try {
             String apiKey = tokenCryptoService.decrypt(student.getAiApiKeyEncrypted());
             String baseUrl = isBlank(student.getAiBaseUrl()) ? gatewayDefaults.baseUrl() : student.getAiBaseUrl();
-            List<String> models = aiGatewayClient.listModels(apiKey, baseUrl);
+            // OpenRouter exposes a user-filtered catalogue that respects the
+            // account's provider preferences, privacy settings, and guardrails.
+            boolean userFilteredCatalog = "openrouter".equalsIgnoreCase(student.getAiProvider());
+            List<String> models = aiGatewayClient.listModels(apiKey, baseUrl, userFilteredCatalog);
             return ResponseEntity.ok(Map.of(
                     "provider", aiProviderRegistry.displayName(student.getAiProvider(), baseUrl),
                     "selectedModel", isBlank(student.getAiModel()) ? "" : student.getAiModel(),
