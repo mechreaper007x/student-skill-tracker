@@ -67,6 +67,9 @@ interface GenAiModelsResponse {
   provider: string;
   selectedModel: string;
   models: string[];
+  catalogStatus?: string;
+  selectedModelAvailability?: string;
+  catalogMessage?: string;
 }
 
 interface LearnResponse {
@@ -2074,7 +2077,7 @@ export class AdvisorComponent implements OnInit {
         this.modelDiscoveryStatus.set(
           models.length
             ? `Fetched ${models.length} model IDs directly from ${response?.provider || 'the configured API'}.`
-            : 'The API returned an empty model list. You can enter a model ID manually.'
+            : (response?.catalogMessage || 'The API returned an empty model list. You can enter a model ID manually.')
         );
         this.isLoadingModels.set(false);
       },
