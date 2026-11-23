@@ -56,10 +56,8 @@ interface Thread {
 }
 
 interface GenAiConfigResponse {
-  provider: string;
   model: string;
   baseUrl: string;
-  protocol: string;
   hasApiKey: boolean;
   maskedApiKey: string;
 }
@@ -456,16 +454,6 @@ interface TogglFocusSyncRequest {
               MOCK INTERVIEW
             </button>
 
-            <input
-              type="text"
-              [value]="model()"
-              (input)="updateModel($event)"
-              (blur)="onModelChange(model())"
-              aria-label="AI model ID"
-              placeholder="Model ID"
-              class="w-44 md:w-56 bg-noir-900 border border-noir-800 rounded-xl px-3 py-2 text-[10px] font-mono text-noir-200 placeholder:text-noir-600 hover:border-crimson-500/40 focus:border-crimson-500/60 outline-none"
-            >
-
             <button (click)="toggleSettingsPanel()" class="p-2 md:p-2.5 rounded-xl border border-noir-800 bg-noir-900 text-noir-400 hover:text-white hover:border-crimson-500/40 transition-all">
               <lucide-icon name="Settings" class="w-5 h-5"></lucide-icon>
             </button>
@@ -476,61 +464,54 @@ interface TogglFocusSyncRequest {
           @if (showSettings()) {
             <div class="max-w-3xl mx-auto noir-card p-8 space-y-6 animate-fade-in border-crimson-500/20 bg-noir-900/30 mb-8">
               <div class="flex items-center justify-between">
-                <h3 class="text-sm font-black uppercase tracking-widest text-white">Neural Interface Parameters</h3>
+                <h3 class="text-sm font-black uppercase tracking-widest text-white">AI Gateway Connection</h3>
                 <button (click)="toggleSettingsPanel()" class="text-noir-500 hover:text-white"><lucide-icon name="X" class="w-4 h-4"></lucide-icon></button>
               </div>
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div class="space-y-2 md:col-span-2">
-                  <label class="text-[10px] font-bold text-noir-500 uppercase tracking-widest">AI Gateway Base URL</label>
+              <div class="space-y-5">
+                <div class="space-y-2">
+                  <label class="text-[10px] font-bold text-noir-500 uppercase tracking-widest">Gateway Base URL</label>
                   <input
                     type="url"
                     [value]="baseUrlInput()"
                     (input)="updateBaseUrl($event)"
-                    placeholder="https://your-gateway.example/v1"
+                    placeholder="https://gateway.example/v1"
                     autocomplete="url"
-                    class="w-full bg-black border border-noir-800 rounded-xl px-4 py-2.5 text-xs font-mono text-white focus:border-crimson-500/50 outline-none"
+                    class="w-full bg-black border border-noir-800 rounded-xl px-4 py-3 text-xs font-mono text-white focus:border-crimson-500/50 outline-none"
                   >
-                  <p class="text-[9px] text-noir-600">Paste the gateway base URL, not the full chat-completions endpoint. It must be a public HTTPS endpoint.</p>
+                  <p class="text-[10px] text-noir-500">
+                    Rishi sends requests to the OpenAI-compatible /chat/completions endpoint. Use a gateway such as OpenRouter or LiteLLM to route across model providers.
+                  </p>
                 </div>
-                <div class="space-y-2">
-                  <label class="text-[10px] font-bold text-noir-500 uppercase tracking-widest">API Protocol</label>
-                  <select
-                    [ngModel]="protocol()"
-                    (ngModelChange)="protocol.set($event)"
-                    class="w-full bg-black border border-noir-800 rounded-xl px-4 py-2.5 text-xs font-mono text-white focus:border-crimson-500/50 outline-none"
-                  >
-                    <option value="OPENAI_COMPATIBLE">OpenAI compatible (OpenRouter, LiteLLM, Qwen gateways)</option>
-                    <option value="ANTHROPIC">Anthropic Messages API</option>
-                    <option value="GEMINI">Google Gemini API</option>
-                  </select>
-                </div>
+
                 <div class="space-y-2">
                   <label class="text-[10px] font-bold text-noir-500 uppercase tracking-widest">Model ID</label>
                   <input
                     type="text"
                     [value]="model()"
                     (input)="updateModel($event)"
-                    placeholder="e.g. provider/model-name"
-                    class="w-full bg-black border border-noir-800 rounded-xl px-4 py-2.5 text-xs font-mono text-white focus:border-crimson-500/50 outline-none"
+                    placeholder="e.g. mistral-small-latest or provider/model-id"
+                    class="w-full bg-black border border-noir-800 rounded-xl px-4 py-3 text-xs font-mono text-white focus:border-crimson-500/50 outline-none"
                   >
                 </div>
-                <div class="space-y-2 md:col-span-2">
+
+                <div class="space-y-2">
                   <label class="text-[10px] font-bold text-noir-500 uppercase tracking-widest">Gateway API Key</label>
-                  <div class="flex gap-2">
+                  <div class="flex flex-col sm:flex-row gap-2">
                     <input
                       type="password"
                       [value]="apiKeyInput()"
                       (input)="updateApiKey($event)"
                       [placeholder]="hasApiKey() ? ('Saved: ' + maskedApiKey() + ' (leave blank to keep)') : 'Paste gateway API key'"
                       autocomplete="new-password"
-                      class="min-w-0 flex-1 bg-black border border-noir-800 rounded-xl px-4 py-2.5 text-xs font-mono text-white focus:border-crimson-500/50 outline-none"
+                      class="min-w-0 flex-1 bg-black border border-noir-800 rounded-xl px-4 py-3 text-xs font-mono text-white focus:border-crimson-500/50 outline-none"
                     >
-                    <button (click)="saveConfig()" [disabled]="isSavingConfig()" class="px-4 py-2 bg-crimson-600 text-white rounded-xl text-[10px] font-black uppercase hover:bg-crimson-500 transition-colors disabled:opacity-50">Save Gateway</button>
+                    <button
+                      (click)="saveConfig()"
+                      [disabled]="isSavingConfig()"
+                      class="shrink-0 px-5 py-3 bg-crimson-600 text-white rounded-xl text-[10px] font-black uppercase hover:bg-crimson-500 transition-colors disabled:opacity-50"
+                    >Save Gateway</button>
                   </div>
-                </div>
-                <div class="space-y-2 md:col-span-2">
-                  <label class="text-[10px] font-bold text-noir-500 uppercase tracking-widest">Active Study Goal</label>
-                  <input type="text" [(ngModel)]="planTopic" class="w-full bg-black border border-noir-800 rounded-xl px-4 py-2.5 text-xs font-mono text-white focus:border-crimson-500/50 outline-none">
+                  <p class="text-[10px] text-noir-600">Leave the key blank to keep the currently saved key.</p>
                 </div>
               </div>
               @if (configStatus()) {
@@ -1295,10 +1276,8 @@ export class AdvisorComponent implements OnInit {
 
   mode = signal<'chat' | 'agent'>('chat');
 
-  provider = signal('mistral');
   model = signal('mistral-small-latest');
   baseUrlInput = signal('https://api.mistral.ai/v1');
-  protocol = signal('OPENAI_COMPATIBLE');
   apiKeyInput = signal('');
   maskedApiKey = signal('');
   hasApiKey = signal(false);
@@ -1381,7 +1360,6 @@ export class AdvisorComponent implements OnInit {
   planStatus = signal<{ success: boolean; message: string } | null>(null);
   statusText = signal('AI Status: Key required');
 
-  planTopic = 'Data Structures and Algorithms';
   planGoals = '';
   planDurationDays = 7;
 
@@ -1514,10 +1492,8 @@ export class AdvisorComponent implements OnInit {
   loadConfig() {
     this.http.get<GenAiConfigResponse>('/api/advice/me/genai-config').subscribe({
       next: (config) => {
-        this.provider.set(config.provider || 'mistral');
         this.model.set(config.model || 'mistral-small-latest');
         this.baseUrlInput.set(config.baseUrl || 'https://api.mistral.ai/v1');
-        this.protocol.set(config.protocol || 'OPENAI_COMPATIBLE');
         this.hasApiKey.set(!!config.hasApiKey);
         this.maskedApiKey.set(config.maskedApiKey || '');
         this.updateStatus();
@@ -1991,10 +1967,6 @@ export class AdvisorComponent implements OnInit {
     });
   }
 
-  onModelChange(value: string) {
-    this.saveConfigInternal({ onSuccess: () => {}, onError: () => {} });
-  }
-
   updateApiKey(event: Event) {
     const input = event.target as HTMLInputElement;
     this.apiKeyInput.set(input.value);
@@ -2027,7 +1999,7 @@ export class AdvisorComponent implements OnInit {
 
     this.saveConfigInternal({
       onSuccess: () => {
-        this.configStatus.set({ success: true, message: 'Neural config updated.' });
+        this.configStatus.set({ success: true, message: 'Gateway settings saved.' });
         this.apiKeyInput.set('');
       },
       onError: (message) => this.configStatus.set({ success: false, message })
@@ -2187,10 +2159,8 @@ export class AdvisorComponent implements OnInit {
   private saveConfigInternal(options: { onSuccess: () => void; onError: (message: string) => void }) {
     this.isSavingConfig.set(true);
     const payload: any = {
-      provider: this.provider(),
       model: this.model().trim(),
-      baseUrl: this.baseUrlInput().trim(),
-      protocol: this.protocol()
+      baseUrl: this.baseUrlInput().trim()
     };
     if (this.apiKeyInput().trim()) {
       payload.apiKey = this.apiKeyInput().trim();
@@ -2198,10 +2168,8 @@ export class AdvisorComponent implements OnInit {
 
     this.http.post<GenAiConfigResponse>('/api/advice/me/genai-config', payload).subscribe({
       next: (resp) => {
-        this.provider.set(resp.provider || 'mistral');
-        this.model.set(resp.model || 'mistral-small-latest');
+        this.model.set(resp.model || this.model());
         this.baseUrlInput.set(resp.baseUrl || this.baseUrlInput());
-        this.protocol.set(resp.protocol || 'OPENAI_COMPATIBLE');
         this.hasApiKey.set(!!resp.hasApiKey);
         this.maskedApiKey.set(resp.maskedApiKey || '');
         this.isSavingConfig.set(false);
