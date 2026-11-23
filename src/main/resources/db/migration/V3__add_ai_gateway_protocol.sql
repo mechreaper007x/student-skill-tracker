@@ -1,0 +1,2 @@
+ALTER TABLE students
+    ADD COLUMN IF NOT EXISTS ai_protocol VARCHAR(40);
