@@ -26,7 +26,6 @@ import com.skilltracker.student_skill_tracker.repository.TopicMasteryRepository;
 public class RishiAgentService {
 
         private static final String DEFAULT_PROVIDER = "mistral";
-        private static final String DEFAULT_MODEL = "mistral-small-latest";
         private static final int MAX_CONTEXT_MESSAGES = 6;
 
         private final RishiGenAiService rishiGenAiService;
@@ -41,6 +40,7 @@ public class RishiAgentService {
         private final StudentRepository studentRepository;
         private final CodeDiffService codeDiffService;
         private final MistakePatternService mistakePatternService;
+        private final AiGatewayDefaults aiGatewayDefaults;
 
         public RishiAgentService(
                         RishiGenAiService rishiGenAiService,
@@ -54,7 +54,8 @@ public class RishiAgentService {
                         TokenCryptoService tokenCryptoService,
                         StudentRepository studentRepository,
                         CodeDiffService codeDiffService,
-                        MistakePatternService mistakePatternService) {
+                        MistakePatternService mistakePatternService,
+                        AiGatewayDefaults aiGatewayDefaults) {
                 this.rishiGenAiService = rishiGenAiService;
                 this.rishiAgentAiService = rishiAgentAiService;
                 this.rishiMemoryService = rishiMemoryService;
@@ -67,6 +68,7 @@ public class RishiAgentService {
                 this.studentRepository = studentRepository;
                 this.codeDiffService = codeDiffService;
                 this.mistakePatternService = mistakePatternService;
+                this.aiGatewayDefaults = aiGatewayDefaults;
         }
 
         @Async("rishiAgentExecutor")
@@ -84,8 +86,11 @@ public class RishiAgentService {
 
                 String apiKey = tokenCryptoService.decrypt(encryptedApiKey);
                 String model = isBlank(request.getModel())
-                                ? (isBlank(student.getAiModel()) ? DEFAULT_MODEL : student.getAiModel())
+                                ? (isBlank(student.getAiModel()) ? aiGatewayDefaults.model() : student.getAiModel())
                                 : request.getModel().trim();
+                String baseUrl = isBlank(student.getAiBaseUrl()) ? aiGatewayDefaults.baseUrl() : student.getAiBaseUrl();
+                String protocol = isBlank(student.getAiProtocol()) ? aiGatewayDefaults.protocol() : student.getAiProtocol();
+                String provider = isBlank(student.getAiProvider()) ? DEFAULT_PROVIDER : student.getAiProvider();
 
                 List<RishiMemoryService.MemoryMessage> memory = List.of();
                 String threadId = request.getThreadId();
@@ -102,26 +107,42 @@ public class RishiAgentService {
                 String agentSystemPrompt = buildAgentSystemPrompt(studentSnapshot, agentContext);
 
                 String reply;
+                boolean toolCallsUsed = false;
                 try {
-                        // Primary: LangChain4j AiServices with tool calling
-                        RishiAgentAiService.AgentResponse agentResponse = rishiAgentAiService.executeWithTools(
-                                        apiKey, model, student, request.getMessage().trim(), agentSystemPrompt);
-                        reply = agentResponse.reply();
-                } catch (Exception toolCallEx) {
-                        // Fallback: Original RishiGenAiService (no tool calling, but proven stable)
+                        if (AiGatewayProtocol.from(protocol) == AiGatewayProtocol.OPENAI_COMPATIBLE) {
+                                RishiAgentAiService.AgentResponse agentResponse = rishiAgentAiService.executeWithTools(
+                                                apiKey, model, baseUrl, student,
+                                                request.getMessage().trim(), agentSystemPrompt);
+                                reply = agentResponse.reply();
+                                toolCallsUsed = agentResponse.toolsEnabled();
+                        } else {
+                                // Anthropic and Gemini use their native gateway protocols for chat.
+                                // Their tool-call adapters are separate from the OpenAI-compatible tool bridge.
+                                reply = rishiGenAiService.generateLearningResponse(
+                                                apiKey, model, baseUrl, protocol,
+                                                "AGENT MODE REQUEST:\\n" + request.getMessage().trim(),
+                                                context,
+                                                studentSnapshot + "\\n\\n" + agentContext,
+                                                student.getLastEmotionAfterFailure());
+                        }
+                } catch (Exception gatewayEx) {
                         org.slf4j.LoggerFactory.getLogger(RishiAgentService.class)
-                                        .warn("LangChain4j tool calling failed, falling back to raw GenAI: {}",
-                                                        toolCallEx.getMessage());
+                                        .warn("Rishi gateway agent request failed; retrying as plain gateway chat: {}",
+                                                        gatewayEx.getMessage());
                         reply = rishiGenAiService.generateLearningResponse(
-                                        apiKey, model,
-                                        "AGENT MODE REQUEST:\n" + request.getMessage().trim(),
+                                        apiKey, model, baseUrl, protocol,
+                                        "AGENT MODE REQUEST:\\n" + request.getMessage().trim(),
                                         context,
-                                        studentSnapshot + "\n\n" + agentContext,
+                                        studentSnapshot + "\\n\\n" + agentContext,
                                         student.getLastEmotionAfterFailure());
+                        toolCallsUsed = false;
                 }
 
                 List<String> actions = new ArrayList<>();
                 actions.add("Agent context merged: coding telemetry + practice tasks + calendar availability.");
+                if (!toolCallsUsed) {
+                        actions.add("This gateway protocol completed the agent response without model-initiated tool calls.");
+                }
                 var coachingSummary = rishiIntegrationService.getCoachingSummary(student, 7);
                 actions.add("Daily coaching summary generated: focus=" + coachingSummary.getRecommendedFocus()
                                 + ", minutes=" + coachingSummary.getRecommendedMinutesToday());
@@ -149,7 +170,7 @@ public class RishiAgentService {
 
                 RishiAgentExecuteResponse response = RishiAgentExecuteResponse.builder()
                                 .reply(reply)
-                                .provider(DEFAULT_PROVIDER)
+                                .provider(provider)
                                 .model(model)
                                 .mode("agent")
                                 .threadId(persistedThreadId)
