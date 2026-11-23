@@ -339,7 +339,7 @@ public class AdvisorController {
         String provider = isBlank(student.getAiProvider()) ? DEFAULT_PROVIDER : student.getAiProvider();
         String model = payload.get("model");
         if (isBlank(model)) {
-            model = isBlank(student.getAiModel()) ? DEFAULT_MODEL : student.getAiModel();
+            model = isBlank(student.getAiModel()) ? gatewayDefaults.model() : student.getAiModel();
         }
 
         String message = payload.get("message");
