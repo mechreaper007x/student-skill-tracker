@@ -2040,7 +2040,7 @@ export class AdvisorComponent implements OnInit {
 
   private askRishi(message: string, responseType: 'text' | 'strategy') {
     if (!this.hasApiKey() && !this.apiKeyInput().trim()) {
-      this.addAssistantMessage('Save your AI gateway URL, protocol, model ID, and API key in settings before using Rishi.', 'text');
+      this.addAssistantMessage('Save your gateway URL, model ID, and API key in settings before using Rishi.', 'text');
       this.scrollToBottom();
       return;
     }
@@ -2079,7 +2079,7 @@ export class AdvisorComponent implements OnInit {
 
   private askAgent(message: string, responseType: 'text' | 'strategy') {
     if (!this.hasApiKey() && !this.apiKeyInput().trim()) {
-      this.addAssistantMessage('Save your AI gateway URL, protocol, model ID, and API key in settings before using Rishi.', 'text');
+      this.addAssistantMessage('Save your gateway URL, model ID, and API key in settings before using Rishi.', 'text');
       this.scrollToBottom();
       return;
     }
