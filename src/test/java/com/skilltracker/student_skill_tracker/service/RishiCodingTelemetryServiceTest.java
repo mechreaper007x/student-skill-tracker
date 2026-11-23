@@ -42,6 +42,10 @@ class RishiCodingTelemetryServiceTest {
     private RishiCodeChangeEventRepository changeEventRepository;
     @Mock
     private RishiCompileAttemptLogRepository compileAttemptLogRepository;
+    @Mock
+    private SmartQuestionRouter smartQuestionRouter;
+    @Mock
+    private org.springframework.messaging.simp.SimpMessagingTemplate messagingTemplate;
 
     @InjectMocks
     private RishiCodingTelemetryService service;
