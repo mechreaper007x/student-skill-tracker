@@ -10,7 +10,6 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -80,13 +79,11 @@ public class Student {
     @ToString.Exclude
     private String aiApiKeyEncrypted;
 
-    @Lob
-    @Column(name = "rishi_memory_json")
+    @Column(name = "rishi_memory_json", columnDefinition = "TEXT")
     @ToString.Exclude
     private String rishiMemoryJson;
 
-    @Lob
-    @Column(name = "rishi_study_plan")
+    @Column(name = "rishi_study_plan", columnDefinition = "TEXT")
     @ToString.Exclude
     private String rishiStudyPlan;
 
@@ -205,8 +202,7 @@ public class Student {
     @Column(name = "last_emotion_after_failure")
     private String lastEmotionAfterFailure;
 
-    @Lob
-    @Column(name = "emotion_log_json")
+    @Column(name = "emotion_log_json", columnDefinition = "TEXT")
     @ToString.Exclude
     private String emotionLogJson;
 
