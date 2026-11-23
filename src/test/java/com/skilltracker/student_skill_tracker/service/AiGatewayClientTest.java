@@ -67,4 +67,51 @@ class AiGatewayClientTest {
         assertEquals("provider/model-id", body.get("model"));
         assertEquals(List.of(Map.of("role", "user", "content", "Hello")), body.get("messages"));
     }
+    @Test
+    @SuppressWarnings({ "rawtypes", "unchecked" })
+    void fetchesAllModelIdsFromTheConfiguredApi() {
+        String endpoint = "https://1.1.1.1/v1/models";
+        Map<String, Object> responseBody = Map.of(
+                "data", List.of(
+                        Map.of("id", "model-alpha"),
+                        Map.of("id", "model-beta"),
+                        Map.of("id", "model-gamma")));
+
+        when(restTemplate.exchange(
+                eq(endpoint), eq(HttpMethod.GET), any(HttpEntity.class), eq(Map.class)))
+                .thenReturn((ResponseEntity) ResponseEntity.ok(responseBody));
+
+        List<String> models = gatewayClient.listModels("test-key", "https://1.1.1.1/v1");
+
+        assertEquals(List.of("model-alpha", "model-beta", "model-gamma"), models);
+
+        ArgumentCaptor<HttpEntity> requestCaptor = ArgumentCaptor.forClass(HttpEntity.class);
+        verify(restTemplate).exchange(
+                eq(endpoint), eq(HttpMethod.GET), requestCaptor.capture(), eq(Map.class));
+        assertEquals("Bearer test-key",
+                requestCaptor.getValue().getHeaders().getFirst(HttpHeaders.AUTHORIZATION));
+    }
+
+    @Test
+    @SuppressWarnings({ "rawtypes", "unchecked" })
+    void followsSameOriginPaginationLinksAndDeduplicatesModelIds() {
+        String firstPage = "https://1.1.1.1/v1/models";
+        String secondPage = "https://1.1.1.1/v1/models?offset=3";
+        Map<String, Object> firstResponse = Map.of(
+                "data", List.of(Map.of("id", "model-alpha"), Map.of("id", "model-beta")),
+                "links", Map.of("next", "/v1/models?offset=3"));
+        Map<String, Object> secondResponse = Map.of(
+                "data", List.of(Map.of("id", "model-beta"), Map.of("id", "model-gamma")));
+
+        when(restTemplate.exchange(
+                eq(firstPage), eq(HttpMethod.GET), any(HttpEntity.class), eq(Map.class)))
+                .thenReturn((ResponseEntity) ResponseEntity.ok(firstResponse));
+        when(restTemplate.exchange(
+                eq(secondPage), eq(HttpMethod.GET), any(HttpEntity.class), eq(Map.class)))
+                .thenReturn((ResponseEntity) ResponseEntity.ok(secondResponse));
+
+        assertEquals(List.of("model-alpha", "model-beta", "model-gamma"),
+                gatewayClient.listModels("test-key", "https://1.1.1.1/v1"));
+    }
+
 }
