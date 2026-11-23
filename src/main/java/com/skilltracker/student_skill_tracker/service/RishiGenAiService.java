@@ -15,7 +15,6 @@ import org.springframework.web.client.RestTemplate;
 @Service
 public class RishiGenAiService {
 
-    private static final String MISTRAL_CHAT_URL = "https://api.mistral.ai/v1/chat/completions";
     private static final String DEFAULT_MODEL = "mistral-small-latest";
 
     private final RestTemplate restTemplate;
@@ -30,6 +29,17 @@ public class RishiGenAiService {
     }
 
     public String generateLearningResponse(String apiKey, String model, String userMessage,
+            List<Map<String, String>> memoryContext, String studentContextStr, String emotion) {
+        return generateLearningResponse(apiKey, model, AiGatewayUrlValidator.DEFAULT_BASE_URL,
+                userMessage, memoryContext, studentContextStr, emotion);
+    }
+
+    public String generateLearningResponse(String apiKey, String model, String baseUrl, String userMessage,
+            List<Map<String, String>> memoryContext, String studentContextStr) {
+        return generateLearningResponse(apiKey, model, baseUrl, userMessage, memoryContext, studentContextStr, null);
+    }
+
+    public String generateLearningResponse(String apiKey, String model, String baseUrl, String userMessage,
             List<Map<String, String>> memoryContext, String studentContextStr, String emotion) {
         validate(apiKey, userMessage);
 
@@ -87,11 +97,17 @@ public class RishiGenAiService {
         }
 
         messages.add(Map.of("role", "user", "content", "<user_input>\n" + userMessage.trim() + "\n</user_input>"));
-        return callMistral(apiKey, model, messages, 0.7, 600);
+        return callGateway(apiKey, model, baseUrl, messages, 0.7, 600);
     }
 
     public String generateStudyPlan(String apiKey, String model, String topic, String goals, Integer durationDays,
             String skillSnapshot, List<Map<String, String>> memoryContext) {
+        return generateStudyPlan(apiKey, model, AiGatewayUrlValidator.DEFAULT_BASE_URL, topic, goals,
+                durationDays, skillSnapshot, memoryContext);
+    }
+
+    public String generateStudyPlan(String apiKey, String model, String baseUrl, String topic, String goals,
+            Integer durationDays, String skillSnapshot, List<Map<String, String>> memoryContext) {
         if (isBlank(topic)) {
             throw new IllegalArgumentException("Topic is required for study plan generation.");
         }
@@ -117,12 +133,12 @@ public class RishiGenAiService {
                 Keep it practical and specific.
                 """.formatted(safeDuration, topic.trim(), safeGoals, safeSkillSnapshot, safeDuration);
 
-        return generateLearningResponse(apiKey, model, prompt, memoryContext, safeSkillSnapshot);
+        return generateLearningResponse(apiKey, model, baseUrl, prompt, memoryContext, safeSkillSnapshot);
     }
 
     @SuppressWarnings("unchecked")
-    private String callMistral(String apiKey, String model, List<Map<String, String>> messages, double temperature,
-            int maxTokens) {
+    private String callGateway(String apiKey, String model, String baseUrl,
+            List<Map<String, String>> messages, double temperature, int maxTokens) {
         String selectedModel = isBlank(model) ? DEFAULT_MODEL : model.trim();
 
         HttpHeaders headers = new HttpHeaders();
@@ -136,8 +152,9 @@ public class RishiGenAiService {
                 "max_tokens", maxTokens,
                 "messages", messages);
 
+        String chatCompletionsUrl = AiGatewayUrlValidator.chatCompletionsUrl(baseUrl);
         ResponseEntity<Map> response = restTemplate.exchange(
-                MISTRAL_CHAT_URL,
+                chatCompletionsUrl,
                 HttpMethod.POST,
                 new HttpEntity<>(body, headers),
                 Map.class);
