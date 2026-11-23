@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.IntStream;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -127,6 +128,32 @@ class AiGatewayClientTest {
 
         assertEquals(List.of("provider/model-allowed"),
                 gatewayClient.listModels("test-key", "https://1.1.1.1/v1", true));
+    }
+
+    @Test
+    @SuppressWarnings({ "rawtypes", "unchecked" })
+    void paginatesOpenRouterUserModelCatalogInBatchesOfOneThousand() {
+        String firstPage = "https://1.1.1.1/v1/models/user?offset=0&limit=1000";
+        String secondPage = "https://1.1.1.1/v1/models/user?offset=1000&limit=1000";
+        List<Map<String, String>> firstBatch = IntStream.range(0, 1000)
+                .mapToObj(i -> Map.of("id", "provider/model-" + i))
+                .toList();
+        Map<String, Object> firstResponse = Map.of("data", firstBatch);
+        Map<String, Object> secondResponse = Map.of(
+                "data", List.of(Map.of("id", "provider/model-1000"), Map.of("id", "provider/model-1001")));
+
+        when(restTemplate.exchange(
+                eq(firstPage), eq(HttpMethod.GET), any(HttpEntity.class), eq(Map.class)))
+                .thenReturn((ResponseEntity) ResponseEntity.ok(firstResponse));
+        when(restTemplate.exchange(
+                eq(secondPage), eq(HttpMethod.GET), any(HttpEntity.class), eq(Map.class)))
+                .thenReturn((ResponseEntity) ResponseEntity.ok(secondResponse));
+
+        List<String> models = gatewayClient.listModels("test-key", "https://1.1.1.1/v1", true);
+
+        assertEquals(1002, models.size());
+        assertEquals("provider/model-0", models.get(0));
+        assertEquals("provider/model-1001", models.get(1001));
     }
 
 }
