@@ -29,6 +29,7 @@ import com.skilltracker.student_skill_tracker.repository.TopicMasteryRepository;
 import com.skilltracker.student_skill_tracker.service.AiAdvisorService;
 import com.skilltracker.student_skill_tracker.service.AiGatewayDefaults;
 import com.skilltracker.student_skill_tracker.service.AiGatewayUrlValidator;
+import com.skilltracker.student_skill_tracker.service.AiProviderRegistry;
 import com.skilltracker.student_skill_tracker.service.RishiGenAiService;
 import com.skilltracker.student_skill_tracker.service.RishiMemoryService;
 import com.skilltracker.student_skill_tracker.service.TokenCryptoService;
@@ -52,6 +53,7 @@ public class AdvisorController {
     private final TokenCryptoService tokenCryptoService;
     private final TopicMasteryRepository topicMasteryRepository;
     private final AiGatewayDefaults gatewayDefaults;
+    private final AiProviderRegistry aiProviderRegistry;
 
     @GetMapping("/me")
     public ResponseEntity<AdvisorResult> myAdvice(Authentication auth) {
@@ -86,6 +88,7 @@ public class AdvisorController {
         String baseUrl = isBlank(student.getAiBaseUrl())
                 ? gatewayDefaults.baseUrl()
                 : AiGatewayUrlValidator.normalizeBaseUrl(student.getAiBaseUrl());
+        String provider = aiProviderRegistry.displayName(student.getAiProvider(), baseUrl);
 
         String maskedApiKey = "";
         boolean hasApiKey = !isBlank(student.getAiApiKeyEncrypted());
@@ -98,6 +101,7 @@ public class AdvisorController {
         }
 
         return ResponseEntity.ok(Map.of(
+                "provider", provider,
                 "model", model,
                 "baseUrl", baseUrl,
                 "hasApiKey", hasApiKey,
@@ -112,20 +116,35 @@ public class AdvisorController {
         }
 
         Student student = studentOpt.get();
+        String apiKey = payload.get("apiKey");
+        boolean replacingKey = !isBlank(apiKey);
+        String providerId = student.getAiProvider();
+        String rawBaseUrl = payload.get("baseUrl");
         String model = payload.get("model");
-        if (isBlank(model)) {
-            model = isBlank(student.getAiModel()) ? gatewayDefaults.model() : student.getAiModel();
-        }
-        if (isBlank(model)) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Model ID is required."));
-        }
-        if (model.trim().length() > 200) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Model ID must be 200 characters or fewer."));
+
+        AiProviderRegistry.ProviderProfile detectedProfile = replacingKey
+                ? aiProviderRegistry.detect(apiKey).orElse(null)
+                : aiProviderRegistry.findById(providerId).orElse(null);
+
+        if (replacingKey && detectedProfile != null) {
+            // Known key prefix: choose a fixed, reviewed endpoint on the server.
+            providerId = detectedProfile.id();
+            rawBaseUrl = detectedProfile.baseUrl();
+            if (isBlank(model)) {
+                model = detectedProfile.defaultModel();
+            }
+        } else {
+            if (isBlank(rawBaseUrl)) {
+                rawBaseUrl = isBlank(student.getAiBaseUrl())
+                        ? gatewayDefaults.baseUrl()
+                        : student.getAiBaseUrl();
+            }
         }
 
-        String rawBaseUrl = payload.get("baseUrl");
-        if (isBlank(rawBaseUrl)) {
-            rawBaseUrl = isBlank(student.getAiBaseUrl()) ? gatewayDefaults.baseUrl() : student.getAiBaseUrl();
+        if (replacingKey && detectedProfile == null && isBlank(payload.get("baseUrl"))) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error",
+                    "I couldn't identify this API key's provider prefix. Open Advanced gateway settings and enter its OpenAI-compatible base URL. The key has not been saved."));
         }
 
         final String baseUrl;
@@ -135,21 +154,44 @@ public class AdvisorController {
             return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
         }
 
-        String apiKey = payload.get("apiKey");
-        if (isBlank(apiKey) && isBlank(student.getAiApiKeyEncrypted())) {
+        if (detectedProfile == null && isBlank(providerId)) {
+            providerId = aiProviderRegistry.findByBaseUrl(baseUrl)
+                    .map(AiProviderRegistry.ProviderProfile::id)
+                    .orElse("custom");
+        }
+        if (replacingKey && detectedProfile == null && isBlank(model)) {
+            detectedProfile = aiProviderRegistry.findByBaseUrl(baseUrl).orElse(null);
+            if (detectedProfile != null) {
+                providerId = detectedProfile.id();
+                model = detectedProfile.defaultModel();
+            }
+        }
+        if (isBlank(model)) {
+            model = isBlank(student.getAiModel()) ? gatewayDefaults.model() : student.getAiModel();
+        }
+        if (isBlank(model)) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Model ID is required for this custom gateway."));
+        }
+        if (model.trim().length() > 200) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Model ID must be 200 characters or fewer."));
+        }
+
+        if (replacingKey) {
+            student.setAiApiKeyEncrypted(tokenCryptoService.encrypt(apiKey.trim()));
+        } else if (isBlank(student.getAiApiKeyEncrypted())) {
             return ResponseEntity.badRequest().body(Map.of("error", "Gateway API key is required."));
         }
 
+        student.setAiProvider(isBlank(providerId) ? "custom" : providerId);
         student.setAiModel(model.trim());
         student.setAiBaseUrl(baseUrl);
-        if (!isBlank(apiKey)) {
-            student.setAiApiKeyEncrypted(tokenCryptoService.encrypt(apiKey.trim()));
-        }
         studentRepo.save(student);
 
         String maskedApiKey = maskKey(tokenCryptoService.decrypt(student.getAiApiKeyEncrypted()));
+        String provider = aiProviderRegistry.displayName(student.getAiProvider(), student.getAiBaseUrl());
         return ResponseEntity.ok(Map.of(
                 "message", "AI gateway configuration saved",
+                "provider", provider,
                 "model", student.getAiModel(),
                 "baseUrl", student.getAiBaseUrl(),
                 "hasApiKey", true,
