@@ -309,7 +309,7 @@ public class AdvisorController {
         }
 
         String apiKey = tokenCryptoService.decrypt(encryptedKey);
-        String provider = isBlank(student.getAiProvider()) ? DEFAULT_PROVIDER : student.getAiProvider();
+        String provider = "gateway";
         String model = payload.get("model");
         if (isBlank(model)) {
             model = isBlank(student.getAiModel()) ? gatewayDefaults.model() : student.getAiModel();
@@ -363,7 +363,7 @@ public class AdvisorController {
         } catch (Exception ex) {
             logger.error("Rishi learn request failed for {}: {}", auth.getName(), ex.getMessage(), ex);
             return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
-                    .body(Map.of("error", "AI gateway request failed. Verify the base URL, protocol, API key, and model ID."));
+                    .body(Map.of("error", "AI gateway request failed. Verify the OpenAI-compatible base URL, API key, and model ID."));
         }
     }
 
