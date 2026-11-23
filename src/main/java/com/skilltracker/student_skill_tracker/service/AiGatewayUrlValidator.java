@@ -6,7 +6,7 @@ import java.net.UnknownHostException;
 import java.util.Locale;
 
 /**
- * Validates user-configured OpenAI-compatible gateway URLs.
+ * Validates the one OpenAI-compatible Chat Completions gateway URL.
  *
  * Only public HTTPS endpoints are accepted. This is important because gateway
  * URLs are user-controlled and the backend must not become an SSRF proxy into
@@ -67,12 +67,14 @@ public final class AiGatewayUrlValidator {
             throw new IllegalArgumentException("Gateway URL path is invalid.");
         }
 
-        // Accept a pasted API endpoint as well as a base URL, then normalize
-        // it to the base expected by the selected protocol adapter.
+        // Accept a pasted Chat Completions endpoint, but reject vendor-specific
+        // endpoints because this application speaks one gateway contract only.
+        if (path.endsWith("/messages")) {
+            throw new IllegalArgumentException(
+                    "Use an OpenAI-compatible Chat Completions gateway URL, not a vendor-specific Messages endpoint.");
+        }
         if (path.endsWith("/chat/completions")) {
             path = path.substring(0, path.length() - "/chat/completions".length());
-        } else if (path.endsWith("/messages")) {
-            path = path.substring(0, path.length() - "/messages".length());
         }
         while (path.endsWith("/") && !path.isEmpty()) {
             path = path.substring(0, path.length() - 1);
