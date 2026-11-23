@@ -56,6 +56,7 @@ interface Thread {
 }
 
 interface GenAiConfigResponse {
+  provider: string;
   model: string;
   baseUrl: string;
   hasApiKey: boolean;
@@ -469,39 +470,13 @@ interface TogglFocusSyncRequest {
               </div>
               <div class="space-y-5">
                 <div class="space-y-2">
-                  <label class="text-[10px] font-bold text-noir-500 uppercase tracking-widest">Gateway Base URL</label>
-                  <input
-                    type="url"
-                    [value]="baseUrlInput()"
-                    (input)="updateBaseUrl($event)"
-                    placeholder="https://gateway.example/v1"
-                    autocomplete="url"
-                    class="w-full bg-black border border-noir-800 rounded-xl px-4 py-3 text-xs font-mono text-white focus:border-crimson-500/50 outline-none"
-                  >
-                  <p class="text-[10px] text-noir-500">
-                    Rishi sends requests to the OpenAI-compatible /chat/completions endpoint. Use a gateway such as OpenRouter or LiteLLM to route across model providers.
-                  </p>
-                </div>
-
-                <div class="space-y-2">
-                  <label class="text-[10px] font-bold text-noir-500 uppercase tracking-widest">Model ID</label>
-                  <input
-                    type="text"
-                    [value]="model()"
-                    (input)="updateModel($event)"
-                    placeholder="e.g. mistral-small-latest or provider/model-id"
-                    class="w-full bg-black border border-noir-800 rounded-xl px-4 py-3 text-xs font-mono text-white focus:border-crimson-500/50 outline-none"
-                  >
-                </div>
-
-                <div class="space-y-2">
-                  <label class="text-[10px] font-bold text-noir-500 uppercase tracking-widest">Gateway API Key</label>
+                  <label class="text-[10px] font-bold text-noir-500 uppercase tracking-widest">AI Provider API Key</label>
                   <div class="flex flex-col sm:flex-row gap-2">
                     <input
                       type="password"
                       [value]="apiKeyInput()"
                       (input)="updateApiKey($event)"
-                      [placeholder]="hasApiKey() ? ('Saved: ' + maskedApiKey() + ' (leave blank to keep)') : 'Paste gateway API key'"
+                      [placeholder]="hasApiKey() ? ('Saved: ' + maskedApiKey() + ' (leave blank to keep)') : 'Paste your provider API key'"
                       autocomplete="new-password"
                       class="min-w-0 flex-1 bg-black border border-noir-800 rounded-xl px-4 py-3 text-xs font-mono text-white focus:border-crimson-500/50 outline-none"
                     >
@@ -509,10 +484,43 @@ interface TogglFocusSyncRequest {
                       (click)="saveConfig()"
                       [disabled]="isSavingConfig()"
                       class="shrink-0 px-5 py-3 bg-crimson-600 text-white rounded-xl text-[10px] font-black uppercase hover:bg-crimson-500 transition-colors disabled:opacity-50"
-                    >Save Gateway</button>
+                    >Save Connection</button>
                   </div>
-                  <p class="text-[10px] text-noir-600">Leave the key blank to keep the currently saved key.</p>
+                  <p class="text-[10px] text-noir-500">
+                    Paste the key only. Rishi identifies supported key formats and selects the provider endpoint on the backend.
+                  </p>
+                  @if (hasApiKey()) {
+                    <p class="text-[10px] text-emerald-300">Connected provider: {{ providerName() }}</p>
+                  }
                 </div>
+
+                <div class="space-y-2">
+                  <label class="text-[10px] font-bold text-noir-500 uppercase tracking-widest">Model ID <span class="normal-case text-noir-600">(optional override)</span></label>
+                  <input
+                    type="text"
+                    [value]="model()"
+                    (input)="updateModel($event)"
+                    placeholder="Leave blank to use the provider default"
+                    class="w-full bg-black border border-noir-800 rounded-xl px-4 py-3 text-xs font-mono text-white focus:border-crimson-500/50 outline-none"
+                  >
+                  <p class="text-[10px] text-noir-600">Example: muse-spark-1.3-contributor. Leave blank to let Rishi choose the provider's default model.</p>
+                </div>
+
+                <details class="rounded-xl border border-noir-800 bg-black/20 p-3">
+                  <summary class="cursor-pointer text-[10px] font-bold uppercase tracking-widest text-noir-400">Advanced: custom or unrecognized provider</summary>
+                  <div class="space-y-2 mt-3">
+                    <label class="text-[10px] font-bold text-noir-500 uppercase tracking-widest">Custom OpenAI-compatible Base URL</label>
+                    <input
+                      type="url"
+                      [value]="baseUrlInput()"
+                      (input)="updateBaseUrl($event)"
+                      placeholder="https://gateway.example/v1"
+                      autocomplete="url"
+                      class="w-full bg-black border border-noir-800 rounded-xl px-4 py-3 text-xs font-mono text-white focus:border-crimson-500/50 outline-none"
+                    >
+                    <p class="text-[10px] text-noir-600">Only needed when a provider's key has no recognizable prefix (for example, some Mistral keys). The endpoint must support OpenAI-compatible /chat/completions.</p>
+                  </div>
+                </details>
               </div>
               @if (configStatus()) {
                 <div class="rounded-xl border p-3 text-[10px] font-mono"
@@ -1276,8 +1284,9 @@ export class AdvisorComponent implements OnInit {
 
   mode = signal<'chat' | 'agent'>('chat');
 
-  model = signal('mistral-small-latest');
-  baseUrlInput = signal('https://api.mistral.ai/v1');
+  model = signal('');
+  baseUrlInput = signal('');
+  providerName = signal('Not connected');
   apiKeyInput = signal('');
   maskedApiKey = signal('');
   hasApiKey = signal(false);
@@ -1492,8 +1501,9 @@ export class AdvisorComponent implements OnInit {
   loadConfig() {
     this.http.get<GenAiConfigResponse>('/api/advice/me/genai-config').subscribe({
       next: (config) => {
-        this.model.set(config.model || 'mistral-small-latest');
-        this.baseUrlInput.set(config.baseUrl || 'https://api.mistral.ai/v1');
+        this.model.set(config.model || '');
+        this.baseUrlInput.set(config.baseUrl || '');
+        this.providerName.set(config.provider || 'Custom OpenAI-compatible gateway');
         this.hasApiKey.set(!!config.hasApiKey);
         this.maskedApiKey.set(config.maskedApiKey || '');
         this.updateStatus();
@@ -1969,7 +1979,14 @@ export class AdvisorComponent implements OnInit {
 
   updateApiKey(event: Event) {
     const input = event.target as HTMLInputElement;
-    this.apiKeyInput.set(input.value);
+    const value = input.value;
+    if (value.trim()) {
+      // A new key may belong to a different provider: discard the old model
+      // and custom URL so the backend can resolve the new key cleanly.
+      this.model.set('');
+      this.baseUrlInput.set('');
+    }
+    this.apiKeyInput.set(value);
   }
 
   updateBaseUrl(event: Event) {
@@ -1984,14 +2001,6 @@ export class AdvisorComponent implements OnInit {
 
   saveConfig() {
     const hasNewKey = !!this.apiKeyInput().trim();
-    if (!this.baseUrlInput().trim()) {
-      this.configStatus.set({ success: false, message: 'Paste an AI gateway base URL before saving.' });
-      return;
-    }
-    if (!this.model().trim()) {
-      this.configStatus.set({ success: false, message: 'Enter a model ID before saving.' });
-      return;
-    }
     if (!hasNewKey && !this.hasApiKey()) {
       this.configStatus.set({ success: false, message: 'Paste the gateway API key before saving.' });
       return;
@@ -2158,10 +2167,13 @@ export class AdvisorComponent implements OnInit {
 
   private saveConfigInternal(options: { onSuccess: () => void; onError: (message: string) => void }) {
     this.isSavingConfig.set(true);
-    const payload: any = {
-      model: this.model().trim(),
-      baseUrl: this.baseUrlInput().trim()
-    };
+    const payload: any = {};
+    if (this.model().trim()) {
+      payload.model = this.model().trim();
+    }
+    if (this.baseUrlInput().trim()) {
+      payload.baseUrl = this.baseUrlInput().trim();
+    }
     if (this.apiKeyInput().trim()) {
       payload.apiKey = this.apiKeyInput().trim();
     }
@@ -2170,6 +2182,7 @@ export class AdvisorComponent implements OnInit {
       next: (resp) => {
         this.model.set(resp.model || this.model());
         this.baseUrlInput.set(resp.baseUrl || this.baseUrlInput());
+        this.providerName.set(resp.provider || 'Custom OpenAI-compatible gateway');
         this.hasApiKey.set(!!resp.hasApiKey);
         this.maskedApiKey.set(resp.maskedApiKey || '');
         this.isSavingConfig.set(false);
