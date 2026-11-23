@@ -44,7 +44,7 @@ public class AdvisorController {
 
     private static final Logger logger = LoggerFactory.getLogger(AdvisorController.class);
     private static final String DEFAULT_PROVIDER = "mistral";
-    private static final String DEFAULT_MODEL = "open-mixtral-8x7b";
+    private static final String DEFAULT_MODEL = "mistral-small-latest";
     private static final int MAX_CONTEXT_MESSAGES = 12;
 
     private final AiAdvisorService advisor;
@@ -285,7 +285,7 @@ public class AdvisorController {
         Integer durationDays = parseDurationDays(payload.get("durationDays"));
         String model = asString(payload.get("model"));
         if (isBlank(model)) {
-            model = isBlank(student.getAiModel()) ? DEFAULT_MODEL : student.getAiModel();
+            model = isBlank(student.getAiModel()) ? gatewayDefaults.model() : student.getAiModel();
         }
 
         List<RishiMemoryService.MemoryMessage> memory = rishiMemoryService.getMemory(student);
@@ -337,11 +337,6 @@ public class AdvisorController {
 
         String apiKey = tokenCryptoService.decrypt(encryptedKey);
         String provider = isBlank(student.getAiProvider()) ? DEFAULT_PROVIDER : student.getAiProvider();
-        if (!DEFAULT_PROVIDER.equalsIgnoreCase(provider)) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(Map.of("error", "Unsupported provider. Use mistral for now."));
-        }
-
         String model = payload.get("model");
         if (isBlank(model)) {
             model = isBlank(student.getAiModel()) ? DEFAULT_MODEL : student.getAiModel();
