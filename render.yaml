@@ -40,6 +40,12 @@ services:
         sync: false
       - key: JDOODLE_CLIENT_SECRET
         sync: false
+      - key: AI_BASE_URL
+        value: https://api.mistral.ai/v1
+      - key: AI_PROTOCOL
+        value: OPENAI_COMPATIBLE
+      - key: AI_MODEL
+        value: mistral-small-latest
 
   - type: web
     name: student-skill-tracker-frontend
