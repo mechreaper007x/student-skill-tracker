@@ -156,4 +156,28 @@ class AiGatewayClientTest {
         assertEquals("provider/model-1001", models.get(1001));
     }
 
+    @Test
+    @SuppressWarnings({ "rawtypes", "unchecked" })
+    void verifiesSelectedModelWhenCatalogIsEmpty() {
+        String endpoint = "https://1.1.1.1/v1/models/muse-spark-1.3";
+        when(restTemplate.exchange(
+                eq(endpoint), eq(HttpMethod.GET), any(HttpEntity.class), eq(Map.class)))
+                .thenReturn((ResponseEntity) ResponseEntity.ok(Map.of("id", "muse-spark-1.3")));
+
+        assertEquals(AiGatewayClient.ModelAvailability.AVAILABLE,
+                gatewayClient.checkModelAvailability(
+                        "test-key", "https://1.1.1.1/v1", "muse-spark-1.3"));
+    }
+
+    @Test
+    @SuppressWarnings({ "rawtypes", "unchecked" })
+    void returnsEmptyForAnActuallyEmptyOpenAiCompatibleCatalog() {
+        String endpoint = "https://1.1.1.1/v1/models";
+        when(restTemplate.exchange(
+                eq(endpoint), eq(HttpMethod.GET), any(HttpEntity.class), eq(Map.class)))
+                .thenReturn((ResponseEntity) ResponseEntity.ok(Map.of("object", "list", "data", List.of())));
+
+        assertEquals(List.of(), gatewayClient.listModels("test-key", "https://1.1.1.1/v1"));
+    }
+
 }
