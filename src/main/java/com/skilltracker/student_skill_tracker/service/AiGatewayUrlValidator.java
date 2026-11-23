@@ -101,4 +101,14 @@ public final class AiGatewayUrlValidator {
         String normalized = normalizeBaseUrl(baseUrl);
         return normalized + "/models/user";
     }
+
+    public static String modelUrl(String baseUrl, String modelId) {
+        if (modelId == null || modelId.isBlank()) {
+            throw new IllegalArgumentException("Model ID is required.");
+        }
+        String normalized = normalizeBaseUrl(baseUrl);
+        return normalized + "/models/"
+                + org.springframework.web.util.UriUtils.encodePathSegment(
+                        modelId.trim(), java.nio.charset.StandardCharsets.UTF_8);
+    }
 }
