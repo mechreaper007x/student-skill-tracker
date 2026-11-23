@@ -13,6 +13,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClientException;
@@ -38,7 +39,7 @@ public class AiGatewayClient {
 
     private final RestTemplate restTemplate;
 
-    public AiGatewayClient(RestTemplate restTemplate) {
+    public AiGatewayClient(@Qualifier("aiGatewayRestTemplate") RestTemplate restTemplate) {
         this.restTemplate = restTemplate;
     }
 
