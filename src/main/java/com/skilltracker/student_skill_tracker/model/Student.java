@@ -76,6 +76,9 @@ public class Student {
     @Column(name = "ai_base_url", length = 1024)
     private String aiBaseUrl;
 
+    @Column(name = "ai_protocol", length = 40)
+    private String aiProtocol;
+
     @Column(name = "ai_api_key_enc", length = 2048)
     @ToString.Exclude
     private String aiApiKeyEncrypted;
