@@ -37,14 +37,12 @@ class RishiGenAiSecurityTest {
 
     private static final String MOCK_API_KEY = "test-api-key";
     private static final String BASE_URL = "https://api.mistral.ai/v1";
-    private static final String PROTOCOL = "OPENAI_COMPATIBLE";
 
     @BeforeEach
     void setUp() {
         when(gatewayDefaults.baseUrl()).thenReturn(BASE_URL);
-        when(gatewayDefaults.protocol()).thenReturn(PROTOCOL);
         when(gatewayClient.complete(
-                eq(MOCK_API_KEY), eq("model"), eq(BASE_URL), eq(PROTOCOL),
+                eq(MOCK_API_KEY), eq("model"), eq(BASE_URL),
                 org.mockito.ArgumentMatchers.anyList(), anyDouble(), eq(900)))
                 .thenReturn("Mocked AI Response");
     }
@@ -55,7 +53,7 @@ class RishiGenAiSecurityTest {
         assertEquals("Mocked AI Response", response);
 
         verify(gatewayClient).complete(
-                eq(MOCK_API_KEY), eq("model"), eq(BASE_URL), eq(PROTOCOL),
+                eq(MOCK_API_KEY), eq("model"), eq(BASE_URL),
                 messagesCaptor.capture(), anyDouble(), eq(900));
 
         List<Map<String, String>> messages = messagesCaptor.getValue();
