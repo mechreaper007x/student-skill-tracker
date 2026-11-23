@@ -12,7 +12,6 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
@@ -47,8 +46,7 @@ public class RishiPracticeTask {
     @Column(name = "title", nullable = false, length = 300)
     private String title;
 
-    @Lob
-    @Column(name = "details")
+    @Column(name = "details", columnDefinition = "TEXT")
     private String details;
 
     @Column(name = "topic", length = 160)
@@ -78,8 +76,7 @@ public class RishiPracticeTask {
     @Column(name = "calendar_event_link", length = 1024)
     private String calendarEventLink;
 
-    @Lob
-    @Column(name = "metadata_json")
+    @Column(name = "metadata_json", columnDefinition = "TEXT")
     private String metadataJson;
 
     @CreationTimestamp
