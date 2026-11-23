@@ -14,6 +14,8 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 /**
@@ -25,6 +27,14 @@ import org.springframework.web.client.RestTemplate;
 public class AiGatewayClient {
 
     private static final int MAX_MODEL_PAGES = 30;
+
+    public enum ModelAvailability {
+        AVAILABLE,
+        NOT_FOUND,
+        UNAUTHORIZED,
+        FORBIDDEN,
+        UPSTREAM_ERROR
+    }
 
     private final RestTemplate restTemplate;
 
@@ -154,6 +164,41 @@ public class AiGatewayClient {
         }
 
         return new ArrayList<>(modelIds);
+    }
+
+    /**
+     * Verifies one selected model separately from catalog discovery. Some
+     * providers can return an empty catalogue while the selected model remains
+     * callable; this check lets the UI distinguish those cases without
+     * inventing or hardcoding additional model IDs.
+     */
+    public ModelAvailability checkModelAvailability(String apiKey, String baseUrl, String modelId) {
+        if (apiKey == null || apiKey.isBlank() || modelId == null || modelId.isBlank()) {
+            return ModelAvailability.UPSTREAM_ERROR;
+        }
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setAccept(List.of(MediaType.APPLICATION_JSON));
+        headers.setBearerAuth(apiKey.trim());
+
+        try {
+            ResponseEntity<Map> response = restTemplate.exchange(
+                    AiGatewayUrlValidator.modelUrl(baseUrl, modelId),
+                    HttpMethod.GET,
+                    new HttpEntity<>(headers),
+                    Map.class);
+            return response.getStatusCode().is2xxSuccessful() && response.getBody() != null
+                    ? ModelAvailability.AVAILABLE
+                    : ModelAvailability.UPSTREAM_ERROR;
+        } catch (HttpClientErrorException.Unauthorized ex) {
+            return ModelAvailability.UNAUTHORIZED;
+        } catch (HttpClientErrorException.Forbidden ex) {
+            return ModelAvailability.FORBIDDEN;
+        } catch (HttpClientErrorException.NotFound ex) {
+            return ModelAvailability.NOT_FOUND;
+        } catch (RestClientException ex) {
+            return ModelAvailability.UPSTREAM_ERROR;
+        }
     }
 
     private String extractModelId(Object value) {
