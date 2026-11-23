@@ -43,7 +43,6 @@ class RishiGenAiSecurityTest {
     void setUp() {
         when(gatewayDefaults.baseUrl()).thenReturn(BASE_URL);
         when(gatewayDefaults.protocol()).thenReturn(PROTOCOL);
-        when(gatewayDefaults.model()).thenReturn("mistral-small-latest");
         when(gatewayClient.complete(
                 eq(MOCK_API_KEY), eq("model"), eq(BASE_URL), eq(PROTOCOL),
                 org.mockito.ArgumentMatchers.anyList(), anyDouble(), eq(900)))
