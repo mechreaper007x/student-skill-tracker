@@ -175,9 +175,9 @@ public class AiGatewayClient {
                         "generationConfig", generationConfig);
 
         String encodedModel = UriUtils.encodePathSegment(model.trim(), StandardCharsets.UTF_8);
-        String url = baseUrl + "/models/" + encodedModel + ":generateContent?key="
-                + UriUtils.encodeQueryParam(apiKey.trim(), StandardCharsets.UTF_8);
+        String url = baseUrl + "/models/" + encodedModel + ":generateContent";
         HttpHeaders headers = jsonHeaders();
+        headers.set("x-goog-api-key", apiKey.trim());
 
         ResponseEntity<Map> response = restTemplate.exchange(
                 url, HttpMethod.POST, new HttpEntity<>(body, headers), Map.class);
