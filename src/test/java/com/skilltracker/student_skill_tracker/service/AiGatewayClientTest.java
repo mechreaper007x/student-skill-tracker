@@ -34,7 +34,7 @@ class AiGatewayClientTest {
     @Test
     @SuppressWarnings({ "rawtypes", "unchecked" })
     void sendsEveryRequestThroughOpenAiCompatibleChatCompletions() {
-        String endpoint = "https://gateway.example/v1/chat/completions";
+        String endpoint = "https://1.1.1.1/v1/chat/completions";
         Map<String, Object> responseBody = Map.of(
                 "choices", List.of(
                         Map.of("message", Map.of("content", "Gateway response"))));
@@ -46,7 +46,7 @@ class AiGatewayClientTest {
         String response = gatewayClient.complete(
                 "test-key",
                 "provider/model-id",
-                "https://gateway.example/v1",
+                "https://1.1.1.1/v1",
                 List.of(Map.of("role", "user", "content", "Hello")),
                 0.2,
                 500);
